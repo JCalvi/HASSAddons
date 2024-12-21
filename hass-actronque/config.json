@@ -24,7 +24,7 @@
 		"QuePassword": "quepassword",
 		"SeparateHeatCoolTargets": false,
 		"SystemType": "que",
-		"LogDebug" : "bool"
+		"LogDebug" : false
 	},
 	"schema": {
 		"MQTTUser": "str?",
