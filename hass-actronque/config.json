@@ -1,6 +1,6 @@
 {
   "name": "Actron Que Air Conditioner",
-  "version": "2025.1.5.1",
+  "version": "2025.1.0",
   "slug": "hass-actronque",
   "description": "An add-on for Actron QUE Air Conditioners.",
   "url": "https://github.com/JCalvi/HASSAddons",
@@ -19,7 +19,7 @@
 		"MQTTTLS": false,
 		"PerZoneControls": false,
 		"PerZoneSensors": false,
-		"PollInterval": 30,
+		"PollInterval": 60,
 		"QueUser": "queuser",
 		"QuePassword": "quepassword",
 		"SeparateHeatCoolTargets": false,
