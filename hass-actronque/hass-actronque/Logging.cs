@@ -18,8 +18,7 @@ namespace HMX.HASSActronQue
 
 		public static void WriteDebugLog(string strFormat, params object[] strParams)
 		{
-			If bLogDebug
-				WriteLog(strFormat, strParams);
+			WriteLog(strFormat, strParams);
 		}
 
 		public static void WriteDebugLogError(string strFunction, string strFormat, params object[] strParams)

@@ -1,16 +1,16 @@
 {
-  "name": "Actron Que/Neo Air Conditioner",
-  "version": "2024.12.0.JC",
+  "name": "Actron Que Air Conditioner",
+  "version": "2025.1.5.1.JC",
   "slug": "hass-actronque",
-  "description": "An add-on for Actron Air Conditioners using the Actron Que or Neo modules.",
-  "url": "https://github.com/JCalvi/hass-actronque",
+  "description": "An add-on for Actron QUE Air Conditioners.",
+  "url": "https://github.com/JCalvi/HASSAddons",
   "startup": "application",
   "boot": "auto",
-  "image": "mikejmcguire/hass-actronque-{arch}",
+  "image": "jcrfc/hass-actronque-{arch}",
   "arch": [
     "amd64",
     "aarch64",
-    "armv7"
+	"armv7"
   ],
 	"options": {
 		"MQTTUser": "",
@@ -23,8 +23,7 @@
 		"QueUser": "queuser",
 		"QuePassword": "quepassword",
 		"SeparateHeatCoolTargets": false,
-		"SystemType": "que",
-		"LogDebug" : false
+		"SystemType": "que"
 	},
 	"schema": {
 		"MQTTUser": "str?",
@@ -38,7 +37,6 @@
 		"QuePassword": "str",
 		"QueSerial": "str?",
 		"SeparateHeatCoolTargets": "bool?",
-		"SystemType": "str?",
-		"LogDebug" : "bool"
+		"SystemType": "str?"
 	}
 }

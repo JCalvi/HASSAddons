@@ -5,6 +5,5 @@
   "PerZoneControls": false,
   "PollInterval": 30,
   "QueUser": "queuser",
-  "QuePassword": "quepassword",
-  "DebugLog" false
+  "QuePassword": "quepassword"
 }
