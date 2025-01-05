@@ -3,6 +3,7 @@ ARG BUILD_FROM
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
 RUN apk add --no-cache icu-libs tzdata && rm -rf /var/cache/apk/*
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+ENV ASPNETCORE_HTTP_PORTS=
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
