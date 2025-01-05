@@ -893,7 +893,7 @@ namespace HMX.HASSActronQue
 		{
 			double dblTemp = 0.0;
 
-			Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
+			//Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
 
 			if (!double.TryParse(strValue ?? "", out dblTemp))
 				Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Unable to read state information: {1}", lRequestId.ToString("X8"), strName);
@@ -1386,7 +1386,7 @@ namespace HMX.HASSActronQue
 			QueueCommand command;
 			bool bRetVal = false;
 
-			Logging.WriteDebugLog("Que.ProcessQueue()");
+			//Logging.WriteDebugLog("Que.ProcessQueue()");
 
 			while (true)
 			{
@@ -1427,7 +1427,7 @@ namespace HMX.HASSActronQue
 				}
 			}
 
-			Logging.WriteDebugLog("Que.ProcessQueue() Complete");
+			//Logging.WriteDebugLog("Que.ProcessQueue() Complete");
 
 			return bRetVal;
 		}

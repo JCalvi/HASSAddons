@@ -168,7 +168,7 @@ namespace HMX.HASSActronQue
 		
 		public static async void SendMessage(string strTopic, string strPayloadFormat, params object[] strParams)
 		{
-			Logging.WriteDebugLog("MQTT.SendMessage() {0}", strTopic);
+			//Logging.WriteDebugLog("MQTT.SendMessage() {0}", strTopic);
 
 			if (_mqtt != null)
 			{
