@@ -1,11 +1,11 @@
 # hass-actronque
-Actron Que/Neo Air Conditioner Add-On for Home Assistant (https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/)
+Actron Que Air Conditioner Add-On for Home Assistant.
 
-This add-on for Home Assistant enables you to control an Actron Air Conditioner equipped with the Actron Que or Actron Neo modules. 
+This add-on for Home Assistant enables you to control an Actron QUE Air Conditioner. 
 
 The add-on requires you to use the Mosquitto MQTT broker on your Home Assistant device, with authentication enabled and a valid credential supplied. You'll also need to ensure that MQTT discovery is enabled with the default prefix 'homeassistant' for HA to discover the climate device and zone switches.
 
-Home Assistant AddOn Repository: https://github.com/MikeJMcGuire/HASSAddons.
+Home Assistant AddOn Repository: https://github.com/JCalvi/HASSAddons
 
 ## Configuration
 ### MQTTBroker: string
@@ -35,3 +35,5 @@ This option specifies if you have a "que" or "neo" control system. If not specif
 ## Events
 ### Command Failed
 In the event that a command you send (e.g. temperature change) is not accepted by the Que cloud service (e.g. it is unavailable), an MQTT message will be sent indicating the ID number of the failed command. This can then be captured to trigger a follow on automation. All commands will be retried generally around 3 times before the failure event will be sent. The event will be sent to the MQTT topic of actronqueXXXX/lastfailedcommand (XXXX is the serial number of the unit).
+
+This addon has been forked from Mike McGuire:  (https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/), refer to the changelog for changes made.

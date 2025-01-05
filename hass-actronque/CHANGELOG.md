@@ -1,10 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2025.1.5.1] - 2025-01-05
+## [v2025.1.0] - 2025-01-05
+
+### Changed
 
 - First Build JC.
-
+- Upgraded MQTT and JSON packages.
+- Reduced a lot of logging not required for production.
+- Changed Icon to QUE icon.
 
 ## [v2024.7.0] - 2024-07-19
 
