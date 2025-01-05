@@ -2,9 +2,9 @@ version: '2'
 services:
   hassactronque:
     container_name: hassactronque
-    image: "jcrfc/hass-actronque-aarch64:latest"
+    image: "jcrfc/hass-actronque-amd64:latest"
     restart: always
     volumes:
       - /pathtoconfigfile:/data
    environment:
-      TZ: Australia/Sydney
+      TZ: Australia/Melbourne
