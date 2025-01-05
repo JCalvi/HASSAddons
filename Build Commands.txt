@@ -1,0 +1,11 @@
+docker build -t jcrfc/hass-actronque-aarch64:latest . --platform linux/arm64
+docker tag jcrfc/hass-actronque-aarch64 jcrfc/hass-actronque-aarch64
+docker push jcrfc/hass-actronque-aarch64:latest
+
+docker build -t jcrfc/hass-actronque-amd64 . --platform linux/amd64
+docker tag jcrfc/hass-actronque-amd64 jcrfc/hass-actronque-amd64
+docker push jcrfc/hass-actronque-amd64
+
+docker build -t jcrfc/hass-actronque-armv7 . --platform linux/arm/v7
+docker tag jcrfc/hass-actronque-armv7 jcrfc/hass-actronque-armv7
+docker push jcrfc/hass-actronque-armv7
