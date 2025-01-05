@@ -3,7 +3,7 @@
   "MQTTPassword": "",
   "MQTTBroker": "core-mosquitto",
   "PerZoneControls": false,
-  "PollInterval": 30,
+  "PollInterval": 60,
   "QueUser": "queuser",
   "QuePassword": "quepassword"
 }
