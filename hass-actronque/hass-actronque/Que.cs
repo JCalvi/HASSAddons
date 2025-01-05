@@ -956,7 +956,7 @@ namespace HMX.HASSActronQue
 			else
 				strPageURL = unit.NextEventURL;
 
-			Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Unit: {1}, Base: {2}{3}", lRequestId.ToString("X8"), unit.Serial, _httpClient.BaseAddress, strPageURL);
+			//Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Unit: {1}, Base: {2}{3}", lRequestId.ToString("X8"), unit.Serial, _httpClient.BaseAddress, strPageURL);
 
 			if (!IsTokenValid())
 			{
@@ -975,7 +975,7 @@ namespace HMX.HASSActronQue
 				{
 					strResponse = await httpResponse.Content.ReadAsStringAsync();
 
-					Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
+					//Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
 					if (Service.IsDevelopment)
 						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Response: {1}", lRequestId.ToString("X8"), strResponse);
@@ -993,9 +993,9 @@ namespace HMX.HASSActronQue
 					if (unit.NextEventURL.StartsWith("/"))
 						unit.NextEventURL = unit.NextEventURL.Substring(1);
 
-					Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Next Event URL: {1}", lRequestId.ToString("X8"), unit.NextEventURL);
+					//Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Next Event URL: {1}", lRequestId.ToString("X8"), unit.NextEventURL);
 
-					Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Procesing {1} events", lRequestId.ToString("X8"), jsonResponse.events.Count);
+					//Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Processing {1} events", lRequestId.ToString("X8"), jsonResponse.events.Count);
 
 					for (int iEvent = jsonResponse.events.Count - 1; iEvent >= 0; iEvent--)
 					{
@@ -1004,7 +1004,7 @@ namespace HMX.HASSActronQue
 
 						strEventType = jsonResponse.events[iEvent].type;
 
-						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Event Type: {1}", lRequestId.ToString("X8"), strEventType);
+						//Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Event Type: {1}", lRequestId.ToString("X8"), strEventType);
 
 						switch (strEventType)
 						{
@@ -1018,7 +1018,7 @@ namespace HMX.HASSActronQue
 							case "status-change-broadcast":
 								foreach (JProperty change in jsonResponse.events[iEvent].data)
 								{
-									Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Incremental Update: {1}", lRequestId.ToString("X8"), change.Name);
+									//Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Incremental Update: {1}", lRequestId.ToString("X8"), change.Name);
 
 									// Compressor Mode
 									if (change.Name == "LiveAircon.CompressorMode")
@@ -1572,11 +1572,11 @@ namespace HMX.HASSActronQue
 
 		private static void MQTTUpdateData(AirConditionerUnit unit, UpdateItems items)
 		{
-			Logging.WriteDebugLog("Que.MQTTUpdateData() Unit: {0}, Items: {1}", unit.Serial, items.ToString());
+			//Logging.WriteDebugLog("Que.MQTTUpdateData() Unit: {0}, Items: {1}", unit.Serial, items.ToString());
 
 			if (unit.Data.LastUpdated == DateTime.MinValue)
 			{
-				Logging.WriteDebugLog("Que.MQTTUpdateData() Skipping update, No data received");
+				//Logging.WriteDebugLog("Que.MQTTUpdateData() Skipping update, No data received");
 				return;
 			}
 
@@ -1797,7 +1797,7 @@ namespace HMX.HASSActronQue
 		{
 			double dblSetTemperature = 0.0;
 
-			Logging.WriteDebugLog("Que.GetSetTemperature()");
+			//Logging.WriteDebugLog("Que.GetSetTemperature()");
 
 			try
 			{
