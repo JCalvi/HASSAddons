@@ -1,5 +1,3 @@
-"C:\Program Files\Docker\Docker\Docker Desktop.exe"
-
 cd .\hass-actronque
 
 docker build -t jcrfc/hass-actronque-aarch64:latest -t jcrfc/hass-actronque-aarch64:2025.1.0 . --platform linux/arm64

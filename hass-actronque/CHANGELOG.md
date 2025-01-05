@@ -10,6 +10,10 @@ All notable changes to this project will be documented in this file.
 - Reduced a lot of logging not required for production.
 - Changed Icon to QUE icon.
 - Upgraded base images to .NET 9.
+- Suppress Microsoft.AspNetCore warnings.
+- Removed hardcoded UseUrls 
+  from webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration).UseUrls($"http://*:80/");
+  set instead from ENV variables in Dockerfile.
 
 ## [v2024.7.0] - 2024-07-19
 

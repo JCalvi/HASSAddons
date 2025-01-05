@@ -104,7 +104,7 @@ namespace HMX.HASSActronQue
 			{
 				webHost = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
 				{
-					webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration).UseUrls($"http://*:80/");
+					webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration); 			
 				}).Build();
 			}
 			catch (Exception eException)

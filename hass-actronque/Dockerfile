@@ -21,4 +21,5 @@ WORKDIR /app
 COPY --from=publish /app .
 
 RUN apk add --no-cache icu-libs
+ENV ASPNETCORE_HTTP_PORTS=80
 ENTRYPOINT ["dotnet", "hass-actronque.dll"]
