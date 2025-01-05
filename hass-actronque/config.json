@@ -1,6 +1,6 @@
 {
   "name": "Actron Que Air Conditioner",
-  "version": "2025.1.5.1.JC",
+  "version": "2025.1.5.1",
   "slug": "hass-actronque",
   "description": "An add-on for Actron QUE Air Conditioners.",
   "url": "https://github.com/JCalvi/HASSAddons",
