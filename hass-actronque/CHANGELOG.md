@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded MQTT and JSON packages.
 - Reduced a lot of logging not required for production.
 - Changed Icon to QUE icon.
+- Upgraded base images to .NET 9.
 
 ## [v2024.7.0] - 2024-07-19
 
