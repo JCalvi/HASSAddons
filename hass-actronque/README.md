@@ -7,6 +7,8 @@ The add-on requires you to use the Mosquitto MQTT broker on your Home Assistant 
 
 Home Assistant AddOn Repository: https://github.com/JCalvi/HASSAddons
 
+Note: This addon has been forked from Mike McGuire:  (https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/), refer to the changelog for changes made.
+
 ## Configuration
 ### MQTTBroker: string
 Set this field to core-mosquitto to use the HA Mosquitto MQTT add-on. Otherwise, specify a host or host:port for an alternative MQTT server.
@@ -35,5 +37,3 @@ This option specifies if you have a "que" or "neo" control system. If not specif
 ## Events
 ### Command Failed
 In the event that a command you send (e.g. temperature change) is not accepted by the Que cloud service (e.g. it is unavailable), an MQTT message will be sent indicating the ID number of the failed command. This can then be captured to trigger a follow on automation. All commands will be retried generally around 3 times before the failure event will be sent. The event will be sent to the MQTT topic of actronqueXXXX/lastfailedcommand (XXXX is the serial number of the unit).
-
-This addon has been forked from Mike McGuire:  (https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/), refer to the changelog for changes made.
