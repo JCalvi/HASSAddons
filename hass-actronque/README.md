@@ -7,7 +7,7 @@ The add-on requires you to use the Mosquitto MQTT broker on your Home Assistant 
 
 Home Assistant AddOn Repository: https://github.com/JCalvi/HASSAddons
 
-Note: This addon has been forked from Mike McGuire:  (https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/), refer to the changelog for changes made.
+Note: This add-on has been forked from Mike McGuire:  (https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/), refer to the change log for changes made.
 
 ## Configuration
 ### MQTTBroker: string
@@ -26,7 +26,7 @@ If your Actron has sensors in each zone, setting this option to true will create
 By default, the add-on will poll the Que API system every 60 seconds for updates. This can be set to between 10 and 300 seconds inclusive.
 
 ### QueSerial: string
-If you have multiple AC units conencted to your Que, you can add this optional configuration to specify the serial number of the AC you want the add-on to use. You can find the discovered serial numbers in the log for the add-on when the add-on is starting. If you leave this field blank, the add-on will add all detected AC units.
+If you have multiple AC units connected to your Que, you can add this optional configuration to specify the serial number of the AC you want the add-on to use. You can find the discovered serial numbers in the log for the add-on when the add-on is starting. If you leave this field blank, the add-on will add all detected AC units.
 
 ### SeparateHeatCoolTargets: bool
 This option specifies if you wish to use the new independently set target heating and cooling temperature settings introduced in HA 2023.9. This disables the single temperature set option that may impact existing automations.
