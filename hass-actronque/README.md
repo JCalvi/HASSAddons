@@ -17,13 +17,13 @@ Set this field to core-mosquitto to use the HA Mosquitto MQTT add-on. Otherwise,
 Setting this option to true will force the MQTT client to attempt a TLS connection to the MQTT broker.
 
 ### PerZoneControls: true/false
-If you Actron has controllers in each zone, setting this option to true will create an air conditioner controller in HA for each zone.
+If your Actron has controllers in each zone, setting this option to true will create an air conditioner controller in HA for each zone.
 
 ### PerZoneSensors: true/false
-If you Actron has sensors in each zone, setting this option to true will create battery and temperature entities in HA for each sensor even if there are multiple sensors in a zone.
+If your Actron has sensors in each zone, setting this option to true will create battery and temperature entities in HA for each sensor even if there are multiple sensors in a zone.
 
 ### PollInterval: integer
-By default, the add-on will poll the Que API system every 30 seconds for updates. This can be set to between 10 and 300 seconds inclusive.
+By default, the add-on will poll the Que API system every 60 seconds for updates. This can be set to between 10 and 300 seconds inclusive.
 
 ### QueSerial: string
 If you have multiple AC units conencted to your Que, you can add this optional configuration to specify the serial number of the AC you want the add-on to use. You can find the discovered serial numbers in the log for the add-on when the add-on is starting. If you leave this field blank, the add-on will add all detected AC units.
