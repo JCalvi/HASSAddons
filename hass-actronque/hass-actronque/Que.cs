@@ -836,6 +836,12 @@ namespace HMX.HASSActronQue
 			// Fan RPM
 			ProcessPartialStatus(lRequestId, "LiveAircon.FanRPM", jsonResponse.LiveAircon.FanRPM?.ToString(), ref unit.Data.FanRPM);
 
+			// Filter
+			ProcessPartialStatus(lRequestId, "Alerts.CleanFilter", jsonResponse.Alerts.CleanFilter?.ToString(), ref unit.Data.CleanFilter);
+
+			// Fan Time Since Filter Cleaned
+			ProcessPartialStatus(lRequestId, "ACStats.NV_FanRunTime_10m", jsonResponse.ACStats.NV_FanRunTime_10m?.ToString(), ref unit.Data.FanTSFC);
+
 			// Zones
 			aEnabledZones = jsonResponse.UserAirconSettings.EnabledZones;
 			if (aEnabledZones.Count != 8)
@@ -1110,6 +1116,18 @@ namespace HMX.HASSActronQue
 										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanRPM);
 										updateItems |= UpdateItems.Main;
 									}
+									// Clean Filter
+									else if (change.Name == "Alerts.CleanFilter")
+									{
+										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CleanFilter);
+										updateItems |= UpdateItems.Main;
+									}
+									// Fan Time Since Filter Cleaned
+									else if (change.Name == "ACStats.NV_FanRunTime_10m")
+									{
+										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanTSFC);
+										updateItems |= UpdateItems.Main;
+									}											
 									// Remote Zone
 									else if (change.Name.StartsWith("RemoteZoneInfo["))
 									{
@@ -1485,6 +1503,8 @@ namespace HMX.HASSActronQue
 					MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}coilinlettemperature/config", strHANameModifier), "{{\"name\":\"{1} Coil Inlet Temperature\",\"unique_id\":\"{0}-CoilInletTemperature\",\"device\":{{\"identifiers\":[\"{0}\"],\"name\":\"{2}\",\"model\":\"Add-On\",\"manufacturer\":\"ActronAir\"}},\"state_topic\":\"actronque{3}/coilinlettemperature\",\"unit_of_measurement\":\"\u00B0C\",\"device_class\":\"temperature\",\"availability_topic\":\"{0}/status\"}}", Service.ServiceName.ToLower() + strDeviceNameModifier, strAirConditionerName, strAirConditionerNameMQTT, unit.Serial);
 					MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanpwm/config", strHANameModifier), "{{\"name\":\"{1} Fan PWM\",\"unique_id\":\"{0}-FanPWM\",\"device\":{{\"identifiers\":[\"{0}\"],\"name\":\"{2}\",\"model\":\"Add-On\",\"manufacturer\":\"ActronAir\"}},\"state_topic\":\"actronque{3}/fanpwm\",\"unit_of_measurement\":\"%\",\"availability_topic\":\"{0}/status\"}}", Service.ServiceName.ToLower() + strDeviceNameModifier, strAirConditionerName, strAirConditionerNameMQTT, unit.Serial);
 					MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanrpm/config", strHANameModifier), "{{\"name\":\"{1} Fan RPM\",\"unique_id\":\"{0}-FanRPM\",\"device\":{{\"identifiers\":[\"{0}\"],\"name\":\"{2}\",\"model\":\"Add-On\",\"manufacturer\":\"ActronAir\"}},\"state_topic\":\"actronque{3}/fanrpm\",\"unit_of_measurement\":\"RPM\",\"availability_topic\":\"{0}/status\"}}", Service.ServiceName.ToLower() + strDeviceNameModifier, strAirConditionerName, strAirConditionerNameMQTT, unit.Serial);
+					MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}cleanfilter/config", strHANameModifier), "{{\"name\":\"{1} Clean Filter\",\"unique_id\":\"{0}-CleanFilter\",\"device\":{{\"identifiers\":[\"{0}\"],\"name\":\"{2}\",\"model\":\"Add-On\",\"manufacturer\":\"ActronAir\"}},\"state_topic\":\"actronque{3}/cleanfilter\",\"availability_topic\":\"{0}/status\"}}", Service.ServiceName.ToLower() + strDeviceNameModifier, strAirConditionerName, strAirConditionerNameMQTT, unit.Serial);					
+					MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fantsfc/config", strHANameModifier), "{{\"name\":\"{1} Fan Time Since Filter Cleaned\",\"unique_id\":\"{0}-FanTSFC\",\"device\":{{\"identifiers\":[\"{0}\"],\"name\":\"{2}\",\"model\":\"Add-On\",\"manufacturer\":\"ActronAir\"}},\"state_topic\":\"actronque{3}/fantsfc\",\"unit_of_measurement\":\"h\",\"availability_topic\":\"{0}/status\"}}", Service.ServiceName.ToLower() + strDeviceNameModifier, strAirConditionerName, strAirConditionerNameMQTT, unit.Serial);
 					MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier), "{{\"name\":\"Control All Zones\",\"unique_id\":\"{0}-CAZ\",\"device\":{{\"identifiers\":[\"{0}\"],\"name\":\"{2}\",\"model\":\"Add-On\",\"manufacturer\":\"ActronAir\"}},\"state_topic\":\"actronque{3}/controlallzones\",\"command_topic\":\"actronque{3}/controlallzones/set\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"state_on\":\"ON\",\"state_off\":\"OFF\",\"availability_topic\":\"{0}/status\"}}", Service.ServiceName.ToLower() + strDeviceNameModifier, strAirConditionerName, strAirConditionerNameMQTT, unit.Serial);
 
 					MQTT.Subscribe("actronque{0}/controlallzones/set", unit.Serial);
@@ -1715,6 +1735,12 @@ namespace HMX.HASSActronQue
 
 					// Fan RPM
 					MQTT.SendMessage(string.Format("actronque{0}/fanrpm", unit.Serial), unit.Data.FanRPM.ToString("F0"));
+					
+					// Clean Filter
+					MQTT.SendMessage(string.Format("actronque{0}/cleanfilter", unit.Serial), unit.Data.CleanFilter ? "on" : "off");					
+
+					// Fan Time Since Filter Cleaned (* 10 / 60 = /6 to get hours from 10min units)
+					MQTT.SendMessage(string.Format("actronque{0}/fantsfc", unit.Serial), (unit.Data.FanTSFC/6).ToString("F0"));
 
 					// Control All Zones
 					MQTT.SendMessage(string.Format("actronque{0}/controlallzones", unit.Serial), unit.Data.ControlAllZones ? "ON" : "OFF");

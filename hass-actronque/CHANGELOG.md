@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
 - Removed hardcoded UseUrls 
   from webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration).UseUrls($"http://*:80/");
   set instead from ENV variables in Dockerfile.
+  
+### Added
+- Clean Filter Entity
+- Time Since Filter Cleaned Entity
 
 ## [v2024.7.0] - 2024-07-19
 
