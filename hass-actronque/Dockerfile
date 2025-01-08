@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS base
-RUN apk add --no-cache icu-libs tzdata && rm -rf /var/cache/apk/*
+RUN apk add --update --no-cache icu-libs tzdata && rm -rf /var/cache/apk/*
+
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 WORKDIR /app
 
@@ -19,6 +20,6 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app .
 
-RUN apk add --no-cache icu-libs
+#RUN apk add --no-cache icu-libs
 ENV ASPNETCORE_HTTP_PORTS=80
 ENTRYPOINT ["dotnet", "hass-actronque.dll"]
