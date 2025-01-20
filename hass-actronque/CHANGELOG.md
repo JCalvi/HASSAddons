@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2025.1.1] - 2025-01-05
+
+### Changed
+- Upgraded base images to Alpine 3.21
+
+
 ## [v2025.1.0] - 2025-01-05
 
 ### Changed

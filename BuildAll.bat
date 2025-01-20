@@ -1,6 +1,6 @@
 cd .\hass-actronque
 
-set jcversion=2025.1.0
+set jcversion=2025.1.1
 
 echo %date% > .\hass-actronque\Resources\BuildDate.txt
 
