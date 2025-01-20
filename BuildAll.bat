@@ -1,3 +1,4 @@
+rem https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md#full-tag-listing
 cd .\hass-actronque
 
 set jcversion=2025.1.1
