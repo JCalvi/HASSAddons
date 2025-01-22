@@ -1,10 +1,14 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2025.1.1] - 2025-01-20
+## [v2025.1.1] - 2025-01-22
 
 ### Changed
 - Upgraded base images to Alpine 3.21
+- Changed Webport to 8080 from 80 to comply with Default .NET8+
+- Upgraded Microsoft.Extensions.Configuration.Json to Version 9.0.1
+- Upgraded System.Text.Json to Version 9.0.1
+- Package Updates from: https://www.nuget.org/packages
 
 
 ## [v2025.1.0] - 2025-01-05
