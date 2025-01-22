@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine3.21 AS base
+FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine3.21 AS base
 RUN apk add --update --no-cache icu-libs tzdata && rm -rf /var/cache/apk/*
 
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
@@ -14,12 +14,11 @@ WORKDIR /src/hass-actronque
 RUN dotnet build  hass-actronque.csproj -c Release -o /app -a $TARGETARCH 
 
 FROM build AS publish
-RUN dotnet publish hass-actronque.csproj -c Release -o /app -a $TARGETARCH
+RUN dotnet publish hass-actronque.csproj -c Release -o /app -a $TARGETARCH --self-contained true /p:PublishTrimmed=true /p:TrimMode=partial /p:PublishSingleFile=true
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app .
 
-#RUN apk add --no-cache icu-libs
 ENV ASPNETCORE_HTTP_PORTS=8080
-ENTRYPOINT ["dotnet", "hass-actronque.dll"]
+ENTRYPOINT ["./hass-actronque"]

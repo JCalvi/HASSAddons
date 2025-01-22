@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Upgraded base images to Alpine 3.21
+- Changed to self-contained,partially trimmed container to reduce size by 50%
 - Changed Webport to 8080 from 80 to comply with Default .NET8+
 - Upgraded Microsoft.Extensions.Configuration.Json to Version 9.0.1
 - Upgraded System.Text.Json to Version 9.0.1
