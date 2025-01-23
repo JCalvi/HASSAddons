@@ -5,8 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Upgraded base images to Alpine 3.21
-- Changed to self-contained,partially trimmed container to reduce size by 50%
-- Changed Webport to 8080 from 80 to comply with Default .NET8+
+- Changed to self-contained-trimmed reducing size 50%
+- Changed Web port to 8080 from 80 to comply with Default .NET8+
 - Upgraded Microsoft.Extensions.Configuration.Json to Version 9.0.1
 - Upgraded System.Text.Json to Version 9.0.1
 - Package Updates from: https://www.nuget.org/packages
@@ -22,7 +22,7 @@ All notable changes to this project will be documented in this file.
 - Changed Icon to QUE icon.
 - Upgraded base images to .NET 9.
 - Suppress Microsoft.AspNetCore warnings.
-- Removed hardcoded UseUrls 
+- Removed hard coded UseUrls 
   from webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration).UseUrls($"http://*:80/");
   set instead from ENV variables in Dockerfile.
   
@@ -99,14 +99,14 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- The MQTT topics have been changed to accomodate multiple AC units.
+- The MQTT topics have been changed to accommodate multiple AC units.
 - The device created in HA has been updated with additional AC specific information - this may impact device and entity identifiers as a result of now supporting multiple AC units.
 
 ## [v2022.10.3] - 2022-10-17
 
 ### Added
 
-- Added logic to regenerate the pairing token and device identication files when the email address changes.
+- Added logic to regenerate the pairing token and device identification files when the email address changes.
 - Added logic to identify authentication issues when email addresses change.
 - Added MQTT connection errors to the logs.
 
@@ -206,7 +206,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Migrated from .NET 5.0 to .NET 6.0.
 - Changed version numbering scheme.
-- Added logic to support the bearer token request returning BadRequest instead of Unauthorized, so that after a set number of attempts, the add-on will regenerate the pairing token.
+- Added logic to support the bearer token request returning BadRequest instead of Unauthorised, so that after a set number of attempts, the add-on will regenerate the pairing token.
 
 ## [v0.30] - 2021-09-22
 
