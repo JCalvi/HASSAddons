@@ -1,6 +1,6 @@
 {
   "name": "Actron Que Air Conditioner",
-  "version": "2025.1.1",
+  "version": "2025.3.1",
   "slug": "hass-actronque",
   "description": "An add-on for Actron QUE Air Conditioners.",
   "url": "https://github.com/JCalvi/HASSAddons",
@@ -23,7 +23,8 @@
 		"QueUser": "queuser",
 		"QuePassword": "quepassword",
 		"SeparateHeatCoolTargets": false,
-		"SystemType": "que"
+		"SystemType": "que",
+		"DeviceName": "HASSActronQue"		
 	},
 	"schema": {
 		"MQTTUser": "str?",
@@ -37,6 +38,7 @@
 		"QuePassword": "str",
 		"QueSerial": "str?",
 		"SeparateHeatCoolTargets": "bool?",
-		"SystemType": "str?"
+		"SystemType": "str?",
+		"DeviceName": "str?"
 	}
 }

@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v2025.1.1] - 2025-01-22
 
+### Added
+- Optional custom device name. This is what device name the add-on authorises against the Actron cloud as. Default is "HASSActronQue"
+
+
+
+## [v2025.1.1] - 2025-01-22
+
 ### Changed
 - Upgraded base images to Alpine 3.21
 - Changed to self-contained-trimmed reducing size 50%

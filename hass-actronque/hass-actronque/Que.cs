@@ -39,7 +39,7 @@ namespace HMX.HASSActronQue
 		private static string _strBaseURLQue = "https://que.actronair.com.au/";
 		private static string _strBaseURLNeo = "https://nimbus.actronair.com.au/";
 		private static string _strSystemType;
-		private static string _strDeviceName = "HASSActronQue";
+		private static string _strDeviceName;
 		private static string _strAirConditionerName = "Air Conditioner";
 		private static string _strDeviceIdFile = "/data/deviceid.json";
 		private static string _strPairingTokenFile = "/data/pairingtoken.json";
@@ -111,7 +111,7 @@ namespace HMX.HASSActronQue
 			}
 		}
 
-		public static async void Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strSystemType, int iPollInterval, bool bPerZoneControls, bool bPerZoneSensors, bool bSeparateHeatCool, ManualResetEvent eventStop)
+		public static async void Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strSystemType, string strDeviceName, int iPollInterval, bool bPerZoneControls, bool bPerZoneSensors, bool bSeparateHeatCool, ManualResetEvent eventStop)
 		{
 			Thread threadMonitor;
 			string strDeviceUniqueIdentifierInput;
@@ -123,10 +123,12 @@ namespace HMX.HASSActronQue
 			_strQuePassword = strQuePassword;
 			_strSerialNumber = strSerialNumber;
 			_strSystemType = strSystemType;
+			_strDeviceName = strDeviceName;
 			_bPerZoneControls = bPerZoneControls;
 			_bPerZoneSensors = bPerZoneSensors;
 			_iPollInterval = iPollInterval;
 			_bSeparateHeatCool = bSeparateHeatCool;
+
 			_eventStop = eventStop;
 
 			_httpClientAuth.BaseAddress = new Uri(GetBaseURL());
@@ -232,7 +234,7 @@ namespace HMX.HASSActronQue
 					Logging.WriteDebugLogError("Que.GeneratePairingToken()", eException, "Unable to update json file.");
 				}
 			}
-
+			
 			dtFormContent.Add("username", _strQueUser);
 			dtFormContent.Add("password", _strQuePassword);
 			dtFormContent.Add("deviceName", Service.IsDevelopment ? _strDeviceName + "Dev" : _strDeviceName);
