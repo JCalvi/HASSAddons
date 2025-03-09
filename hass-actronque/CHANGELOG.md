@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2025.1.1] - 2025-01-22
+## [v2025.3.1] - 2025-03-09
 
 ### Added
 - Optional custom device name. This is what device name the add-on authorises against the Actron cloud as. Default is "HASSActronQue"
