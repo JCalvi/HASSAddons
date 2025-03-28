@@ -2,7 +2,7 @@
   "name": "Actron Que/Neo Air Conditioner",
   "version": "2025.3.2",
   "slug": "hass-actronque",
-  "description": "An add-on for Actron QUE Air Conditioners.",
+  "description": "An add-on for Actron QUE and Neo Air Conditioners",
   "url": "https://github.com/JCalvi/HASSAddons",
   "startup": "application",
   "boot": "auto",

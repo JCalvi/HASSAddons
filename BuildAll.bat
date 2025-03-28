@@ -3,7 +3,7 @@ cd .\hass-actronque
 
 set jcversion=2025.3.2
 
-rem Powershell -Command "& {(Get-Content .\config.json) -replace '\d{4}.\d+.\d+', '%jcversion%' | Set-Content  .\config.json}" 
+Powershell -Command "& {(Get-Content .\config.json) -replace '\d{4}.\d+.\d+', '%jcversion%' | Set-Content  .\config.json}" 
 
 echo %date% > .\hass-actronque\Resources\BuildDate.txt
 
