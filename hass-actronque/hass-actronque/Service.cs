@@ -37,7 +37,7 @@ namespace HMX.HASSActronQue
 			string strMQTTUser, strMQTTPassword, strMQTTBroker;
 			string strQueUser, strQuePassword, strQueSerial, strSystemType, strDeviceName;
 			int iPollInterval;
-			bool bPerZoneControls, bPerZoneSensors, bMQTTTLS, bSeparateHeatCool;
+			bool bPerZoneControls, bPerZoneSensors, bQueLogging, bMQTTLogging, bMQTTTLS, bSeparateHeatCool;
 
 			Logging.WriteDebugLog("Service.Start() Build Date: {0}", Properties.Resources.BuildDate);
 
@@ -63,6 +63,7 @@ namespace HMX.HASSActronQue
 			Configuration.GetPrivateOptionalConfiguration(configuration, "MQTTPassword", out strMQTTPassword);
 			if (!Configuration.GetConfiguration(configuration, "MQTTBroker", out strMQTTBroker))
 				return;
+			Configuration.GetOptionalConfiguration(configuration, "MQTTLogs", out bMQTTLogging, true);
 			Configuration.GetOptionalConfiguration(configuration, "MQTTTLS", out bMQTTTLS);
 
 			if (!Configuration.GetConfiguration(configuration, "PerZoneControls", out bPerZoneControls))
@@ -80,7 +81,9 @@ namespace HMX.HASSActronQue
 				return;
 			if (!Configuration.GetPrivateConfiguration(configuration, "QuePassword", out strQuePassword))
 				return;
+			Configuration.GetOptionalConfiguration(configuration, "QueLogs", out bQueLogging, true);
 			Configuration.GetOptionalConfiguration(configuration, "QueSerial", out strQueSerial);
+
 			Configuration.GetOptionalConfiguration(configuration, "SeparateHeatCoolTargets", out bSeparateHeatCool);
 
 			Configuration.GetOptionalConfiguration(configuration, "SystemType", out strSystemType);
@@ -121,9 +124,9 @@ namespace HMX.HASSActronQue
 				return;
 			}
 
-			MQTT.StartMQTT(strMQTTBroker, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor);
+			MQTT.StartMQTT(strMQTTBroker, bMQTTLogging, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor);
 
-			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strSystemType, strDeviceName, iPollInterval, bPerZoneControls, bPerZoneSensors, bSeparateHeatCool, _eventStop);
+			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strSystemType, strDeviceName, iPollInterval, bQueLogging, bPerZoneControls, bPerZoneSensors, bSeparateHeatCool, _eventStop);
 
 			webHost.Run();
 		}

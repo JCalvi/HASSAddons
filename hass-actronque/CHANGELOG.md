@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2025.3.2] - 2025-03-29
+
+### Added
+Implement latest MJM changes below.
+- Added additional logic to show compressor state per zone (when using Que per zone controls). Additional research by @DanielNagy.
+- Added additional sensor entity for the air conditioner current temperature.
+- Added configuration option to reduce MQTT logging.
+- Added configuration option to reduce Que event logging.
+
+
 ## [v2025.3.1] - 2025-03-09
 
 ### Added

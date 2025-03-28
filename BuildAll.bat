@@ -1,9 +1,12 @@
 rem https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md#full-tag-listing
 cd .\hass-actronque
 
-set jcversion=2025.3.1
+set jcversion=2025.3.2
+
+rem Powershell -Command "& {(Get-Content .\config.json) -replace '\d{4}.\d+.\d+', '%jcversion%' | Set-Content  .\config.json}" 
 
 echo %date% > .\hass-actronque\Resources\BuildDate.txt
+
 
 docker build -t jcrfc/hass-actronque-aarch64:latest -t jcrfc/hass-actronque-aarch64:%jcversion% . --platform linux/arm64
 docker push jcrfc/hass-actronque-aarch64:latest
