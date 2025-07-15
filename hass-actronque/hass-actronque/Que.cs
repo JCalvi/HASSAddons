@@ -57,7 +57,6 @@ namespace HMX.HASSActronQue
 		private static HttpClient _httpClient = null, _httpClientAuth = null, _httpClientCommands = null;
 		private static int _iCancellationTime = 15; // Seconds
 		private static int _iPollInterval = 15; // Seconds
-		private static int _iPollIntervalNeoNoEventsMode = 30; // Seconds
 		private static int _iPollIntervalUpdate = 5; // Seconds
 		private static int _iAuthenticationInterval = 60; // Seconds
 		private static int _iQueueInterval = 4; // Seconds
@@ -1361,7 +1360,7 @@ namespace HMX.HASSActronQue
 					iCommandAckRetries = 0;
 				}
 				else
-					iWaitInterval = (!_bNeoNoEventMode ? _iPollInterval : _iPollIntervalNeoNoEventsMode);
+					iWaitInterval = _iPollInterval;
 			}
 
 			Logging.WriteDebugLog("Que.AirConditionerMonitor() Complete");

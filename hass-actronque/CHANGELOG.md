@@ -9,7 +9,10 @@ Implement latest MJM changes below.
 - Added an option to force Neo no event mode on QUE to address current cloud api issue.
 
 ### Changed
+- Removed _iPollIntervalNeoNoEventsMode which was hard-coded to 30 sec, and made this equal to polling interval set in config. 
+  This enables a user to reduce noeventsmode traffic which for a QUE is about 20kb per data collection, or set it below 30s if they want better response.
 - Upgraded base images to Alpine 3.22
+
 
 ## [v2025.3.2] - 2025-03-29
 
