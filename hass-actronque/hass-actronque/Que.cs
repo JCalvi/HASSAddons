@@ -720,8 +720,8 @@ namespace HMX.HASSActronQue
 			string strResponse;
 			dynamic jsonResponse;
 			UpdateItems updateItems = UpdateItems.None;
-
-			Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, unit.Serial);
+			if (_bQueLogging)
+				Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, unit.Serial);
 
 			if (!IsTokenValid())
 				goto Cleanup;
@@ -736,8 +736,8 @@ namespace HMX.HASSActronQue
 				if (httpResponse.IsSuccessStatusCode)
 				{
 					strResponse = await httpResponse.Content.ReadAsStringAsync();
-
-					Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
+					if (_bQueLogging)
+						Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
 					lock (_oLockData)
 					{
