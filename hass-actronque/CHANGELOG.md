@@ -1,6 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+
+## [v2025.7.1] - 2025-07-15
+
+### Added
+Implement latest MJM changes below.
+- Added an option to force Neo no event mode on QUE to address current cloud api issue.
+
+### Changed
+- Upgraded base images to Alpine 3.22
+
 ## [v2025.3.2] - 2025-03-29
 
 ### Added
