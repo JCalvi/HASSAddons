@@ -1,10 +1,10 @@
-FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine3.21 AS base
+FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine AS base
 RUN apk add --update --no-cache icu-libs tzdata && rm -rf /var/cache/apk/*
 
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 WORKDIR /app
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-alpine3.21 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
 ARG TARGETARCH
 WORKDIR /src
 COPY hass-actronque/hass-actronque.csproj hass-actronque/

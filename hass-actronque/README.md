@@ -31,6 +31,9 @@ If you have multiple AC units connected to your Que, you can add this optional c
 ### SeparateHeatCoolTargets: bool
 This option specifies if you wish to use the new independently set target heating and cooling temperature settings introduced in HA 2023.9. This disables the single temperature set option that may impact existing automations.
 
+### ForceNoEventsMode: bool
+This option forces no events mode so a full update of data is pulled every polling cycle. Will require more data but added to troubleshoot potential QUE api access issues.
+
 ### SystemType: string
 This option specifies if you have a "que" or "neo" control system. If not specified, this defaults to "que". 
 

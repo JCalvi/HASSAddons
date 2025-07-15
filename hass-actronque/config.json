@@ -1,6 +1,6 @@
 {
   "name": "Actron Que/Neo Air Conditioner",
-  "version": "2025.3.2",
+  "version": "2025.7.1",
   "slug": "hass-actronque",
   "description": "An add-on for Actron QUE and Neo Air Conditioners",
   "url": "https://github.com/JCalvi/HASSAddons",
@@ -25,6 +25,7 @@
 		"QuePassword": "quepassword",
 		"QueLogs": true,		
 		"SeparateHeatCoolTargets": false,
+		"ForceNoEventsMode" : false,
 		"SystemType": "que",
 		"DeviceName": "HASSActronQue"		
 	},
@@ -42,6 +43,7 @@
 		"QueSerial": "str?",
 		"QueLogs": "bool?",		
 		"SeparateHeatCoolTargets": "bool?",
+		"ForceNoEventsMode": "bool?",
 		"SystemType": "str?",
 		"DeviceName": "str?"
 	}
