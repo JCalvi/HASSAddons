@@ -87,7 +87,7 @@ namespace HMX.HASSActronQue
 			if (strDeviceName == "")
 			{
 				Logging.WriteDebugLog("Service.Start() Device Name not specified, defaulting to HASSActronQue.");
-				strSystemType = "HASSActronQue";
+				strDeviceName = "HASSActronQue";
 			}
 			else
 			{

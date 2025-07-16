@@ -18,6 +18,7 @@ Implement latest MJM changes below to sync with MJM v2025.7.2/1
 ### Changed
 
 - Changed Base URLs to use the Neo endpoint for auth, events, and Neo commands, and the Que endpoint for Que commands.
+- Fixed bug in custom device name.
 
 
 ## [v2025.7.1] - 2025-07-15
