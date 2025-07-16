@@ -21,8 +21,8 @@
 		"PerZoneControls": false,
 		"PollInterval": 60,
 		"QueUser": "queuser",
-		"QueLogs": true,
 		"QuePassword": "quepassword",
+		"QueLogs": true,
 		"SeparateHeatCoolTargets": false,
 		"DeviceName": "HASSActronQue"		
 	},
@@ -35,9 +35,9 @@
 		"PerZoneControls": "bool",
 		"PollInterval": "int(10,300)",
 		"QueUser": "str",
-		"QueLogs": "bool?",
 		"QuePassword": "str",
 		"QueSerial": "str?",
+		"QueLogs": "bool?",
 		"SeparateHeatCoolTargets": "bool?",
 		"DeviceName": "str?"
 	}
