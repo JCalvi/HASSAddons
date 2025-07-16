@@ -1,11 +1,29 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2025.7.2] - 2025-07-16
+Implement latest MJM changes below to sync with MJM v2025.7.2/1
+### Added
+
+- Added entities for Neo sensor/controller batteries.
+- Added logic to ignore AC units that are offline for more than 20 hours (e.g. a que unit replaced with a neo).
+- Upgraded .NET packages.
+
+### Removed
+
+- Removed per zone sensor configuration item. If sensors are detected, they will be registered and updated by MQTT.
+- Removed system type configuration item. The add-on will now detect if each system is a Que or a Neo.
+- Removed disable event based updates configuration item (added in 2025.7.0). If the events endpoint returns unauthorized, the add-on will switch automatically to full status polling.
+
+### Changed
+
+- Changed Base URLs to use the Neo endpoint for auth, events, and Neo commands, and the Que endpoint for Que commands.
+
 
 ## [v2025.7.1] - 2025-07-15
 
 ### Added
-Implement latest MJM changes below.
+
 - Added an option to force Neo no event mode on QUE to address current cloud api issue.
 
 ### Changed
