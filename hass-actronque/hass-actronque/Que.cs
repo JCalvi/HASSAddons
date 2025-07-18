@@ -1546,7 +1546,9 @@ namespace HMX.HASSActronQue
 				{
 					lock (_oLockQueue)
 					{
-						Logging.WriteDebugLog("Que.ProcessQueue() Command Complete: 0x{0}", command.RequestId.ToString("X8"));
+						if (_bQueLogging)
+							Logging.WriteDebugLog("Que.ProcessQueue() Command Complete: 0x{0}", command.RequestId.ToString("X8"));
+						
 						_queueCommands.Dequeue();
 
 						bRetVal = true;
