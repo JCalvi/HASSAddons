@@ -1,5 +1,5 @@
 # hass-actronque
-Actron Que Air Conditioner Add-On for Home Assistant.
+Actron Que/Neo Air Conditioner Add-On for Home Assistant 
 
 This add-on for Home Assistant enables you to control an Actron QUE (or NEO) Air Conditioner. 
 
@@ -14,29 +14,26 @@ Note: This add-on has been forked from Mike McGuire:  (https://blog.mikejmcguire
 ### MQTTBroker: string
 Set this field to core-mosquitto to use the HA Mosquitto MQTT add-on. Otherwise, specify a host or host:port for an alternative MQTT server.
 
+### MQTTLogs: true/false
+Setting this option to false will reduce the amount of MQTT logging.
+
 ### MQTTTLS: true/false
 Setting this option to true will force the MQTT client to attempt a TLS connection to the MQTT broker.
 
 ### PerZoneControls: true/false
 If your Actron has controllers in each zone, setting this option to true will create an air conditioner controller in HA for each zone.
 
-### PerZoneSensors: true/false
-If your Actron has sensors in each zone, setting this option to true will create battery and temperature entities in HA for each sensor even if there are multiple sensors in a zone.
-
 ### PollInterval: integer
 By default, the add-on will poll the Que API system every 60 seconds for updates. This can be set to between 10 and 300 seconds inclusive.
+
+### QueLogs: true/false
+Setting this option to false will reduce the amount of Que event logging.
 
 ### QueSerial: string
 If you have multiple AC units connected to your Que, you can add this optional configuration to specify the serial number of the AC you want the add-on to use. You can find the discovered serial numbers in the log for the add-on when the add-on is starting. If you leave this field blank, the add-on will add all detected AC units.
 
 ### SeparateHeatCoolTargets: bool
 This option specifies if you wish to use the new independently set target heating and cooling temperature settings introduced in HA 2023.9. This disables the single temperature set option that may impact existing automations.
-
-### ForceNoEventsMode: bool
-This option forces no events mode so a full update of data is pulled every polling cycle. Will require more data but added to troubleshoot potential QUE api access issues.
-
-### SystemType: string
-This option specifies if you have a "que" or "neo" control system. If not specified, this defaults to "que". 
 
 ### DeviceName: string
 This option specifies a custom device name to authorise against the Actron cloud. If not specified this defaults to "HASSActronQue".

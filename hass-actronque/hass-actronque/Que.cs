@@ -306,7 +306,8 @@ namespace HMX.HASSActronQue
 			dynamic jsonResponse;
 			bool bRetVal = true;
 
-			Logging.WriteDebugLog("Que.GenerateBearerToken() [0x{0}] Base: {1}{2}", lRequestId.ToString("X8"), _httpClientAuth.BaseAddress, strPageURL);
+			if (_bQueLogging)
+				Logging.WriteDebugLog("Que.GenerateBearerToken() [0x{0}] Base: {1}{2}", lRequestId.ToString("X8"), _httpClientAuth.BaseAddress, strPageURL);
 
 			dtFormContent.Add("grant_type", "refresh_token");
 			dtFormContent.Add("refresh_token", _pairingToken.Token);
@@ -323,7 +324,8 @@ namespace HMX.HASSActronQue
 				{
 					strResponse = await httpResponse.Content.ReadAsStringAsync();
 
-					Logging.WriteDebugLog("Que.GenerateBearerToken() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
+					if (_bQueLogging)
+						Logging.WriteDebugLog("Que.GenerateBearerToken() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
 					jsonResponse = JsonConvert.DeserializeObject(strResponse);
 
@@ -1348,7 +1350,8 @@ namespace HMX.HASSActronQue
 						break;
 
 					case 1: // Pull Update
-						Logging.WriteDebugLog("Que.AirConditionerMonitor() Quick Update");
+						if (_bQueLogging)
+							Logging.WriteDebugLog("Que.AirConditionerMonitor() Quick Update");
 
 						// Normal Mode
 						if (!_bDisableEventUpdates)
@@ -1517,7 +1520,9 @@ namespace HMX.HASSActronQue
 					if (_queueCommands.Count > 0)
 					{
 						command = _queueCommands.Peek();
-						Logging.WriteDebugLog("Que.ProcessQueue() Attempting Command: 0x{0}", command.RequestId.ToString("X8"));
+						
+						if (_bQueLogging)
+							Logging.WriteDebugLog("Que.ProcessQueue() Attempting Command: 0x{0}", command.RequestId.ToString("X8"));
 
 						if (command.Expires <= DateTime.Now)
 						{
@@ -2258,17 +2263,20 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId(command.RequestId);
 			string strPageURL = "api/v0/client/ac-systems/cmds/send?serial=";
 			bool bRetVal = true;
-
-			Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Original Request ID: 0x{1}", lRequestId.ToString("X8"), command.OriginalRequestId.ToString("X8"));
-			Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, command.Unit.Serial);
-
+			if (_bQueLogging)
+			{
+				Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Original Request ID: 0x{1}", lRequestId.ToString("X8"), command.OriginalRequestId.ToString("X8"));
+				Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, command.Unit.Serial);
+			}
 			try
 			{
 				content = new StringContent(JsonConvert.SerializeObject(command.Data));
 
 				content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-
-				Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Content: {1}", lRequestId.ToString("X8"), await content.ReadAsStringAsync());
+				
+				if (_bQueLogging)
+					Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Content: {1}", lRequestId.ToString("X8"), await content.ReadAsStringAsync());
+				
 			}
 			catch (Exception eException)
 			{
