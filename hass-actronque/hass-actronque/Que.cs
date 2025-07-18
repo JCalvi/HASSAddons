@@ -2037,7 +2037,8 @@ namespace HMX.HASSActronQue
 
 		private static void AddCommandToQueue(QueueCommand command)
 		{
-			Logging.WriteDebugLog("Que.AddCommandToQueue() [0x{0}] New Command ID: [0x{1}] ", command.OriginalRequestId.ToString("X8"), command.RequestId.ToString("X8"));
+			if (_bQueLogging)
+				Logging.WriteDebugLog("Que.AddCommandToQueue() [0x{0}] New Command ID: [0x{1}] ", command.OriginalRequestId.ToString("X8"), command.RequestId.ToString("X8"));
 
 			lock (_oLockQueue)
 			{
