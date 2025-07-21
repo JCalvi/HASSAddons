@@ -717,12 +717,14 @@ namespace HMX.HASSActronQue
 					{
 						if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
 						{
-							Logging.WriteDebugLogError("Que.GetAirConditionerZonesAndPeripherals()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
+							if (_bQueLogging)
+								Logging.WriteDebugLogError("Que.GetAirConditionerZonesAndPeripherals()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 
 							_eventAuthenticationFailure.Set();
 						}
 						else
-							Logging.WriteDebugLogError("Que.GetAirConditionerZonesAndPeripherals()", lRequestId, "Unable to process API response: {0}/{1}. Is the serial number correct?", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
+							if (_bQueLogging)
+								Logging.WriteDebugLogError("Que.GetAirConditionerZonesAndPeripherals()", lRequestId, "Unable to process API response: {0}/{1}. Is the serial number correct?", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 
 						bRetVal = false;
 						goto Cleanup;
@@ -2297,19 +2299,22 @@ namespace HMX.HASSActronQue
 				httpResponse = await command.Unit.HttpClientCommands.PostAsync(strPageURL + command.Unit.Serial, content, cancellationToken.Token);
 
 				if (httpResponse.IsSuccessStatusCode)
-					Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Response {1}/{2}", lRequestId.ToString("X8"), httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
+					if (_bQueLogging)
+						Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Response {1}/{2}", lRequestId.ToString("X8"), httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 				else
 				{
 					if (httpResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
 						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1} - check the Que Serial number.", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 					else if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
 					{
-						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
+						if (_bQueLogging)
+							Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 
 						_eventAuthenticationFailure.Set();
 					}
 					else
-						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
+						if (_bQueLogging)
+							Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 
 					bRetVal = false;
 					goto Cleanup;
