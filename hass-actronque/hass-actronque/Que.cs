@@ -818,7 +818,8 @@ namespace HMX.HASSActronQue
 			}
 			catch (OperationCanceledException eException)
 			{
-				Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, eException, "Unable to process API HTTP response - operation timed out.");
+				if (_bQueLogging)
+					Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, eException, "Unable to process API HTTP response - operation timed out.");
 
 				goto Cleanup;
 			}
@@ -2304,7 +2305,8 @@ namespace HMX.HASSActronQue
 						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1} - check the Que Serial number.", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 					else if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
 					{
-						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
+						if (_bQueLogging)
+							Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 
 						_eventAuthenticationFailure.Set();
 					}
