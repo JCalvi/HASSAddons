@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 
 
+## [v2025.7.4] - 2025-07-22
+
+### Changed
+- Returned to v2025.7.1 baseline to try and address stability issues.
+- Removed Neo Code - hard coded to Que only.
+- Removed unused variables
+
+
 ## [v2025.7.3] - 2025-07-22
 
 ### Changed

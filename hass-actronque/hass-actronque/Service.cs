@@ -82,8 +82,6 @@ namespace HMX.HASSActronQue
 			Configuration.GetOptionalConfiguration(configuration, "QueSerial", out strQueSerial);
 
 			Configuration.GetOptionalConfiguration(configuration, "SeparateHeatCoolTargets", out bSeparateHeatCool);
-
-
 			Configuration.GetOptionalConfiguration(configuration, "DeviceName", out strDeviceName);
 			if (strDeviceName == "")
 			{
