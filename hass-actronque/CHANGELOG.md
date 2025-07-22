@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+
+## [v2025.7.3] - 2025-07-22
+
+### Changed
+- Remove various logs
+
+
 ## [v2025.7.2] - 2025-07-18
 Implement latest MJM changes below to sync with MJM v2025.7.2/1
 ### Added
