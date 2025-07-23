@@ -52,7 +52,9 @@ namespace HMX.HASSActronQue
 		private static int _iCancellationTime = 15; // Seconds
 		private static int _iPollInterval = 30; // Seconds
 		private static int _iPollIntervalUpdate = 5; // Seconds
-		private static int _iAuthenticationInterval = 60; // Seconds
+		private static int _iPollIntervalOn = 30; // Seconds
+		private static int _iPollIntervalOff = 300; // Seconds		
+		private static int _iAuthenticationCommand = 60; // Seconds
 		private static int _iQueueInterval = 4; // Seconds
 		private static int _iCommandExpiry = 12; // Seconds
 		private static int _iPostCommandSleepTimerNeoNoEventsMode = 10; // Seconds
@@ -115,7 +117,6 @@ namespace HMX.HASSActronQue
 			_strDeviceName = strDeviceName;
 			_bQueLogging = bQueLogs;
 			_bPerZoneControls = bPerZoneControls;
-			_iPollInterval = iPollInterval;
 			_bSeparateHeatCool = bSeparateHeatCool;
 			_eventStop = eventStop;
 
@@ -1591,9 +1592,20 @@ namespace HMX.HASSActronQue
 				{
 					MQTT.SendMessage(string.Format("actronque{0}/mode", unit.Serial), "off");
 					MQTT.SendMessage(string.Format("actronque{0}/settemperature", unit.Serial), GetSetTemperature(unit.Data.SetTemperatureHeating, unit.Data.SetTemperatureCooling).ToString("N1"));
+					
+					// JC Change Polling to off value to reduce data useage.
+					_iPollInterval = _iPollIntervalOff;
+					if (_bQueLogging)
+						Logging.WriteDebugLog("Que.MQTTUpdateData() Polling Rate Updated to Off Value: {0}", _iPollInterval);
+					
 				}
 				else
 				{
+					// JC Change Polling to on value to increase response time.
+					_iPollInterval = _iPollIntervalOn;
+					if (_bQueLogging)
+						Logging.WriteDebugLog("Que.MQTTUpdateData() Polling Rate Updated to On Value: {0}", _iPollInterval);
+					
 					switch (unit.Data.Mode)
 					{
 						case "AUTO":
@@ -2013,7 +2025,7 @@ namespace HMX.HASSActronQue
 
 			Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Original Request ID: 0x{1}", lRequestId.ToString("X8"), command.OriginalRequestId.ToString("X8"));
 			Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, command.Unit.Serial);
-
+			
 			try
 			{
 				content = new StringContent(JsonConvert.SerializeObject(command.Data));

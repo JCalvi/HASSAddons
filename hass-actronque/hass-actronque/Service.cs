@@ -35,7 +35,6 @@ namespace HMX.HASSActronQue
 			IHost webHost;
 			string strMQTTUser, strMQTTPassword, strMQTTBroker;
 			string strQueUser, strQuePassword, strQueSerial, strDeviceName;
-			int iPollInterval;
 			bool bPerZoneControls, bQueLogging, bMQTTLogging, bMQTTTLS, bSeparateHeatCool;
 
 			Logging.WriteDebugLog("Service.Start() Build Date: {0}", Properties.Resources.BuildDate);
@@ -67,12 +66,6 @@ namespace HMX.HASSActronQue
 
 			if (!Configuration.GetConfiguration(configuration, "PerZoneControls", out bPerZoneControls))
 				return;
-
-			if (!Configuration.GetConfiguration(configuration, "PollInterval", out iPollInterval) || iPollInterval < 10 || iPollInterval > 300)
-			{
-				Logging.WriteDebugLog("Service.Start() Poll interval must be between 10 and 300 (inclusive)");
-				return;
-			}
 
 			if (!Configuration.GetConfiguration(configuration, "QueUser", out strQueUser))
 				return;
@@ -107,7 +100,7 @@ namespace HMX.HASSActronQue
 
 			MQTT.StartMQTT(strMQTTBroker, bMQTTLogging, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor);
 
-			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, iPollInterval, bQueLogging, bPerZoneControls, bSeparateHeatCool, _eventStop);
+			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, bQueLogging, bPerZoneControls, bSeparateHeatCool, _eventStop);
 
 			webHost.Run();
 		}

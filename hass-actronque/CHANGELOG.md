@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2025.7.5] - 2025-07-23
+
+### Added
+- Polling now dynamically changes depending on circumstances.
+	- 5 seconds if a command is active
+	- 30 seconds if AC unit is on
+	- 60 seconds by default
+	- 300 seconds if AC unit is off
+
+### Removed
+- Removed PollInterval from input config.
+
 
 ## [v2025.7.4] - 2025-07-22
 

@@ -3,7 +3,6 @@
   "MQTTPassword": "",
   "MQTTBroker": "core-mosquitto",
   "PerZoneControls": false,
-  "PollInterval": 60,
   "QueUser": "queuser",
   "QuePassword": "quepassword",
   "DeviceName": "HASSActronQue"
