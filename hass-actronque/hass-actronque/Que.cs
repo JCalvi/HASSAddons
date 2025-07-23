@@ -54,7 +54,7 @@ namespace HMX.HASSActronQue
 		private static int _iPollIntervalUpdate = 5; // Seconds
 		private static int _iPollIntervalOn = 30; // Seconds
 		private static int _iPollIntervalOff = 300; // Seconds		
-		private static int _iAuthenticationCommand = 60; // Seconds
+		private static int _iAuthenticationInterval = 60; // Seconds
 		private static int _iQueueInterval = 4; // Seconds
 		private static int _iCommandExpiry = 12; // Seconds
 		private static int _iPostCommandSleepTimerNeoNoEventsMode = 10; // Seconds
@@ -103,7 +103,7 @@ namespace HMX.HASSActronQue
 			}
 		}
 
-		public static async void Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, int iPollInterval, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, ManualResetEvent eventStop)
+		public static async void Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, ManualResetEvent eventStop)
 		{
 			Thread threadMonitor;
 			string strDeviceUniqueIdentifierInput;
