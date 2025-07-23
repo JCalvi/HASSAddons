@@ -7,7 +7,6 @@ All notable changes to this project will be documented in this file.
 - Polling now dynamically changes depending on circumstances.
 	- 5 seconds if a command is active
 	- 30 seconds if AC unit is on
-	- 60 seconds by default
 	- 300 seconds if AC unit is off
 
 ### Removed
