@@ -5,12 +5,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Polling now dynamically changes depending on circumstances.
-	- 5 seconds if a command is active
+	- 5 seconds if a command is active (In original MJM code).
 	- 30 seconds if AC unit is on
 	- 300 seconds if AC unit is off
 
 ### Removed
 - Removed PollInterval from input config.
+
+## Changed
+- Reverted base images to Alpine 3.21 in case cause of instability issues.
 
 
 ## [v2025.7.4] - 2025-07-22
