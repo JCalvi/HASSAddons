@@ -801,10 +801,10 @@ namespace HMX.HASSActronQue
 			ProcessPartialStatus(lRequestId, "UserAirconSettings.FanMode", jsonResponse.UserAirconSettings.FanMode?.ToString(), ref unit.Data.FanMode);
 
 			// Away Mode
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.AwayMode", jsonResponse.UserAirconSettings.Mode?.ToString(), ref unit.Data.AwayMode);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.AwayMode", jsonResponse.UserAirconSettings.AwayMode?.ToString(), ref unit.Data.AwayMode);
 
 			// Quiet Mode
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.QuietMode", jsonResponse.UserAirconSettings.FanMode?.ToString(), ref unit.Data.QuietMode);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.QuietMode", jsonResponse.UserAirconSettings.QuietMode?.ToString(), ref unit.Data.QuietMode);
 
 			// Set Cooling Temperature
 			ProcessPartialStatus(lRequestId, "UserAirconSettings.TemperatureSetpoint_Cool_oC", jsonResponse.UserAirconSettings.TemperatureSetpoint_Cool_oC?.ToString(), ref unit.Data.SetTemperatureCooling);
