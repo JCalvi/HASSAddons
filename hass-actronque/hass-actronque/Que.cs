@@ -1721,6 +1721,12 @@ namespace HMX.HASSActronQue
 				// Control All Zones
 				MQTT.SendMessage(string.Format("actronque{0}/controlallzones", unit.Serial), unit.Data.ControlAllZones ? "ON" : "OFF");
 
+				// Away Mode
+				MQTT.SendMessage(string.Format("actronque{0}/awaymode", unit.Serial), unit.Data.AwayMode ? "ON" : "OFF");
+
+				// Quiet Mode
+				MQTT.SendMessage(string.Format("actronque{0}/quietmode", unit.Serial), unit.Data.QuietMode ? "ON" : "OFF");				
+
 			}
 
 			// Zones
