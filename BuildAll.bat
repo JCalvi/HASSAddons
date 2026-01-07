@@ -1,7 +1,7 @@
 rem https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md#full-tag-listing
 cd .\hass-actronque
 
-set jcversion=2025.7.5
+set jcversion=2026.1.1
 
 Powershell -Command "& {(Get-Content .\config.json) -replace '\d{4}.\d+.\d+', '%jcversion%' | Set-Content  .\config.json}" 
 
@@ -13,14 +13,13 @@ docker push jcrfc/hass-actronque-aarch64:latest
 docker push jcrfc/hass-actronque-aarch64:%jcversion%
 
 
-
 docker build -t jcrfc/hass-actronque-amd64:latest -t jcrfc/hass-actronque-amd64:%jcversion% . --platform linux/amd64
 docker push jcrfc/hass-actronque-amd64:latest
 docker push jcrfc/hass-actronque-amd64:%jcversion%
 
-
-docker build -t jcrfc/hass-actronque-armv7:latest -t jcrfc/hass-actronque-armv7:%jcversion% . --platform linux/arm/v7
-docker push jcrfc/hass-actronque-armv7:latest
-docker push jcrfc/hass-actronque-armv7:%jcversion%
+rem Armv7 Deprecated.
+rem docker build -t jcrfc/hass-actronque-armv7:latest -t jcrfc/hass-actronque-armv7:%jcversion% . --platform linux/arm/v7
+rem docker push jcrfc/hass-actronque-armv7:latest
+rem docker push jcrfc/hass-actronque-armv7:%jcversion%
 
 pause

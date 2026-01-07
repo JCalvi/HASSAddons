@@ -1,6 +1,20 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.1.1] - 2026-01-07
+
+### Added
+- Added Options Settings
+	- Away Mode
+	- Quiet Mode
+
+### Removed
+- arm7 Builds
+
+## Changed
+- Build with latest Alpine (3.22)
+
+
 ## [v2025.7.5] - 2025-07-23
 
 ### Added

@@ -7,6 +7,8 @@ namespace HMX.HASSActronQue
 	public class AirConditionerData
 	{
 		public bool ControlAllZones;
+		public bool AwayMode; //Away Mode
+		public bool QuietMode; // Quiet Mode
 		public string FanMode; // FanMode
 		public string Mode; // Mode
 		public bool On; // isOn
