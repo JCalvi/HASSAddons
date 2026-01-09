@@ -1,7 +1,7 @@
 rem https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md#full-tag-listing
 cd .\hass-actronque
 
-set jcversion=2026.1.1
+set jcversion=2026.1.2
 
 Powershell -Command "& {(Get-Content .\config.json) -replace '\d{4}.\d+.\d+', '%jcversion%' | Set-Content  .\config.json}" 
 

@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.1.2] - 2026-01-08
+
+### Added
+- Added Options Setting
+	- Constant Fan Mode
+
+### Removed
+- 
+
+## Changed
+- 
+
 ## [v2026.1.1] - 2026-01-07
 
 ### Added

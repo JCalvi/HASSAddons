@@ -246,6 +246,11 @@ namespace HMX.HASSActronQue
 			else if (strTopic.StartsWith(strUnitHeader + "/quietmode/set"))
 			{
 				Que.QuietMode(lRequestId, Que.Units[strUnit], strPayload == "ON" ? true : false);
+			}
+			// Constant Fan Mode
+			else if (strTopic.StartsWith(strUnitHeader + "/constantfanmode/set"))
+			{
+				Que.ConstantFanMode(lRequestId, Que.Units[strUnit], strPayload == "ON" ? true : false);
 			}			
 			// Fan Speed
 			else if (strTopic.StartsWith(strUnitHeader + "/fan/set"))
