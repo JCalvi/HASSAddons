@@ -51,7 +51,6 @@ namespace HMX.HASSActronQue
 		private static HttpClient _httpClient = null, _httpClientAuth = null, _httpClientCommands = null;
 		private static int _iCancellationTime = 15; // Seconds
 		private static int _iPollInterval = 30; // Seconds
-		private static int _iPollIntervalUpdate = 5; // Seconds
 		private static int _iPollIntervalOn = 30; // Seconds
 		private static int _iPollIntervalOff = 300; // Seconds		
 		private static int _iAuthenticationInterval = 60; // Seconds
@@ -69,7 +68,6 @@ namespace HMX.HASSActronQue
 		private static QueToken _queToken = null;
 		private static Dictionary<string, AirConditionerUnit> _airConditionerUnits = new Dictionary<string, AirConditionerUnit>();
 		private static object _oLockData = new object(), _oLockQueue = new object();
-		private static bool _bCommandAckPending = false;
 
 		public static Dictionary<string, AirConditionerUnit> Units
 		{
@@ -1017,13 +1015,6 @@ namespace HMX.HASSActronQue
 
 						switch (strEventType)
 						{
-							case "cmd-acked":
-								// Clear Command Pending Flag
-								if (_bCommandAckPending)
-									_bCommandAckPending = false;
-
-								break;
-
 							case "status-change-broadcast":
 								foreach (JProperty change in jsonResponse.events[iEvent].data)
 								{
@@ -1240,7 +1231,7 @@ namespace HMX.HASSActronQue
 		private async static void AirConditionerMonitor()
 		{
 			WaitHandle[] waitHandles = new WaitHandle[] { _eventStop, _eventUpdate };
-			int iWaitHandle = 0, iWaitInterval = 5, iCommandAckRetries = 0;
+			int iWaitHandle = 0, iWaitInterval = 5;
 			bool bExit = false;
 			UpdateItems updateItems = UpdateItems.None;
 
@@ -1307,25 +1298,7 @@ namespace HMX.HASSActronQue
 
 						break;
 				}
-
-				if (_bCommandAckPending && iCommandAckRetries > 0)
-				{
-					iWaitInterval = _iPollIntervalUpdate;
-
-					if (iCommandAckRetries-- == 0)
-					{
-						Logging.WriteDebugLog("Que.AirConditionerMonitor() Clearing Update Flag");
-						_bCommandAckPending = false;
-					}
-				}
-				else if (!_bCommandAckPending && iCommandAckRetries > 0)
-				{
-					Logging.WriteDebugLog("Que.AirConditionerMonitor() Post Command Update");
-					iWaitInterval = _iPollIntervalUpdate;
-					iCommandAckRetries = 0;
-				}
-				else
-					iWaitInterval = _iPollInterval;
+				iWaitInterval = _iPollInterval;
 			}
 
 			Logging.WriteDebugLog("Que.AirConditionerMonitor() Complete");

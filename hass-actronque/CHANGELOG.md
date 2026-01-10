@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.2] - 2026-01-09
+## [v2026.1.2] - 2026-01-10
 
 ### Added
 - Added Options Setting
@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ## Changed
 - Added default entity id to new switches.
+- Removed more of the unused events mode code.
 
 ## [v2026.1.1] - 2026-01-07
 
