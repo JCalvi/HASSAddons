@@ -43,6 +43,10 @@ namespace HMX.HASSActronQue
 		private static string _strPairingTokenFile = "/data/pairingtoken.json";
 		private static string _strBearerTokenFile = "/data/bearertoken.json";
 		private static string _strDeviceUniqueIdentifier = "";
+		// centralized keys
+		private static string controlAllZonesKey = "MasterInfo.ControlAllZones";
+		private static string awayKey = "UserAirconSettings.AwayMode";
+		private static string quietKey = "UserAirconSettings.QuietMode";
 		private static string _strQueUser, _strQuePassword, _strSerialNumber;
 		private static bool _bPerZoneControls = false;
 		private static bool _bSeparateHeatCool = false;
@@ -78,7 +82,7 @@ namespace HMX.HASSActronQue
 		{
 			HttpClientHandler httpClientHandler = new HttpClientHandler();
 
-			Logging.WriteDebugLog("Que.Que()");
+			Logging.WriteDebugLog("Que.Que(v40)");
 
 			if (httpClientHandler.SupportsAutomaticDecompression)
 				httpClientHandler.AutomaticDecompression = System.Net.DecompressionMethods.All;

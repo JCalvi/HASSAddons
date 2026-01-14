@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.1.3] - 2026-01-13
+
+### Added
+- 
+
+### Removed
+- 
+
+## Changed
+- Debounce commands to prevent state flip flopping when pressing buttons in Home Assistant.
+
+
+
 ## [v2026.1.2] - 2026-01-10
 
 ### Added
