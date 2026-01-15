@@ -84,8 +84,7 @@ namespace HMX.HASSActronQue
 			{
 				if (value < 0) value = 0;
 				_iPublishSuppressionSeconds = value;
-				if (_bQueLogging)
-					Logging.WriteDebugLog("Que.PublishSuppressionSeconds set to {0}", _iPublishSuppressionSeconds);
+				if (_bQueLogging) Logging.WriteDebugLog("Que.PublishSuppressionSeconds set to {0}", _iPublishSuppressionSeconds);
 			}
 		}
 
@@ -111,8 +110,7 @@ namespace HMX.HASSActronQue
 			{
 				_unitSuppressUntil[unitSerial] = until;
 			}
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.SetUnitSuppression() Unit: {0} suppressed until {1}", unitSerial, until);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.SetUnitSuppression() Unit: {0} suppressed until {1}", unitSerial, until);
 		}
 
 		private static bool IsUnitSuppressed(string unitSerial)
@@ -165,8 +163,7 @@ namespace HMX.HASSActronQue
 				// suppression for unit to avoid immediate overwrites
 				SetUnitSuppression(command.Unit.Serial);
 
-				if (_bQueLogging)
-					Logging.WriteDebugLog("Que.AddPendingFromCommand() [0x{0}] Unit: {1} Pending keys: {2}", command.RequestId.ToString("X8"), command.Unit.Serial, pc.ExpectedValues.Count);
+				if (_bQueLogging) Logging.WriteDebugLog("Que.AddPendingFromCommand() [0x{0}] Unit: {1} Pending keys: {2}", command.RequestId.ToString("X8"), command.Unit.Serial, pc.ExpectedValues.Count);
 			}
 			catch (Exception e)
 			{
@@ -333,8 +330,7 @@ namespace HMX.HASSActronQue
 					}
 				}
 
-				if (changed && _bQueLogging)
-					Logging.WriteDebugLog("Que.ConfirmPendingForUnit() Unit: {0}, Name: {1} confirmed.", unitSerial, name);
+				if (changed && _bQueLogging) Logging.WriteDebugLog("Que.ConfirmPendingForUnit() Unit: {0}, Name: {1} confirmed.", unitSerial, name);
 			}
 
 			// if no more pending for unit, clear suppression early
@@ -350,8 +346,7 @@ namespace HMX.HASSActronQue
 					if (_unitSuppressUntil.ContainsKey(unitSerial))
 						_unitSuppressUntil.Remove(unitSerial);
 				}
-				if (_bQueLogging)
-					Logging.WriteDebugLog("Que.ConfirmPendingForUnit() Unit: {0} cleared suppression (no pending expectations).", unitSerial);
+				if (_bQueLogging) Logging.WriteDebugLog("Que.ConfirmPendingForUnit() Unit: {0} cleared suppression (no pending expectations).", unitSerial);
 			}
 		}
 
@@ -375,7 +370,7 @@ namespace HMX.HASSActronQue
 			HttpClientHandler httpClientHandler = new HttpClientHandler();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.3.70)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.3.70.2)");
 
 			if (httpClientHandler.SupportsAutomaticDecompression)
 				httpClientHandler.AutomaticDecompression = System.Net.DecompressionMethods.All;
@@ -480,9 +475,9 @@ namespace HMX.HASSActronQue
 			}
 
 			// Start monitors as background Tasks to integrate with async/await better.
-			Task.Run(() => TokenMonitor());
-			Task.Run(() => AirConditionerMonitor());
-			Task.Run(() => QueueMonitor());
+			Task.Run(TokenMonitor);
+			Task.Run(AirConditionerMonitor);
+			Task.Run(QueueMonitor);
 		}
 
 		private static async Task<bool> GeneratePairingToken()
@@ -707,7 +702,7 @@ namespace HMX.HASSActronQue
 			return bRetVal;
 		}
 
-		private async static void TokenMonitor()
+		private static async Task TokenMonitor()
 		{
 			WaitHandle[] waitHandles = new WaitHandle[] { _eventStop, _eventAuthenticationFailure };
 			int iWaitHandle = 0;
@@ -1021,8 +1016,7 @@ namespace HMX.HASSActronQue
 			string strPageURL = "api/v0/client/ac-systems/status/latest?serial=";
 			string strResponse;
 			UpdateItems updateItems = UpdateItems.None;
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, unit.Serial);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, unit.Serial);
 
 			if (!IsTokenValid())
 				goto Cleanup;
@@ -1096,8 +1090,7 @@ namespace HMX.HASSActronQue
 			// jsonResponse is expected to be a JObject (lastKnownState)
 			JObject jState = jsonResponse as JObject ?? new JObject();
 			JArray aEnabledZones = jState["UserAirconSettings"]?["EnabledZones"] as JArray;
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.ProcessFullStatus() [0x{0}] Unit: {1}", lRequestId.ToString("X8"), unit.Serial);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessFullStatus() [0x{0}] Unit: {1}", lRequestId.ToString("X8"), unit.Serial);
 		
 			// Compressor Mode
 			ProcessPartialStatus(lRequestId, "LiveAircon.CompressorMode", jState["LiveAircon"]?["CompressorMode"]?.ToString(), ref unit.Data.CompressorState);
@@ -1217,8 +1210,7 @@ namespace HMX.HASSActronQue
 		{
 			double dblTemp = 0.0;
 
-			if (_bQueLogging) 
-				Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
 
 			if (!double.TryParse(strValue ?? "", out dblTemp))
 				Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Unable to read state information: {1}", lRequestId.ToString("X8"), strName);
@@ -1233,8 +1225,7 @@ namespace HMX.HASSActronQue
 
 		private static void ProcessPartialStatus(long lRequestId, string strName, string strValue, ref string strTarget)
 		{
-			if (_bQueLogging) 
-				Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
 
 			if ((strValue ?? "") == "")
 				Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Unable to read state information: {1}", lRequestId.ToString("X8"), strName);
@@ -1251,8 +1242,7 @@ namespace HMX.HASSActronQue
 		{
 			bool bTemp;
 
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Change: {1}", lRequestId.ToString("X8"), strName);
 
 			if (!bool.TryParse(strValue ?? "", out bTemp))
 				Logging.WriteDebugLog("Que.ProcessPartialStatus() [0x{0}] Unable to read state information: {1}", lRequestId.ToString("X8"), strName);
@@ -1281,8 +1271,7 @@ namespace HMX.HASSActronQue
 				strPageURL = strPageURLFirstEvent + unit.Serial;
 			else
 				strPageURL = unit.NextEventURL;
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Unit: {1}, Base: {2}{3}", lRequestId.ToString("X8"), unit.Serial, _httpClient.BaseAddress, strPageURL);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Unit: {1}, Base: {2}{3}", lRequestId.ToString("X8"), unit.Serial, _httpClient.BaseAddress, strPageURL);
 
 			if (!IsTokenValid())
 			{
@@ -1323,11 +1312,8 @@ namespace HMX.HASSActronQue
 							unit.NextEventURL = unit.NextEventURL.Substring(1);
 					}
 
-					if (_bQueLogging)
-						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Next Event URL: {1}", lRequestId.ToString("X8"), unit.NextEventURL);
-
-					if (_bQueLogging)
-						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Processing {1} events", lRequestId.ToString("X8"), (jsonResponse["events"] as JArray)?.Count ?? 0);
+					if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Next Event URL: {1}", lRequestId.ToString("X8"), unit.NextEventURL);
+					if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Processing {1} events", lRequestId.ToString("X8"), (jsonResponse["events"] as JArray)?.Count ?? 0);
 
 					var events = jsonResponse["events"] as JArray ?? new JArray();
 
@@ -1336,8 +1322,7 @@ namespace HMX.HASSActronQue
 						var ev = events[iEvent] as JObject;
 						strEventType = (string)ev?["type"];
 
-						if (_bQueLogging)
-							Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Event Type: {1}", lRequestId.ToString("X8"), strEventType);
+						if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Event Type: {1}", lRequestId.ToString("X8"), strEventType);
 
 						switch (strEventType)
 						{
@@ -1347,8 +1332,7 @@ namespace HMX.HASSActronQue
 								{
 									foreach (JProperty change in data.Properties())
 									{
-										if (_bQueLogging) 
-											Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Incremental Update: {1}", lRequestId.ToString("X8"), change.Name);
+										if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Incremental Update: {1}", lRequestId.ToString("X8"), change.Name);
 
 										// If this change confirms a pending optimistic expectation, confirm it
 										ConfirmPendingForUnit(unit.Serial, change.Name, change.Value);
@@ -1526,7 +1510,7 @@ namespace HMX.HASSActronQue
 						_eventAuthenticationFailure.Set();
 					}
 					else
-						Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, "Unable to process API response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
+						Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, "Unable to process API HTTP response: {0}/{1}", httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
 
 					bRetVal = false;
 					goto Cleanup;
@@ -1560,7 +1544,7 @@ namespace HMX.HASSActronQue
 			return updateItems;
 		}
 
-		private async static void AirConditionerMonitor()
+		private static async Task AirConditionerMonitor()
 		{
 			WaitHandle[] waitHandles = new WaitHandle[] { _eventStop, _eventUpdate };
 			int iWaitHandle = 0, iWaitInterval = 5;
@@ -1636,7 +1620,7 @@ namespace HMX.HASSActronQue
 			Logging.WriteDebugLog("Que.AirConditionerMonitor() Complete");
 		}
 
-		private async static void QueueMonitor()
+		private static async Task QueueMonitor()
 		{
 			WaitHandle[] waitHandles = new WaitHandle[] { _eventStop, _eventQueue };
 			int iWaitHandle = 0;
@@ -1682,8 +1666,7 @@ namespace HMX.HASSActronQue
 		{
 			QueueCommand command;
 			bool bRetVal = false;
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.ProcessQueue()");
+			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessQueue()");
 
 			while (true)
 			{
@@ -1692,7 +1675,7 @@ namespace HMX.HASSActronQue
 					if (_queueCommands.Count > 0)
 					{
 						command = _queueCommands.Peek();
-						Logging.WriteDebugLog("Que.ProcessQueue() Attempting Command: 0x{0}", command.RequestId.ToString("X8"));
+						if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessQueue() Attempting Command: 0x{0}", command.RequestId.ToString("X8"));
 
 						if (command.Expires <= DateTime.Now)
 						{
@@ -1723,8 +1706,7 @@ namespace HMX.HASSActronQue
 					}
 				}
 			}
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.ProcessQueue() Complete");
+			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessQueue() Complete");
 
 			return bRetVal;
 		}
@@ -1744,7 +1726,7 @@ namespace HMX.HASSActronQue
 			string strHANameModifier = "", strDeviceNameModifier = "";
 			string strAirConditionerName = "", strAirConditionerNameMQTT = "";
 
-			Logging.WriteDebugLog("Que.MQTTRegister()");
+			if (_bQueLogging) Logging.WriteDebugLog("Que.MQTTRegister()");
 
 			foreach (AirConditionerUnit unit in _airConditionerUnits.Values)
 			{
@@ -1860,8 +1842,7 @@ namespace HMX.HASSActronQue
 
 		private static void MQTTUpdateData(AirConditionerUnit unit, UpdateItems items)
 		{
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.MQTTUpdateData() Unit: {0}, Items: {1}", unit.Serial, items.ToString());
+			if (_bQueLogging) Logging.WriteDebugLog("Que.MQTTUpdateData() Unit: {0}, Items: {1}", unit.Serial, items.ToString());
 
 			// If the unit is currently suppressed because we published optimistic values, skip the update (prevents overwriting optimistic state).
 			if (IsUnitSuppressed(unit.Serial))
@@ -1935,16 +1916,14 @@ namespace HMX.HASSActronQue
 					
 					// JC Change Polling to off value to reduce data usage.
 					_iPollInterval = _iPollIntervalOff;
-					if (_bQueLogging)
-						Logging.WriteDebugLog("Que.MQTTUpdateData() Polling Rate Updated to Off Value: {0}", _iPollInterval);
+					if (_bQueLogging) Logging.WriteDebugLog("Que.MQTTUpdateData() Polling Rate Updated to Off Value: {0}", _iPollInterval);
 					
 				}
 				else
 				{
 					// JC Change Polling to on value to increase response time.
 					_iPollInterval = _iPollIntervalOn;
-					if (_bQueLogging)
-						Logging.WriteDebugLog("Que.MQTTUpdateData() Polling Rate Updated to On Value: {0}", _iPollInterval);
+					if (_bQueLogging) Logging.WriteDebugLog("Que.MQTTUpdateData() Polling Rate Updated to On Value: {0}", _iPollInterval);
 					
 					switch (unit.Data.Mode)
 					{
@@ -2165,8 +2144,7 @@ namespace HMX.HASSActronQue
 		private static double GetSetTemperature(double dblHeating, double dblCooling)
 		{
 			double dblSetTemperature = 0.0;
-			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.GetSetTemperature()");
+			if (_bQueLogging) Logging.WriteDebugLog("Que.GetSetTemperature()");
 
 			try
 			{
@@ -2184,7 +2162,7 @@ namespace HMX.HASSActronQue
 
 		private static void AddCommandToQueue(QueueCommand command)
 		{
-			Logging.WriteDebugLog("Que.AddCommandToQueue() [0x{0}] New Command ID: [0x{1}] ", command.OriginalRequestId.ToString("X8"), command.RequestId.ToString("X8"));
+			if (_bQueLogging) Logging.WriteDebugLog("Que.AddCommandToQueue() [0x{0}] New Command ID: [0x{1}] ", command.OriginalRequestId.ToString("X8"), command.RequestId.ToString("X8"));
 
 			// add pending expectations & optimistic publishes
 			AddPendingFromCommand(command);
@@ -2431,8 +2409,8 @@ namespace HMX.HASSActronQue
 			string strPageURL = "api/v0/client/ac-systems/cmds/send?serial=";
 			bool bRetVal = true;
 
-			Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Original Request ID: 0x{1}", lRequestId.ToString("X8"), command.OriginalRequestId.ToString("X8"));
-			Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, command.Unit.Serial);
+			if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Original Request ID: 0x{1}", lRequestId.ToString("X8"), command.OriginalRequestId.ToString("X8"));
+			if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, command.Unit.Serial);
 			
 			try
 			{
@@ -2479,7 +2457,6 @@ namespace HMX.HASSActronQue
 			catch (OperationCanceledException eException)
 			{
 				Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, eException, "Unable to process API HTTP response - operation timed out.");
-
 				bRetVal = false;
 				goto Cleanup;
 			}
@@ -2497,7 +2474,6 @@ namespace HMX.HASSActronQue
 		Cleanup:
 			cancellationToken?.Dispose();
 			httpResponse?.Dispose();
-
 			return bRetVal;
 		}
 
@@ -2520,6 +2496,5 @@ namespace HMX.HASSActronQue
 
 			return sbDeviceId.ToString();
 		}
-
 	}
 }
