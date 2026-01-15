@@ -375,22 +375,10 @@ namespace HMX.HASSActronQue
 			if (httpClientHandler.SupportsAutomaticDecompression)
 				httpClientHandler.AutomaticDecompression = System.Net.DecompressionMethods.All;
 
-			if (Service.IsDevelopment)
-			{
-				_httpClientAuth = new HttpClient(new LoggingClientHandler(httpClientHandler));
-
-				_httpClient = new HttpClient(new LoggingClientHandler(httpClientHandler));
-
-				_httpClientCommands = new HttpClient(new LoggingClientHandler(httpClientHandler));
-			}
-			else
-			{
-				_httpClientAuth = new HttpClient(httpClientHandler);
-
-				_httpClient = new HttpClient(httpClientHandler);
-
-				_httpClientCommands = new HttpClient(httpClientHandler);
-			}
+			_httpClientAuth = new HttpClient(httpClientHandler);
+			_httpClient = new HttpClient(httpClientHandler);
+			_httpClientCommands = new HttpClient(httpClientHandler);
+			
 		}
 
 		public static async void Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, ManualResetEvent eventStop)
@@ -511,7 +499,7 @@ namespace HMX.HASSActronQue
 			
 			dtFormContent.Add("username", _strQueUser);
 			dtFormContent.Add("password", _strQuePassword);
-			dtFormContent.Add("deviceName", Service.IsDevelopment ? _strDeviceName + "Dev" : _strDeviceName);
+			dtFormContent.Add("deviceName", _strDeviceName);
 			dtFormContent.Add("client", "ios");
 			dtFormContent.Add("deviceUniqueIdentifier", _strDeviceUniqueIdentifier);
 
@@ -792,9 +780,6 @@ namespace HMX.HASSActronQue
 					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 
 					Logging.WriteDebugLog("Que.GetAirConditionerSerial() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
-
-					if (Service.IsDevelopment)
-						Logging.WriteDebugLog("Que.GetAirConditionerSerial() [0x{0}] Response: {1}", lRequestId.ToString("X8"), strResponse);
 
 					strResponse = strResponse.Replace("ac-system", "acsystem");
 
@@ -1291,9 +1276,6 @@ namespace HMX.HASSActronQue
 					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 					if (_bQueLogging)
 						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
-
-					if (Service.IsDevelopment)
-						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Response: {1}", lRequestId.ToString("X8"), strResponse);
 
 					lock (_oLockData)
 					{
@@ -2457,6 +2439,7 @@ namespace HMX.HASSActronQue
 			catch (OperationCanceledException eException)
 			{
 				Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, eException, "Unable to process API HTTP response - operation timed out.");
+
 				bRetVal = false;
 				goto Cleanup;
 			}
@@ -2474,6 +2457,7 @@ namespace HMX.HASSActronQue
 		Cleanup:
 			cancellationToken?.Dispose();
 			httpResponse?.Dispose();
+
 			return bRetVal;
 		}
 
@@ -2496,5 +2480,6 @@ namespace HMX.HASSActronQue
 
 			return sbDeviceId.ToString();
 		}
+
 	}
 }

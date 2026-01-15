@@ -12,12 +12,6 @@ namespace HMX.HASSActronQue
 		private static string _strDeviceNameMQTT = "Actron Que Air Conditioner";
 		private static string _strConfigFile = "/data/options.json";
 		private static ManualResetEvent _eventStop = new ManualResetEvent(false);
-		private static bool _bDevelopment = false;
-
-		public static bool IsDevelopment
-		{
-			get { return _bDevelopment; }
-		}
 
 		public static string ServiceName
 		{
@@ -38,13 +32,6 @@ namespace HMX.HASSActronQue
 			bool bPerZoneControls, bQueLogging, bMQTTLogging, bMQTTTLS, bSeparateHeatCool;
 
 			Logging.WriteDebugLog("Service.Start() Build Date: {0}", Properties.Resources.BuildDate);
-
-			// Environment Check
-			if ((Environment.GetEnvironmentVariable("Development") ?? "").ToLower() == "true")
-			{
-				_bDevelopment = true;
-				Logging.WriteDebugLog("Service.Start() Development Mode");
-			}
 
 			// Load Configuration
 			try
