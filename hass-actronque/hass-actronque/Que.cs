@@ -84,7 +84,8 @@ namespace HMX.HASSActronQue
 			{
 				if (value < 0) value = 0;
 				_iPublishSuppressionSeconds = value;
-				Logging.WriteDebugLog("Que.PublishSuppressionSeconds set to {0}", _iPublishSuppressionSeconds);
+				if (_bQueLogging)
+					Logging.WriteDebugLog("Que.PublishSuppressionSeconds set to {0}", _iPublishSuppressionSeconds);
 			}
 		}
 
@@ -105,12 +106,13 @@ namespace HMX.HASSActronQue
 		// helpers for pending and suppression
 		private static void SetUnitSuppression(string unitSerial)
 		{
+			DateTime until = DateTime.Now.AddSeconds(_iPublishSuppressionSeconds);
 			lock (_oLockSuppress)
 			{
-				_unitSuppressUntil[unitSerial] = DateTime.Now.AddSeconds(_iPublishSuppressionSeconds);
+				_unitSuppressUntil[unitSerial] = until;
 			}
 			if (_bQueLogging)
-				Logging.WriteDebugLog("Que.SetUnitSuppression() Unit: {0} suppressed until {1}", unitSerial, DateTime.Now.AddSeconds(_iPublishSuppressionSeconds));
+				Logging.WriteDebugLog("Que.SetUnitSuppression() Unit: {0} suppressed until {1}", unitSerial, until);
 		}
 
 		private static bool IsUnitSuppressed(string unitSerial)
@@ -373,7 +375,7 @@ namespace HMX.HASSActronQue
 			HttpClientHandler httpClientHandler = new HttpClientHandler();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v62)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.3.70)");
 
 			if (httpClientHandler.SupportsAutomaticDecompression)
 				httpClientHandler.AutomaticDecompression = System.Net.DecompressionMethods.All;
@@ -398,7 +400,7 @@ namespace HMX.HASSActronQue
 
 		public static async void Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, ManualResetEvent eventStop)
 		{
-			Thread threadMonitor;
+			Task taskMonitor;
 			string strDeviceUniqueIdentifierInput;
 			string[] strTokens;
 
@@ -422,7 +424,7 @@ namespace HMX.HASSActronQue
 			{
 				if (File.Exists(_strDeviceIdFile))
 				{
-					strDeviceUniqueIdentifierInput = JsonConvert.DeserializeObject<string>(await File.ReadAllTextAsync(_strDeviceIdFile));
+					strDeviceUniqueIdentifierInput = JsonConvert.DeserializeObject<string>(await File.ReadAllTextAsync(_strDeviceIdFile).ConfigureAwait(false));
 
 					if (strDeviceUniqueIdentifierInput.Contains(","))
 					{
@@ -448,7 +450,7 @@ namespace HMX.HASSActronQue
 						// Update Device Id File
 						try
 						{
-							await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier));
+							await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier)).ConfigureAwait(false);
 						}
 						catch (Exception eException)
 						{
@@ -467,7 +469,7 @@ namespace HMX.HASSActronQue
 			{
 				if (_strDeviceUniqueIdentifier != "" && File.Exists(_strPairingTokenFile))
 				{
-					_pairingToken = JsonConvert.DeserializeObject<PairingToken>(await File.ReadAllTextAsync(_strPairingTokenFile));
+					_pairingToken = JsonConvert.DeserializeObject<PairingToken>(await File.ReadAllTextAsync(_strPairingTokenFile).ConfigureAwait(false));
 
 					Logging.WriteDebugLog("Que.Initialise() Restored Pairing Token");
 				}
@@ -477,14 +479,10 @@ namespace HMX.HASSActronQue
 				Logging.WriteDebugLogError("Que.Initialise()", eException, "Unable to read pairing token json file.");
 			}
 
-			threadMonitor = new Thread(new ThreadStart(TokenMonitor));
-			threadMonitor.Start();
-
-			threadMonitor = new Thread(new ThreadStart(AirConditionerMonitor));
-			threadMonitor.Start();
-
-			threadMonitor = new Thread(new ThreadStart(QueueMonitor));
-			threadMonitor.Start();
+			// Start monitors as background Tasks to integrate with async/await better.
+			Task.Run(() => TokenMonitor());
+			Task.Run(() => AirConditionerMonitor());
+			Task.Run(() => QueueMonitor());
 		}
 
 		private static async Task<bool> GeneratePairingToken()
@@ -495,7 +493,6 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/user-devices";
 			string strResponse;
-			dynamic jsonResponse;
 			bool bRetVal = true;
 
 			Logging.WriteDebugLog("Que.GeneratePairingToken() [0x{0}] Base: {1}{2}", lRequestId.ToString("X8"), _strBaseURLQue, strPageURL);
@@ -509,7 +506,7 @@ namespace HMX.HASSActronQue
 				// Update Device Id File
 				try
 				{
-					await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier));
+					await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier)).ConfigureAwait(false);
 				}
 				catch (Exception eException)
 				{
@@ -528,27 +525,35 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				// positional argument for cancellation token (no named parameter)
-				httpResponse = await _httpClientAuth.PostAsync(strPageURL, new FormUrlEncodedContent(dtFormContent), cancellationToken.Token);
+				httpResponse = await _httpClientAuth.PostAsync(strPageURL, new FormUrlEncodedContent(dtFormContent), cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync();
+					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 
 					Logging.WriteDebugLog("Que.GeneratePairingToken() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
-					jsonResponse = JsonConvert.DeserializeObject(strResponse);
-
-					_pairingToken = new PairingToken(jsonResponse.pairingToken.ToString());
-
-					// Update Token File
-					try
+					// Parse to JObject safely
+					var jsonResponse = JObject.Parse(strResponse);
+					var pairingTokenValue = (string)jsonResponse["pairingToken"];
+					if (!string.IsNullOrEmpty(pairingTokenValue))
 					{
-						await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken));
+						_pairingToken = new PairingToken(pairingTokenValue);
+
+						// Update Token File
+						try
+						{
+							await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken)).ConfigureAwait(false);
+						}
+						catch (Exception eException)
+						{
+							Logging.WriteDebugLogError("Que.GeneratePairingToken()", eException, "Unable to update json file.");
+						}
 					}
-					catch (Exception eException)
+					else
 					{
-						Logging.WriteDebugLogError("Que.GeneratePairingToken()", eException, "Unable to update json file.");
+						Logging.WriteDebugLogError("Que.GeneratePairingToken()", lRequestId, "pairingToken not found in response.");
+						bRetVal = false;
 					}
 				}
 				else
@@ -595,7 +600,6 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/oauth/token";
 			string strResponse;
-			dynamic jsonResponse;
 			bool bRetVal = true;
 
 			Logging.WriteDebugLog("Que.GenerateBearerToken() [0x{0}] Base: {1}{2}", lRequestId.ToString("X8"), _httpClientAuth.BaseAddress, strPageURL);
@@ -609,20 +613,23 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				// positional argument for cancellation token
-				httpResponse = await _httpClientAuth.PostAsync(strPageURL, new FormUrlEncodedContent(dtFormContent), cancellationToken.Token);
+				httpResponse = await _httpClientAuth.PostAsync(strPageURL, new FormUrlEncodedContent(dtFormContent), cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync();
+					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 
 					Logging.WriteDebugLog("Que.GenerateBearerToken() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
-					jsonResponse = JsonConvert.DeserializeObject(strResponse);
+					var jsonResponse = JObject.Parse(strResponse);
 
 					queToken = new QueToken();
-					queToken.BearerToken = jsonResponse.access_token;
-					queToken.TokenExpires = DateTime.Now.AddSeconds(int.Parse(jsonResponse.expires_in.ToString()));
+					queToken.BearerToken = (string)jsonResponse["access_token"];
+					var expiresInStr = (string)jsonResponse["expires_in"];
+					if (int.TryParse(expiresInStr, out int expiresIn))
+						queToken.TokenExpires = DateTime.Now.AddSeconds(expiresIn);
+					else
+						queToken.TokenExpires = DateTime.Now.AddSeconds(3600); // fallback
 
 					_queToken = queToken;
 
@@ -632,7 +639,7 @@ namespace HMX.HASSActronQue
 					// Update Token File
 					try
 					{
-						await File.WriteAllTextAsync(_strBearerTokenFile, JsonConvert.SerializeObject(_queToken));
+						await File.WriteAllTextAsync(_strBearerTokenFile, JsonConvert.SerializeObject(_queToken)).ConfigureAwait(false);
 					}
 					catch (Exception eException)
 					{
@@ -650,7 +657,7 @@ namespace HMX.HASSActronQue
 					else if (httpResponse.StatusCode == System.Net.HttpStatusCode.BadRequest)
 					{
 						// Increment Failed Request Counter
-						_iFailedBearerRequests++;
+						System.Threading.Interlocked.Increment(ref _iFailedBearerRequests);
 
 						// Reset Pairing Token when Failed Request Counter reaches maximum.
 						if (_iFailedBearerRequests == _iFailedBearerRequestMaximum)
@@ -710,11 +717,11 @@ namespace HMX.HASSActronQue
 
 			if (_pairingToken == null)
 			{
-				if (await GeneratePairingToken())
-					await GenerateBearerToken();
+				if (await GeneratePairingToken().ConfigureAwait(false))
+					await GenerateBearerToken().ConfigureAwait(false);
 			}
 			else
-				await GenerateBearerToken();
+				await GenerateBearerToken().ConfigureAwait(false);
 
 			while (!bExit)
 			{
@@ -730,26 +737,26 @@ namespace HMX.HASSActronQue
 					case 1: // Authentication Failure
 						if (_pairingToken == null)
 						{
-							if (await GeneratePairingToken())
-								await GenerateBearerToken();
+							if (await GeneratePairingToken().ConfigureAwait(false))
+								await GenerateBearerToken().ConfigureAwait(false);
 						}
 						else
-							await GenerateBearerToken();
+							await GenerateBearerToken().ConfigureAwait(false);
 
 						break;
 
 					case WaitHandle.WaitTimeout: // Wait Timeout
 						if (_pairingToken == null)
 						{
-							if (await GeneratePairingToken())
-								await GenerateBearerToken();
+							if (await GeneratePairingToken().ConfigureAwait(false))
+								await GenerateBearerToken().ConfigureAwait(false);
 						}
 						else if (_queToken == null)
-							await GenerateBearerToken();
+							await GenerateBearerToken().ConfigureAwait(false);
 						else if (_queToken != null && _queToken.TokenExpires <= DateTime.Now.Subtract(TimeSpan.FromMinutes(5)))
 						{
 							Logging.WriteDebugLog("Que.TokenMonitor() Refreshing expiring bearer token");
-							await GenerateBearerToken();
+							await GenerateBearerToken().ConfigureAwait(false);
 						}
 
 						break;
@@ -767,7 +774,6 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/ac-systems?includeAcms=true&includeNeo=true";
 			string strResponse;
-			dynamic jsonResponse;
 			bool bRetVal = true;
 			string strSerial, strDescription, strType;
 
@@ -784,11 +790,11 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClient.GetAsync(strPageURL, cancellationToken.Token);
+				httpResponse = await _httpClient.GetAsync(strPageURL, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync();
+					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 
 					Logging.WriteDebugLog("Que.GetAirConditionerSerial() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
@@ -805,22 +811,30 @@ namespace HMX.HASSActronQue
 						goto Cleanup;
 					}
 
-					jsonResponse = JsonConvert.DeserializeObject(strResponse);
-
-					for (int iIndex = 0; iIndex < jsonResponse._embedded.acsystem.Count; iIndex++)
+					var jsonResponse = JObject.Parse(strResponse);
+					var embedded = jsonResponse["_embedded"] as JObject;
+					if (embedded != null)
 					{
-						strSerial = jsonResponse._embedded.acsystem[iIndex].serial.ToString();
-						strDescription = jsonResponse._embedded.acsystem[iIndex].description.ToString();
-						strType = jsonResponse._embedded.acsystem[iIndex].type.ToString();
-
-						Logging.WriteDebugLog("Que.GetAirConditionerSerial() [0x{0}] Found AC: {1} - {2} ({3})", lRequestId.ToString("X8"), strSerial, strDescription, strType);
-
-						if (_strSerialNumber == "" || _strSerialNumber == strSerial)
+						var acsystems = embedded["acsystem"] as JArray;
+						if (acsystems != null)
 						{
-							unit = new AirConditionerUnit(strDescription.Trim(), strSerial);
-							_airConditionerUnits.Add(strSerial, unit);
+							for (int iIndex = 0; iIndex < acsystems.Count; iIndex++)
+							{
+								var ac = acsystems[iIndex];
+								strSerial = (string)ac["serial"];
+								strDescription = (string)ac["description"];
+								strType = (string)ac["type"];
 
-							Logging.WriteDebugLog("Que.GetAirConditionerSerial() [0x{0}] Monitoring AC: {1}", lRequestId.ToString("X8"), strSerial);
+								Logging.WriteDebugLog("Que.GetAirConditionerSerial() [0x{0}] Found AC: {1} - {2} ({3})", lRequestId.ToString("X8"), strSerial, strDescription, strType);
+
+								if (_strSerialNumber == "" || _strSerialNumber == strSerial)
+								{
+									unit = new AirConditionerUnit(strDescription.Trim(), strSerial);
+									_airConditionerUnits.Add(strSerial, unit);
+
+									Logging.WriteDebugLog("Que.GetAirConditionerSerial() [0x{0}] Monitoring AC: {1}", lRequestId.ToString("X8"), strSerial);
+								}
+							}
 						}
 					}
 				}
@@ -871,9 +885,7 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/ac-systems/status/latest?serial=";
 			string strResponse;
-			dynamic jsonResponse;
 			bool bRetVal = true;
-			//Dictionary<int, AirConditionerZone> dZones = new Dictionary<int, AirConditionerZone>();
 			AirConditionerZone zone;
 			AirConditionerSensor sensor;
 
@@ -894,37 +906,43 @@ namespace HMX.HASSActronQue
 					cancellationToken = new CancellationTokenSource();
 					cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-					httpResponse = await _httpClient.GetAsync(strPageURL + unit.Serial, cancellationToken.Token);
+					httpResponse = await _httpClient.GetAsync(strPageURL + unit.Serial, cancellationToken.Token).ConfigureAwait(false);
 
 					if (httpResponse.IsSuccessStatusCode)
 					{
-						strResponse = await httpResponse.Content.ReadAsStringAsync();
+						strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 
 						Logging.WriteDebugLog("Que.GetAirConditionerZones() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
-						jsonResponse = JsonConvert.DeserializeObject(strResponse);
+						var jsonResponse = JObject.Parse(strResponse);
 
 						// Zones
-						if (jsonResponse.ContainsKey("lastKnownState") && jsonResponse.lastKnownState.ContainsKey("RemoteZoneInfo"))
+						if (jsonResponse.TryGetValue("lastKnownState", out JToken lastKnownStateToken) && lastKnownStateToken is JObject lastKnownState && lastKnownState.TryGetValue("RemoteZoneInfo", out JToken remoteZoneInfoToken) && remoteZoneInfoToken is JArray remoteZoneInfo)
 						{
-							for (int iZoneIndex = 0; iZoneIndex < jsonResponse.lastKnownState.RemoteZoneInfo.Count; iZoneIndex++)
+							for (int iZoneIndex = 0; iZoneIndex < remoteZoneInfo.Count; iZoneIndex++)
 							{
-								if (bool.Parse(jsonResponse.lastKnownState.RemoteZoneInfo[iZoneIndex].NV_Exists.ToString()))
+								var zoneInfo = remoteZoneInfo[iZoneIndex];
+								bool exists = false;
+								var nvExistsToken = zoneInfo["NV_Exists"];
+								if (nvExistsToken != null)
+									bool.TryParse(nvExistsToken.ToString(), out exists);
+
+								if (exists)
 								{
 									zone = new AirConditionerZone();
 									zone.Sensors = new Dictionary<string, AirConditionerSensor>();
 									zone.Exists = true;
 
-									zone.Name = jsonResponse.lastKnownState.RemoteZoneInfo[iZoneIndex].NV_Title;
-									if (zone.Name == "")
+									zone.Name = (string)zoneInfo["NV_Title"];
+									if (string.IsNullOrEmpty(zone.Name))
 										zone.Name = "Zone " + (iZoneIndex + 1);
-									zone.Temperature = jsonResponse.lastKnownState.RemoteZoneInfo[iZoneIndex].LiveTemp_oC;
+									zone.Temperature = (double?)(zoneInfo["LiveTemp_oC"]) ?? 0.0;
 
 									Logging.WriteDebugLog("Que.GetAirConditionerZones() [0x{0}] Zone: {1} - {2}", lRequestId.ToString("X8"), iZoneIndex + 1, zone.Name);
 
-									if (jsonResponse.lastKnownState.RemoteZoneInfo[iZoneIndex].ContainsKey("Sensors"))
+									if (zoneInfo is JObject z && z.TryGetValue("Sensors", out JToken sensorsToken) && sensorsToken is JObject sensorsObj)
 									{
-										foreach (JProperty sensorJson in jsonResponse.lastKnownState.RemoteZoneInfo[iZoneIndex].Sensors)
+										foreach (JProperty sensorJson in sensorsObj.Properties())
 										{
 											sensor = new AirConditionerSensor();
 											sensor.Name = zone.Name + " Sensor " + sensorJson.Name;
@@ -950,7 +968,9 @@ namespace HMX.HASSActronQue
 							}
 						}
 						else
+						{
 							Logging.WriteDebugLog("Que.GetAirConditionerZones() [0x{0}] Responded - No Data. Retrying.", lRequestId.ToString("X8"));
+						}
 					}
 					else
 					{
@@ -1000,7 +1020,6 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/ac-systems/status/latest?serial=";
 			string strResponse;
-			dynamic jsonResponse;
 			UpdateItems updateItems = UpdateItems.None;
 			if (_bQueLogging)
 				Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Base: {1}{2}{3}", lRequestId.ToString("X8"), _httpClient.BaseAddress, strPageURL, unit.Serial);
@@ -1013,11 +1032,11 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClient.GetAsync(strPageURL + unit.Serial, cancellationToken.Token);
+				httpResponse = await _httpClient.GetAsync(strPageURL + unit.Serial, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync();
+					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 					if (_bQueLogging)
 						Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
@@ -1026,9 +1045,11 @@ namespace HMX.HASSActronQue
 						unit.Data.LastUpdated = DateTime.Now;
 					}
 
-					jsonResponse = JsonConvert.DeserializeObject(strResponse);
+					var jsonResponse = JObject.Parse(strResponse);
 
-					ProcessFullStatus(lRequestId, unit, jsonResponse.lastKnownState);
+					var lastKnownState = jsonResponse["lastKnownState"] as JObject ?? new JObject();
+
+					ProcessFullStatus(lRequestId, unit, lastKnownState);
 
 					updateItems = UpdateItems.Main | UpdateItems.Zone1 | UpdateItems.Zone2 | UpdateItems.Zone3 | UpdateItems.Zone4 | UpdateItems.Zone5 | UpdateItems.Zone6 | UpdateItems.Zone7 | UpdateItems.Zone8;
 				}
@@ -1072,74 +1093,75 @@ namespace HMX.HASSActronQue
 
 		private static void ProcessFullStatus(long lRequestId, AirConditionerUnit unit, dynamic jsonResponse)
 		{
-			JArray aEnabledZones;
+			// jsonResponse is expected to be a JObject (lastKnownState)
+			JObject jState = jsonResponse as JObject ?? new JObject();
+			JArray aEnabledZones = jState["UserAirconSettings"]?["EnabledZones"] as JArray;
 			if (_bQueLogging)
 				Logging.WriteDebugLog("Que.ProcessFullStatus() [0x{0}] Unit: {1}", lRequestId.ToString("X8"), unit.Serial);
 		
 			// Compressor Mode
-			ProcessPartialStatus(lRequestId, "LiveAircon.CompressorMode", jsonResponse.LiveAircon.CompressorMode?.ToString(), ref unit.Data.CompressorState);
+			ProcessPartialStatus(lRequestId, "LiveAircon.CompressorMode", jState["LiveAircon"]?["CompressorMode"]?.ToString(), ref unit.Data.CompressorState);
 
 			// Compressor Capacity
-			ProcessPartialStatus(lRequestId, "LiveAircon.CompressorCapacity", jsonResponse.LiveAircon.CompressorCapacity?.ToString(), ref unit.Data.CompressorCapacity);
+			ProcessPartialStatus(lRequestId, "LiveAircon.CompressorCapacity", jState["LiveAircon"]?["CompressorCapacity"]?.ToString(), ref unit.Data.CompressorCapacity);
 
 			// Compressor Power
-			if (jsonResponse.LiveAircon.ContainsKey("OutdoorUnit"))
-				ProcessPartialStatus(lRequestId, "LiveAircon.OutdoorUnit.CompPower", jsonResponse.LiveAircon.OutdoorUnit.CompPower?.ToString(), ref unit.Data.CompressorPower);
+			if (jState["LiveAircon"] is JObject la && la.ContainsKey("OutdoorUnit"))
+				ProcessPartialStatus(lRequestId, "LiveAircon.OutdoorUnit.CompPower", la["OutdoorUnit"]?["CompPower"]?.ToString(), ref unit.Data.CompressorPower);
 
 			// On
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.isOn", jsonResponse.UserAirconSettings.isOn?.ToString(), ref unit.Data.On);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.isOn", jState["UserAirconSettings"]?["isOn"]?.ToString(), ref unit.Data.On);
 
 			// Mode
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.Mode", jsonResponse.UserAirconSettings.Mode?.ToString(), ref unit.Data.Mode);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.Mode", jState["UserAirconSettings"]?["Mode"]?.ToString(), ref unit.Data.Mode);
 
 			// Fan Mode
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.FanMode", jsonResponse.UserAirconSettings.FanMode?.ToString(), ref unit.Data.FanMode);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.FanMode", jState["UserAirconSettings"]?["FanMode"]?.ToString(), ref unit.Data.FanMode);
 			
 			// Constant Fan Mode (case-insensitive detection)
 			unit.Data.ConstantFanMode = (unit.Data.FanMode ?? "").IndexOf("+CONT", StringComparison.OrdinalIgnoreCase) >= 0;
 
 			// Away Mode
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.AwayMode", jsonResponse.UserAirconSettings.AwayMode?.ToString(), ref unit.Data.AwayMode);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.AwayMode", jState["UserAirconSettings"]?["AwayMode"]?.ToString(), ref unit.Data.AwayMode);
 
 			// Quiet Mode
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.QuietMode", jsonResponse.UserAirconSettings.QuietMode?.ToString(), ref unit.Data.QuietMode);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.QuietMode", jState["UserAirconSettings"]?["QuietMode"]?.ToString(), ref unit.Data.QuietMode);
 
 			// Set Cooling Temperature
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.TemperatureSetpoint_Cool_oC", jsonResponse.UserAirconSettings.TemperatureSetpoint_Cool_oC?.ToString(), ref unit.Data.SetTemperatureCooling);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.TemperatureSetpoint_Cool_oC", jState["UserAirconSettings"]?["TemperatureSetpoint_Cool_oC"]?.ToString(), ref unit.Data.SetTemperatureCooling);
 
 			// Set Heating Temperature
-			ProcessPartialStatus(lRequestId, "UserAirconSettings.TemperatureSetpoint_Heat_oC", jsonResponse.UserAirconSettings.TemperatureSetpoint_Heat_oC?.ToString(), ref unit.Data.SetTemperatureHeating);
+			ProcessPartialStatus(lRequestId, "UserAirconSettings.TemperatureSetpoint_Heat_oC", jState["UserAirconSettings"]?["TemperatureSetpoint_Heat_oC"]?.ToString(), ref unit.Data.SetTemperatureHeating);
 
 			// Control All Zones
-			ProcessPartialStatus(lRequestId, "MasterInfo.ControlAllZones", jsonResponse.MasterInfo.ControlAllZones?.ToString(), ref unit.Data.ControlAllZones);
+			ProcessPartialStatus(lRequestId, "MasterInfo.ControlAllZones", jState["MasterInfo"]?["ControlAllZones"]?.ToString(), ref unit.Data.ControlAllZones);
 
 			// Live Temperature
-			ProcessPartialStatus(lRequestId, "MasterInfo.LiveTemp_oC", jsonResponse.MasterInfo.LiveTemp_oC?.ToString(), ref unit.Data.Temperature);
+			ProcessPartialStatus(lRequestId, "MasterInfo.LiveTemp_oC", jState["MasterInfo"]?["LiveTemp_oC"]?.ToString(), ref unit.Data.Temperature);
 
 			// Live Temperature Outside
-			ProcessPartialStatus(lRequestId, "MasterInfo.LiveOutdoorTemp_oC", jsonResponse.MasterInfo.LiveOutdoorTemp_oC?.ToString(), ref unit.Data.OutdoorTemperature);
+			ProcessPartialStatus(lRequestId, "MasterInfo.LiveOutdoorTemp_oC", jState["MasterInfo"]?["LiveOutdoorTemp_oC"]?.ToString(), ref unit.Data.OutdoorTemperature);
 
 			// Live Humidity
-			ProcessPartialStatus(lRequestId, "MasterInfo.LiveHumidity_pc", jsonResponse.MasterInfo.LiveHumidity_pc?.ToString(), ref unit.Data.Humidity);
+			ProcessPartialStatus(lRequestId, "MasterInfo.LiveHumidity_pc", jState["MasterInfo"]?["LiveHumidity_pc"]?.ToString(), ref unit.Data.Humidity);
 
 			// Coil Inlet Temperature
-			ProcessPartialStatus(lRequestId, "LiveAircon.CoilInlet", jsonResponse.LiveAircon.CoilInlet?.ToString(), ref unit.Data.CoilInletTemperature);
+			ProcessPartialStatus(lRequestId, "LiveAircon.CoilInlet", jState["LiveAircon"]?["CoilInlet"]?.ToString(), ref unit.Data.CoilInletTemperature);
 
 			// Fan PWM
-			ProcessPartialStatus(lRequestId, "LiveAircon.FanPWM", jsonResponse.LiveAircon.FanPWM?.ToString(), ref unit.Data.FanPWM);
+			ProcessPartialStatus(lRequestId, "LiveAircon.FanPWM", jState["LiveAircon"]?["FanPWM"]?.ToString(), ref unit.Data.FanPWM);
 
 			// Fan RPM
-			ProcessPartialStatus(lRequestId, "LiveAircon.FanRPM", jsonResponse.LiveAircon.FanRPM?.ToString(), ref unit.Data.FanRPM);
+			ProcessPartialStatus(lRequestId, "LiveAircon.FanRPM", jState["LiveAircon"]?["FanRPM"]?.ToString(), ref unit.Data.FanRPM);
 
 			// Filter
-			ProcessPartialStatus(lRequestId, "Alerts.CleanFilter", jsonResponse.Alerts.CleanFilter?.ToString(), ref unit.Data.CleanFilter);
+			ProcessPartialStatus(lRequestId, "Alerts.CleanFilter", jState["Alerts"]?["CleanFilter"]?.ToString(), ref unit.Data.CleanFilter);
 
 			// Fan Time Since Filter Cleaned
-			ProcessPartialStatus(lRequestId, "ACStats.NV_FanRunTime_10m", jsonResponse.ACStats.NV_FanRunTime_10m?.ToString(), ref unit.Data.FanTSFC);
+			ProcessPartialStatus(lRequestId, "ACStats.NV_FanRunTime_10m", jState["ACStats"]?["NV_FanRunTime_10m"]?.ToString(), ref unit.Data.FanTSFC);
 
 			// Zones
-			aEnabledZones = jsonResponse.UserAirconSettings.EnabledZones;
-			if (aEnabledZones.Count != 8)
+			if (aEnabledZones == null || aEnabledZones.Count != 8)
 				Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() [0x{0}] Unable to read state information: {1}", lRequestId.ToString("X8"), "UserAirconSettings.EnabledZones");
 			else
 			{
@@ -1151,37 +1173,38 @@ namespace HMX.HASSActronQue
 						ProcessPartialStatus(lRequestId, "UserAirconSettings.EnabledZones", aEnabledZones[iZoneIndex].ToString(), ref unit.Zones[iZoneIndex + 1].State);
 
 						// Temperature
-						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].LiveTemp_oC", iZoneIndex), jsonResponse.RemoteZoneInfo[iZoneIndex].LiveTemp_oC?.ToString(), ref unit.Zones[iZoneIndex + 1].Temperature);
+						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].LiveTemp_oC", iZoneIndex), jState["RemoteZoneInfo"]?[iZoneIndex]?["LiveTemp_oC"]?.ToString(), ref unit.Zones[iZoneIndex + 1].Temperature);
 
 						// Cooling Set Temperature
-						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].TemperatureSetpoint_Cool_oC", iZoneIndex), jsonResponse.RemoteZoneInfo[iZoneIndex].TemperatureSetpoint_Cool_oC?.ToString(), ref unit.Zones[iZoneIndex + 1].SetTemperatureCooling);
+						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].TemperatureSetpoint_Cool_oC", iZoneIndex), jState["RemoteZoneInfo"]?[iZoneIndex]?["TemperatureSetpoint_Cool_oC"]?.ToString(), ref unit.Zones[iZoneIndex + 1].SetTemperatureCooling);
 
 						// Heating Set Temperature
-						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].TemperatureSetpoint_Heat_oC", iZoneIndex), jsonResponse.RemoteZoneInfo[iZoneIndex].TemperatureSetpoint_Heat_oC?.ToString(), ref unit.Zones[iZoneIndex + 1].SetTemperatureHeating);
+						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].TemperatureSetpoint_Heat_oC", iZoneIndex), jState["RemoteZoneInfo"]?[iZoneIndex]?["TemperatureSetpoint_Heat_oC"]?.ToString(), ref unit.Zones[iZoneIndex + 1].SetTemperatureHeating);
 
 						// Position
-						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].ZonePosition", iZoneIndex), jsonResponse.RemoteZoneInfo[iZoneIndex].ZonePosition?.ToString(), ref unit.Zones[iZoneIndex + 1].Position);
+						ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].ZonePosition", iZoneIndex), jState["RemoteZoneInfo"]?[iZoneIndex]?["ZonePosition"]?.ToString(), ref unit.Zones[iZoneIndex + 1].Position);
 
 						// Zone Sensors Temperature
-						if (jsonResponse.RemoteZoneInfo[iZoneIndex].ContainsKey("RemoteTemperatures_oC"))
+						var rti = jState["RemoteZoneInfo"]?[iZoneIndex];
+						if (rti != null && rti["RemoteTemperatures_oC"] is JObject remoteTemps)
 						{
-							foreach (JProperty sensor in jsonResponse.RemoteZoneInfo[iZoneIndex].RemoteTemperatures_oC)
+							foreach (JProperty sensor in remoteTemps.Properties())
 							{
 								if (unit.Zones[iZoneIndex + 1].Sensors.ContainsKey(sensor.Name))
 								{
-									ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].RemoteTemperatures_oC.{1}", iZoneIndex, sensor.Name), jsonResponse.RemoteZoneInfo[iZoneIndex].RemoteTemperatures_oC[sensor.Name]?.ToString(), ref unit.Zones[iZoneIndex + 1].Sensors[sensor.Name].Temperature);
+									ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].RemoteTemperatures_oC.{1}", iZoneIndex, sensor.Name), remoteTemps[sensor.Name]?.ToString(), ref unit.Zones[iZoneIndex + 1].Sensors[sensor.Name].Temperature);
 								}
 							}
 						}
 
 						// Zone Sensors Battery
-						if (jsonResponse.RemoteZoneInfo[iZoneIndex].ContainsKey("Sensors"))
+						if (rti != null && rti["Sensors"] is JObject sensorsObj)
 						{
-							foreach (JProperty sensor in jsonResponse.RemoteZoneInfo[iZoneIndex].Sensors)
+							foreach (JProperty sensor in sensorsObj.Properties())
 							{
 								if (unit.Zones[iZoneIndex + 1].Sensors.ContainsKey(sensor.Name))
 								{
-									ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].Sensors.{1}.Battery_pc", iZoneIndex, sensor.Name), jsonResponse.RemoteZoneInfo[iZoneIndex].Sensors[sensor.Name].Battery_pc?.ToString(), ref unit.Zones[iZoneIndex + 1].Sensors[sensor.Name].Battery);
+									ProcessPartialStatus(lRequestId, string.Format("RemoteZoneInfo[{0}].Sensors.{1}.Battery_pc", iZoneIndex, sensor.Name), sensorsObj[sensor.Name]?["Battery_pc"]?.ToString(), ref unit.Zones[iZoneIndex + 1].Sensors[sensor.Name].Battery);
 								}
 							}
 						}
@@ -1249,10 +1272,9 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL, strPageURLFirstEvent = "api/v0/client/ac-systems/events/latest?serial=";
 			string strResponse;
-			dynamic jsonResponse;
 			bool bRetVal = true;
 			string strEventType;
-			int iIndex;
+			int iIndex = 0;
 			UpdateItems updateItems = UpdateItems.None;
 
 			if (unit.NextEventURL == "")
@@ -1273,11 +1295,11 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClient.GetAsync(strPageURL, cancellationToken.Token);
+				httpResponse = await _httpClient.GetAsync(strPageURL, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync();
+					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 					if (_bQueLogging)
 						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Responded (Encoding {1}, {2} bytes)", lRequestId.ToString("X8"), httpResponse.Content.Headers.ContentEncoding.ToString() == "" ? "N/A" : httpResponse.Content.Headers.ContentEncoding.ToString(), (httpResponse.Content.Headers.ContentLength ?? 0) == 0 ? "N/A" : httpResponse.Content.Headers.ContentLength.ToString());
 
@@ -1291,21 +1313,28 @@ namespace HMX.HASSActronQue
 
 					strResponse = strResponse.Replace("ac-newer-events", "acnewerevents");
 
-					jsonResponse = JsonConvert.DeserializeObject(strResponse);
+					var jsonResponse = JObject.Parse(strResponse);
 
-					unit.NextEventURL = jsonResponse._links.acnewerevents.href;
-					if (unit.NextEventURL.StartsWith("/"))
-						unit.NextEventURL = unit.NextEventURL.Substring(1);
-						if (_bQueLogging)
-							Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Next Event URL: {1}", lRequestId.ToString("X8"), unit.NextEventURL);
-
-						if (_bQueLogging)
-							Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Processing {1} events", lRequestId.ToString("X8"), jsonResponse.events.Count);
-
-					for (int iEvent = jsonResponse.events.Count - 1; iEvent >= 0; iEvent--)
+					var links = jsonResponse["_links"] as JObject;
+					if (links != null && links["acnewerevents"] != null)
 					{
+						unit.NextEventURL = (string)links["acnewerevents"]["href"] ?? "";
+						if (unit.NextEventURL.StartsWith("/"))
+							unit.NextEventURL = unit.NextEventURL.Substring(1);
+					}
 
-						strEventType = jsonResponse.events[iEvent].type;
+					if (_bQueLogging)
+						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Next Event URL: {1}", lRequestId.ToString("X8"), unit.NextEventURL);
+
+					if (_bQueLogging)
+						Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Processing {1} events", lRequestId.ToString("X8"), (jsonResponse["events"] as JArray)?.Count ?? 0);
+
+					var events = jsonResponse["events"] as JArray ?? new JArray();
+
+					for (int iEvent = events.Count - 1; iEvent >= 0; iEvent--)
+					{
+						var ev = events[iEvent] as JObject;
+						strEventType = (string)ev?["type"];
 
 						if (_bQueLogging)
 							Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Event Type: {1}", lRequestId.ToString("X8"), strEventType);
@@ -1313,162 +1342,163 @@ namespace HMX.HASSActronQue
 						switch (strEventType)
 						{
 							case "status-change-broadcast":
-								foreach (JProperty change in jsonResponse.events[iEvent].data)
+								var data = ev["data"] as JObject;
+								if (data != null)
 								{
-									if (_bQueLogging) 
-										Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Incremental Update: {1}", lRequestId.ToString("X8"), change.Name);
+									foreach (JProperty change in data.Properties())
+									{
+										if (_bQueLogging) 
+											Logging.WriteDebugLog("Que.GetAirConditionerEvents() [0x{0}] Incremental Update: {1}", lRequestId.ToString("X8"), change.Name);
 
-									// If this change confirms a pending optimistic expectation, confirm it
-									ConfirmPendingForUnit(unit.Serial, change.Name, change.Value);
+										// If this change confirms a pending optimistic expectation, confirm it
+										ConfirmPendingForUnit(unit.Serial, change.Name, change.Value);
 
-									// Compressor Mode
-									if (change.Name == "LiveAircon.CompressorMode")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorState);
-										updateItems |= UpdateItems.Main;
-									}
-									// Compressor Capacity
-									else if (change.Name == "LiveAircon.CompressorCapacity")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorCapacity);
-										updateItems |= UpdateItems.Main;
-									}
-									// Compressor Power
-									else if (change.Name == "LiveAircon.OutdoorUnit.CompPower")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorPower);
-										updateitems: ;
-										updateItems |= UpdateItems.Main;
-									}
-									// Mode
-									else if (change.Name == "UserAirconSettings.Mode")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Mode);
-										updateItems |= UpdateItems.Main;
-									}
-									// Fan Mode
-									else if (change.Name == "UserAirconSettings.FanMode")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanMode);
-										updateItems |= UpdateItems.Main;
-									}
-									// On
-									else if (change.Name == "UserAirconSettings.isOn")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.On);
-										updateItems |= UpdateItems.Main;
-									}
-									// Away Mode
-									else if (change.Name == "UserAirconSettings.AwayMode")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.AwayMode);
-										updateItems |= UpdateItems.Main;
-									}
-									// Quiet Mode
-									else if (change.Name == "UserAirconSettings.QuietMode")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.QuietMode);
-										updateItems |= UpdateItems.Main;
-									}										
-									// Control All Zones
-									else if (change.Name == "MasterInfo.ControlAllZones")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.ControlAllZones);
-										updateItems |= UpdateItems.Main;
-									}
-									// Live Temperature
-									else if (change.Name == "MasterInfo.LiveTemp_oC")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Temperature);
-										updateItems |= UpdateItems.Main;
-									}
-									// Live Temperature Outside
-									else if (change.Name == "MasterInfo.LiveOutdoorTemp_oC")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.OutdoorTemperature);
-										updateItems |= UpdateItems.Main;
-									}
-									// Live Humidity
-									else if (change.Name == "MasterInfo.LiveHumidity_pc")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Humidity);
-										updateItems |= UpdateItems.Main;
-									}
-									// Set Temperature Cooling
-									else if (change.Name == "UserAirconSettings.TemperatureSetpoint_Cool_oC")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.SetTemperatureCooling);
-										updateItems |= UpdateItems.Main;
-									}
-									// Set Temperature Heating
-									else if (change.Name == "UserAirconSettings.TemperatureSetpoint_Heat_oC")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.SetTemperatureHeating);
-										updateItems |= UpdateItems.Main;
-									}
-									// Coil Inlet Temperature
-									else if (change.Name == "LiveAircon.CoilInlet")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CoilInletTemperature);
-										updateItems |= UpdateItems.Main;
-									}
-									// Fan PWM
-									else if (change.Name == "LiveAircon.FanPWM")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanPWM);
-										updateItems |= UpdateItems.Main;
-									}
-									// Fan RPM
-									else if (change.Name == "LiveAircon.FanRPM")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanRPM);
-										updateItems |= UpdateItems.Main;
-									}
-									// Clean Filter
-									else if (change.Name == "Alerts.CleanFilter")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CleanFilter);
-										updateItems |= UpdateItems.Main;
-									}
-									// Fan Time Since Filter Cleaned
-									else if (change.Name == "ACStats.NV_FanRunTime_10m")
-									{
-										ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanTSFC);
-										updateItems |= UpdateItems.Main;
-									}
-									// Remote Zone
-									else if (change.Name.StartsWith("RemoteZoneInfo["))
-									{
-										iIndex = int.Parse(change.Name.Substring(change.Name.IndexOf("[") + 1, 1));
-
-										if (unit.Zones.ContainsKey(iIndex + 1))
+										// Compressor Mode
+										if (change.Name == "LiveAircon.CompressorMode")
 										{
-											updateItems |= (UpdateItems)Math.Pow(2, iIndex + 1);
-
-											// Live Temperature
-											if (change.Name.EndsWith("].LiveTemp_oC"))
-												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Temperature);
-											// Cooling Set Temperature
-											else if (change.Name.EndsWith("].TemperatureSetpoint_Cool_oC"))
-												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureCooling);
-											// Heating Set Temperature
-											else if (change.Name.EndsWith("].TemperatureSetpoint_Heat_oC"))
-												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureHeating);
-											// Zone Position
-											else if (change.Name.EndsWith("].ZonePosition"))
-												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Position);
-										}
-									}
-									// Enabled Zone
-									else if (change.Name.StartsWith("UserAirconSettings.EnabledZones["))
-									{
-										iIndex = int.Parse(change.Name.Substring(change.Name.IndexOf("[") + 1, 1));
-
-										if (unit.Zones.ContainsKey(iIndex + 1))
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].State);
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorState);
 											updateItems |= UpdateItems.Main;
-											updateItems |= (UpdateItems)Math.Pow(2, iIndex + 1);
+										}
+										// Compressor Capacity
+										else if (change.Name == "LiveAircon.CompressorCapacity")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorCapacity);
+											updateItems |= UpdateItems.Main;
+										}
+										// Compressor Power
+										else if (change.Name == "LiveAircon.OutdoorUnit.CompPower")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorPower);
+											updateItems |= UpdateItems.Main;
+										}
+										// Mode
+										else if (change.Name == "UserAirconSettings.Mode")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Mode);
+											updateItems |= UpdateItems.Main;
+										}
+										// Fan Mode
+										else if (change.Name == "UserAirconSettings.FanMode")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanMode);
+											updateItems |= UpdateItems.Main;
+										}
+										// On
+										else if (change.Name == "UserAirconSettings.isOn")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.On);
+											updateItems |= UpdateItems.Main;
+										}
+										// Away Mode
+										else if (change.Name == "UserAirconSettings.AwayMode")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.AwayMode);
+											updateItems |= UpdateItems.Main;
+										}
+										// Quiet Mode
+										else if (change.Name == "UserAirconSettings.QuietMode")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.QuietMode);
+											updateItems |= UpdateItems.Main;
+										}										
+										// Control All Zones
+										else if (change.Name == "MasterInfo.ControlAllZones")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.ControlAllZones);
+											updateItems |= UpdateItems.Main;
+										}
+										// Live Temperature
+										else if (change.Name == "MasterInfo.LiveTemp_oC")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Temperature);
+											updateItems |= UpdateItems.Main;
+										}
+										// Live Temperature Outside
+										else if (change.Name == "MasterInfo.LiveOutdoorTemp_oC")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.OutdoorTemperature);
+											updateItems |= UpdateItems.Main;
+										}
+										// Live Humidity
+										else if (change.Name == "MasterInfo.LiveHumidity_pc")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Humidity);
+											updateItems |= UpdateItems.Main;
+										}
+										// Set Temperature Cooling
+										else if (change.Name == "UserAirconSettings.TemperatureSetpoint_Cool_oC")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.SetTemperatureCooling);
+											updateItems |= UpdateItems.Main;
+										}
+										// Set Temperature Heating
+										else if (change.Name == "UserAirconSettings.TemperatureSetpoint_Heat_oC")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.SetTemperatureHeating);
+											updateItems |= UpdateItems.Main;
+										}
+										// Coil Inlet Temperature
+										else if (change.Name == "LiveAircon.CoilInlet")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CoilInletTemperature);
+											updateItems |= UpdateItems.Main;
+										}
+										// Fan PWM
+										else if (change.Name == "LiveAircon.FanPWM")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanPWM);
+											updateItems |= UpdateItems.Main;
+										}
+										// Fan RPM
+										else if (change.Name == "LiveAircon.FanRPM")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanRPM);
+											updateItems |= UpdateItems.Main;
+										}
+										// Clean Filter
+										else if (change.Name == "Alerts.CleanFilter")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CleanFilter);
+											updateItems |= UpdateItems.Main;
+										}
+										// Fan Time Since Filter Cleaned
+										else if (change.Name == "ACStats.NV_FanRunTime_10m")
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanTSFC);
+											updateItems |= UpdateItems.Main;
+										}
+										// Remote Zone
+										else if (change.Name.StartsWith("RemoteZoneInfo["))
+										{
+											iIndex = ExtractIndexFromBracket(change.Name);
+											if (iIndex >= 0 && unit.Zones.ContainsKey(iIndex + 1))
+											{
+												updateItems |= (UpdateItems)(1 << (iIndex + 1));
+
+												// Live Temperature
+												if (change.Name.EndsWith("].LiveTemp_oC"))
+													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Temperature);
+												// Cooling Set Temperature
+												else if (change.Name.EndsWith("].TemperatureSetpoint_Cool_oC"))
+													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureCooling);
+												// Heating Set Temperature
+												else if (change.Name.EndsWith("].TemperatureSetpoint_Heat_oC"))
+													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureHeating);
+												// Zone Position
+												else if (change.Name.EndsWith("].ZonePosition"))
+													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Position);
+											}
+										}
+										// Enabled Zone
+										else if (change.Name.StartsWith("UserAirconSettings.EnabledZones["))
+										{
+											iIndex = ExtractIndexFromBracket(change.Name);
+											if (iIndex >= 0 && unit.Zones.ContainsKey(iIndex + 1))
+											{
+												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].State);
+												updateItems |= UpdateItems.Main;
+												updateItems |= (UpdateItems)(1 << (iIndex + 1));
+											}
 										}
 									}
 								}
@@ -1476,7 +1506,8 @@ namespace HMX.HASSActronQue
 								break;
 
 							case "full-status-broadcast":
-								ProcessFullStatus(lRequestId, unit, jsonResponse.events[iEvent].data);
+								var dataFull = ev["data"] as JObject ?? new JObject();
+								ProcessFullStatus(lRequestId, unit, dataFull);
 
 								updateItems |= UpdateItems.Main | UpdateItems.Zone1 | UpdateItems.Zone2 | UpdateItems.Zone3 | UpdateItems.Zone4 | UpdateItems.Zone5 | UpdateItems.Zone6 | UpdateItems.Zone7 | UpdateItems.Zone8;
 
@@ -1557,11 +1588,11 @@ namespace HMX.HASSActronQue
 
 						// No Events Mode
 
-						Thread.Sleep(_iPostCommandSleepTimerNeoNoEventsMode * 1000);
+						await Task.Delay(_iPostCommandSleepTimerNeoNoEventsMode * 1000).ConfigureAwait(false);
 
 						foreach (AirConditionerUnit unit in _airConditionerUnits.Values)
 						{
-							updateItems = await GetAirConditionerFullStatus(unit);
+							updateItems = await GetAirConditionerFullStatus(unit).ConfigureAwait(false);
 							if (updateItems != UpdateItems.None)
 							{
 								MQTTUpdateData(unit, updateItems);
@@ -1574,12 +1605,12 @@ namespace HMX.HASSActronQue
 
 					case WaitHandle.WaitTimeout: // Wait Timeout
 						if (_airConditionerUnits.Count == 0)
-							if (!await GetAirConditionerSerial())
+							if (!await GetAirConditionerSerial().ConfigureAwait(false))
 								continue;
 
 						if (_iZoneCount == 0)
 						{
-							if (!await GetAirConditionerZones())
+							if (!await GetAirConditionerZones().ConfigureAwait(false))
 								continue;
 							else
 								MQTTRegister();
@@ -1589,7 +1620,7 @@ namespace HMX.HASSActronQue
 
 						foreach (AirConditionerUnit unit in _airConditionerUnits.Values)
 						{
-							updateItems = await GetAirConditionerFullStatus(unit);
+							updateItems = await GetAirConditionerFullStatus(unit).ConfigureAwait(false);
 							if (updateItems != UpdateItems.None)
 							{
 								MQTTUpdateData(unit, updateItems);
@@ -1628,7 +1659,7 @@ namespace HMX.HASSActronQue
 						if (!IsTokenValid())
 							continue;
 
-						if (await ProcessQueue())
+						if (await ProcessQueue().ConfigureAwait(false))
 							_eventUpdate.Set();
 
 						break;
@@ -1637,7 +1668,7 @@ namespace HMX.HASSActronQue
 						if (!IsTokenValid())
 							continue;
 
-						if (await ProcessQueue())
+						if (await ProcessQueue().ConfigureAwait(false))
 							_eventUpdate.Set();
 
 						break;
@@ -1681,7 +1712,7 @@ namespace HMX.HASSActronQue
 				if (command == null)
 					break;
 
-				if (await SendCommand(command))
+				if (await SendCommand(command).ConfigureAwait(false))
 				{
 					lock (_oLockQueue)
 					{
@@ -2023,7 +2054,7 @@ namespace HMX.HASSActronQue
 			// Zones
 			foreach (int iIndex in unit.Zones.Keys)
 			{
-				if (unit.Zones[iIndex].Exists && items.HasFlag((UpdateItems)Math.Pow(2, iIndex)))
+				if (unit.Zones[iIndex].Exists && items.HasFlag((UpdateItems)(1 << iIndex)))
 				{
 					MQTT.SendMessage(string.Format("actronque{0}/zone{1}", unit.Serial, iIndex), unit.Zones[iIndex].State ? "ON" : "OFF");
 					MQTT.SendMessage(string.Format("actronque{0}/zone{1}/temperature", unit.Serial, iIndex), unit.Zones[iIndex].Temperature.ToString("N1"));
@@ -2409,7 +2440,7 @@ namespace HMX.HASSActronQue
 
 				content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
 
-				Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Content: {1}", lRequestId.ToString("X8"), await content.ReadAsStringAsync());
+				Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Content: {1}", lRequestId.ToString("X8"), await content.ReadAsStringAsync().ConfigureAwait(false));
 			}
 			catch (Exception eException)
 			{
@@ -2424,7 +2455,7 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClientCommands.PostAsync(strPageURL + command.Unit.Serial, content, cancellationToken.Token);
+				httpResponse = await _httpClientCommands.PostAsync(strPageURL + command.Unit.Serial, content, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 					Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Response {1}/{2}", lRequestId.ToString("X8"), httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
