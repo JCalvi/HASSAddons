@@ -9,8 +9,7 @@
   "image": "jcrfc/hass-actronque-{arch}",
   "arch": [
     "amd64",
-    "aarch64",
-	"armv7"
+    "aarch64"
   ],
 	"options": {
 		"MQTTUser": "",

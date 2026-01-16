@@ -370,7 +370,7 @@ namespace HMX.HASSActronQue
 			HttpClientHandler httpClientHandler = new HttpClientHandler();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.3.70.2)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.4.1)");
 
 			if (httpClientHandler.SupportsAutomaticDecompression)
 				httpClientHandler.AutomaticDecompression = System.Net.DecompressionMethods.All;
@@ -736,7 +736,7 @@ namespace HMX.HASSActronQue
 						}
 						else if (_queToken == null)
 							await GenerateBearerToken().ConfigureAwait(false);
-						else if (_queToken != null && _queToken.TokenExpires <= DateTime.Now.Subtract(TimeSpan.FromMinutes(5)))
+						else if (_queToken != null && _queToken.TokenExpires <= DateTime.Now.Add(TimeSpan.FromMinutes(5)))
 						{
 							Logging.WriteDebugLog("Que.TokenMonitor() Refreshing expiring bearer token");
 							await GenerateBearerToken().ConfigureAwait(false);

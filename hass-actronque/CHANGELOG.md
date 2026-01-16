@@ -1,17 +1,30 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.3] - 2026-01-13
+## [v2026.1.4] - 2026-01-16
 
 ### Added
 - 
 
 ### Removed
+- Development mode.
+
+## Changed
+- Lots of code improvements and tweaks.
+- Some more items switched off by logging.
+- Fixed expiring token logic.
+
+
+## [v2026.1.3] - 2026-01-13
+
+### Added
+- Debounce commands to prevent state flip flopping when pressing buttons in Home Assistant.
+
+### Removed
 - 
 
 ## Changed
-- Debounce commands to prevent state flip flopping when pressing buttons in Home Assistant.
-
+- Lots of code improvements and tweaks.
 
 
 ## [v2026.1.2] - 2026-01-10
