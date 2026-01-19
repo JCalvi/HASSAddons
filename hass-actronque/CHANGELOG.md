@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 
 ## Changed
 - Split Que.cs into more modules.
-
+- MQTT.SendMessage parse braces etc.
 
 ## [v2026.1.4] - 2026-01-13
 

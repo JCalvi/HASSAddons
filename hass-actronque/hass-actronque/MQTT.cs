@@ -170,16 +170,23 @@ namespace HMX.HASSActronQue
 		
 		public static async void SendMessage(string strTopic, string strPayloadFormat, params object[] strParams)
 		{
-			if (_bMQTTLogging) 
+			if (_bMQTTLogging)
 				Logging.WriteDebugLog("MQTT.SendMessage() {0}", strTopic);
 
 			if (_mqtt != null)
 			{
 				try
 				{
+					// Only format when parameters are provided; otherwise treat payload as raw literal.
+					string payload;
+					if (strParams != null && strParams.Length > 0)
+						payload = string.Format(strPayloadFormat, strParams);
+					else
+						payload = strPayloadFormat;
+
 					MqttApplicationMessage message = new MqttApplicationMessageBuilder()
 						.WithTopic(strTopic)
-						.WithPayload(string.Format(strPayloadFormat, strParams))
+						.WithPayload(payload)
 						.WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.ExactlyOnce)
 						.WithRetainFlag()
 						.Build();
