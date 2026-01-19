@@ -13,12 +13,13 @@ All notable changes to this project will be documented in this file.
 - 
 
 ## Changed
-- 
+- Split Que.cs into more modules.
+
 
 ## [v2026.1.4] - 2026-01-13
 
 ### Added
-- QueHttpHelper with backoff retries.
+- 
 
 ### Removed
 - Development mode.
