@@ -1320,12 +1320,43 @@ namespace HMX.HASSActronQue
 				strAirConditionerName = string.Format("{0} ({1})", _strAirConditionerName, unit.Name);
 				strAirConditionerNameMQTT = string.Format("{0} ({1})", Service.DeviceNameMQTT, unit.Name);
 
+				// Device information for all entities
+				string deviceInfo = $"\"device\":{{\"identifiers\":[\"actronque_{unit.Serial}\"],\"name\":\"{strAirConditionerName}\",\"manufacturer\":\"Actron\",\"model\":\"Que System\"}}";
+
 				// Simplified config messages (compact and valid JSON)
 				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName}\",\"unique_id\":\"{unit.Serial}-AC\"}}");
 
-				// sensors simplified
-				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName} Humidity\",\"unique_id\":\"{unit.Serial}-Humidity\"}}");
-				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName} Temperature\",\"unique_id\":\"{unit.Serial}-Temperature\"}}");
+				// Humidity sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Humidity\",\"unique_id\":\"{unit.Serial}-Humidity\",\"state_topic\":\"actronque{unit.Serial}/humidity\",\"device_class\":\"humidity\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{{{ value | round(1) }}}}\",{deviceInfo}}}");
+
+				// Temperature sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Temperature\",\"unique_id\":\"{unit.Serial}-Temperature\",\"state_topic\":\"actronque{unit.Serial}/temperature\",\"device_class\":\"temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{{{ value | round(1) }}}}\",{deviceInfo}}}");
+
+				// Outdoor temperature sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}outdoortemperature/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Outdoor Temperature\",\"unique_id\":\"{unit.Serial}-OutdoorTemperature\",\"state_topic\":\"actronque{unit.Serial}/outdoortemperature\",\"device_class\":\"temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{{{ value | round(1) }}}}\",{deviceInfo}}}");
+
+				// Compressor capacity sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorcapacity/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Compressor Capacity\",\"unique_id\":\"{unit.Serial}-CompressorCapacity\",\"state_topic\":\"actronque{unit.Serial}/compressorcapacity\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{{{ value | round(1) }}}}\",{deviceInfo}}}");
+
+				// Compressor power sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorpower/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Compressor Power\",\"unique_id\":\"{unit.Serial}-CompressorPower\",\"state_topic\":\"actronque{unit.Serial}/compressorpower\",\"device_class\":\"power\",\"unit_of_measurement\":\"kW\",\"value_template\":\"{{{{ value | round(2) }}}}\",{deviceInfo}}}");
+
+				// Coil inlet temperature sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}coilinlettemperature/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Coil Inlet Temperature\",\"unique_id\":\"{unit.Serial}-CoilInletTemperature\",\"state_topic\":\"actronque{unit.Serial}/coilinlettemperature\",\"device_class\":\"temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{{{ value | round(2) }}}}\",{deviceInfo}}}");
+
+				// Fan PWM sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanpwm/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Fan PWM\",\"unique_id\":\"{unit.Serial}-FanPWM\",\"state_topic\":\"actronque{unit.Serial}/fanpwm\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{{{ value | round(0) }}}}\",{deviceInfo}}}");
+
+				// Fan RPM sensor with complete MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanrpm/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Fan RPM\",\"unique_id\":\"{unit.Serial}-FanRPM\",\"state_topic\":\"actronque{unit.Serial}/fanrpm\",\"unit_of_measurement\":\"RPM\",\"value_template\":\"{{{{ value | round(0) }}}}\",{deviceInfo}}}");
 
 				// Publish switches and subscribe topics
 				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier), $"{{\"name\":\"Control All Zones\",\"unique_id\":\"{unit.Serial}-ControlAllZones\"}}");
@@ -1349,7 +1380,9 @@ namespace HMX.HASSActronQue
 						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), $"{{\"name\":\"{strAirConditionerName} Zone {iZone}\",\"unique_id\":\"{unit.Serial}-z{iZone}s\"}}");
 						MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/set", unit.Serial, iZone);
 
-						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), $"{{\"name\":\"{strAirConditionerName} Zone {iZone}\",\"unique_id\":\"{unit.Serial}-z{iZone}t\"}}");
+						// Zone temperature sensor with complete MQTT discovery configuration
+						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), 
+							$"{{\"name\":\"{strAirConditionerName} Zone {iZone} Temperature\",\"unique_id\":\"{unit.Serial}-z{iZone}t\",\"state_topic\":\"actronque{unit.Serial}/zone{iZone}/temperature\",\"device_class\":\"temperature\",\"unit_of_measurement\":\"°C\",\"value_template\":\"{{{{ value | round(1) }}}}\",{deviceInfo}}}");
 
 						if (_bPerZoneControls)
 						{
@@ -1360,7 +1393,9 @@ namespace HMX.HASSActronQue
 
 							foreach (string sensor in zone.Sensors.Keys)
 							{
-								MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor), $"{{\"name\":\"{zone.Name} Sensor {sensor} Battery\",\"unique_id\":\"{unit.Serial}-z{iZone}-sensor{sensor}-battery\"}}");
+								// Zone sensor battery with complete MQTT discovery configuration
+								MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor), 
+									$"{{\"name\":\"{zone.Name} Sensor {sensor} Battery\",\"unique_id\":\"{unit.Serial}-z{iZone}-sensor{sensor}-battery\",\"state_topic\":\"actronque{unit.Serial}/zone{iZone}sensor{sensor}/battery\",\"device_class\":\"battery\",\"unit_of_measurement\":\"%\",\"value_template\":\"{{{{ value | round(1) }}}}\",{deviceInfo}}}");
 							}
 						}
 					}
