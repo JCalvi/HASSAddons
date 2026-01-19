@@ -1329,8 +1329,13 @@ namespace HMX.HASSActronQue
 					model = "Que System"
 				};
 
-				// Simplified config messages (compact and valid JSON)
-				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName}\",\"unique_id\":\"{unit.Serial}-AC\"}}");
+				// Climate entity config with proper JSON serialization
+				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = strAirConditionerName,
+						unique_id = $"{unit.Serial}-AC"
+					}));
 
 				// Humidity sensor with complete MQTT discovery configuration
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier),
@@ -1434,16 +1439,36 @@ namespace HMX.HASSActronQue
 					}));
 
 				// Publish switches and subscribe topics
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier), $"{{\"name\":\"Control All Zones\",\"unique_id\":\"{unit.Serial}-ControlAllZones\"}}");
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = "Control All Zones",
+						unique_id = $"{unit.Serial}-ControlAllZones"
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/controlallzones/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/awaymode/config", strHANameModifier), $"{{\"name\":\"Away Mode\",\"unique_id\":\"{unit.Serial}-AwayMode\"}}");
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/awaymode/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = "Away Mode",
+						unique_id = $"{unit.Serial}-AwayMode"
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/awaymode/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/quietmode/config", strHANameModifier), $"{{\"name\":\"Quiet Mode\",\"unique_id\":\"{unit.Serial}-QuietMode\"}}");
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/quietmode/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = "Quiet Mode",
+						unique_id = $"{unit.Serial}-QuietMode"
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/quietmode/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/constantfanmode/config", strHANameModifier), $"{{\"name\":\"Constant Fan Mode\",\"unique_id\":\"{unit.Serial}-ConstantFanMode\"}}");
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/constantfanmode/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = "Constant Fan Mode",
+						unique_id = $"{unit.Serial}-ConstantFanMode"
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/constantfanmode/set", unit.Serial);
 
 				foreach (int iZone in unit.Zones.Keys)
@@ -1452,7 +1477,12 @@ namespace HMX.HASSActronQue
 
 					if (zone.Exists)
 					{
-						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), $"{{\"name\":\"{strAirConditionerName} Zone {iZone}\",\"unique_id\":\"{unit.Serial}-z{iZone}s\"}}");
+						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
+							JsonConvert.SerializeObject(new
+							{
+								name = $"{strAirConditionerName} Zone {iZone}",
+								unique_id = $"{unit.Serial}-z{iZone}s"
+							}));
 						MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/set", unit.Serial, iZone);
 
 						// Zone temperature sensor with complete MQTT discovery configuration
