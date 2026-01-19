@@ -8,7 +8,6 @@ All notable changes to this project will be documented in this file.
 	- SendWithRetriesAsync(requestFactory, client, maxRetries, cancellationToken)
     - RecreateHttpClients() using SocketsHttpHandler with pooling/pooled lifetime settings
     - IsTransientNetworkError() and related helpers
-- QueMQTTDedup to send only changed values to MQTT broker.
 
 ### Removed
 - 
