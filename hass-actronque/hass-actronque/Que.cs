@@ -1320,24 +1320,68 @@ namespace HMX.HASSActronQue
 				strAirConditionerName = string.Format("{0} ({1})", _strAirConditionerName, unit.Name);
 				strAirConditionerNameMQTT = string.Format("{0} ({1})", Service.DeviceNameMQTT, unit.Name);
 
-				// Simplified config messages (compact and valid JSON)
-				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName}\",\"unique_id\":\"{unit.Serial}-AC\"}}");
+				// Climate entity with proper MQTT discovery configuration
+				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName}\"," +
+					$"\"unique_id\":\"{unit.Serial}-AC\"," +
+					$"\"mode_state_topic\":\"actronque{unit.Serial}/mode\"," +
+					$"\"mode_command_topic\":\"actronque{unit.Serial}/mode/set\"," +
+					$"\"temperature_state_topic\":\"actronque{unit.Serial}/settemperature\"," +
+					$"\"temperature_command_topic\":\"actronque{unit.Serial}/temperature/set\"," +
+					$"\"current_temperature_topic\":\"actronque{unit.Serial}/temperature\"," +
+					$"\"fan_mode_state_topic\":\"actronque{unit.Serial}/fanmode\"," +
+					$"\"fan_mode_command_topic\":\"actronque{unit.Serial}/fan/set\"," +
+					$"\"modes\":[\"off\",\"auto\",\"cool\",\"heat\",\"fan_only\"]," +
+					$"\"fan_modes\":[\"auto\",\"low\",\"medium\",\"high\"]}}");
 
-				// sensors simplified
-				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName} Humidity\",\"unique_id\":\"{unit.Serial}-Humidity\"}}");
-				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName} Temperature\",\"unique_id\":\"{unit.Serial}-Temperature\"}}");
+				// Humidity sensor with device class and state topic
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Humidity\"," +
+					$"\"unique_id\":\"{unit.Serial}-Humidity\"," +
+					$"\"state_topic\":\"actronque{unit.Serial}/humidity\"," +
+					$"\"device_class\":\"humidity\"," +
+					$"\"unit_of_measurement\":\"%\"," +
+					$"\"state_class\":\"measurement\"}}");
 
-				// Publish switches and subscribe topics
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier), $"{{\"name\":\"Control All Zones\",\"unique_id\":\"{unit.Serial}-ControlAllZones\"}}");
+				// Temperature sensor with device class and state topic
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier), 
+					$"{{\"name\":\"{strAirConditionerName} Temperature\"," +
+					$"\"unique_id\":\"{unit.Serial}-Temperature\"," +
+					$"\"state_topic\":\"actronque{unit.Serial}/temperature\"," +
+					$"\"device_class\":\"temperature\"," +
+					$"\"unit_of_measurement\":\"°C\"," +
+					$"\"state_class\":\"measurement\"}}");
+
+				// Control All Zones switch with state and command topics
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier), 
+					$"{{\"name\":\"Control All Zones\"," +
+					$"\"unique_id\":\"{unit.Serial}-ControlAllZones\"," +
+					$"\"state_topic\":\"actronque{unit.Serial}/controlallzones\"," +
+					$"\"command_topic\":\"actronque{unit.Serial}/controlallzones/set\"}}");
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/controlallzones/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/awaymode/config", strHANameModifier), $"{{\"name\":\"Away Mode\",\"unique_id\":\"{unit.Serial}-AwayMode\"}}");
+				// Away Mode switch with state and command topics
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/awaymode/config", strHANameModifier), 
+					$"{{\"name\":\"Away Mode\"," +
+					$"\"unique_id\":\"{unit.Serial}-AwayMode\"," +
+					$"\"state_topic\":\"actronque{unit.Serial}/awaymode\"," +
+					$"\"command_topic\":\"actronque{unit.Serial}/awaymode/set\"}}");
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/awaymode/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/quietmode/config", strHANameModifier), $"{{\"name\":\"Quiet Mode\",\"unique_id\":\"{unit.Serial}-QuietMode\"}}");
+				// Quiet Mode switch with state and command topics
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/quietmode/config", strHANameModifier), 
+					$"{{\"name\":\"Quiet Mode\"," +
+					$"\"unique_id\":\"{unit.Serial}-QuietMode\"," +
+					$"\"state_topic\":\"actronque{unit.Serial}/quietmode\"," +
+					$"\"command_topic\":\"actronque{unit.Serial}/quietmode/set\"}}");
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/quietmode/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/constantfanmode/config", strHANameModifier), $"{{\"name\":\"Constant Fan Mode\",\"unique_id\":\"{unit.Serial}-ConstantFanMode\"}}");
+				// Constant Fan Mode switch with state and command topics
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/constantfanmode/config", strHANameModifier), 
+					$"{{\"name\":\"Constant Fan Mode\"," +
+					$"\"unique_id\":\"{unit.Serial}-ConstantFanMode\"," +
+					$"\"state_topic\":\"actronque{unit.Serial}/constantfanmode\"," +
+					$"\"command_topic\":\"actronque{unit.Serial}/constantfanmode/set\"}}");
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/constantfanmode/set", unit.Serial);
 
 				foreach (int iZone in unit.Zones.Keys)
@@ -1346,10 +1390,22 @@ namespace HMX.HASSActronQue
 
 					if (zone.Exists)
 					{
-						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), $"{{\"name\":\"{strAirConditionerName} Zone {iZone}\",\"unique_id\":\"{unit.Serial}-z{iZone}s\"}}");
+						// Zone switch with state and command topics
+						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), 
+							$"{{\"name\":\"{strAirConditionerName} Zone {iZone}\"," +
+							$"\"unique_id\":\"{unit.Serial}-z{iZone}s\"," +
+							$"\"state_topic\":\"actronque{unit.Serial}/zone{iZone}\"," +
+							$"\"command_topic\":\"actronque{unit.Serial}/zone{iZone}/set\"}}");
 						MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/set", unit.Serial, iZone);
 
-						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), $"{{\"name\":\"{strAirConditionerName} Zone {iZone}\",\"unique_id\":\"{unit.Serial}-z{iZone}t\"}}");
+						// Zone temperature sensor with device class and state topic
+						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), 
+							$"{{\"name\":\"{strAirConditionerName} Zone {iZone} Temperature\"," +
+							$"\"unique_id\":\"{unit.Serial}-z{iZone}t\"," +
+							$"\"state_topic\":\"actronque{unit.Serial}/zone{iZone}/temperature\"," +
+							$"\"device_class\":\"temperature\"," +
+							$"\"unit_of_measurement\":\"°C\"," +
+							$"\"state_class\":\"measurement\"}}");
 
 						if (_bPerZoneControls)
 						{
@@ -1360,7 +1416,14 @@ namespace HMX.HASSActronQue
 
 							foreach (string sensor in zone.Sensors.Keys)
 							{
-								MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor), $"{{\"name\":\"{zone.Name} Sensor {sensor} Battery\",\"unique_id\":\"{unit.Serial}-z{iZone}-sensor{sensor}-battery\"}}");
+								// Zone sensor battery with device class and state topic
+								MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor), 
+									$"{{\"name\":\"{zone.Name} Sensor {sensor} Battery\"," +
+									$"\"unique_id\":\"{unit.Serial}-z{iZone}-sensor{sensor}-battery\"," +
+									$"\"state_topic\":\"actronque{unit.Serial}/zone{iZone}sensor{sensor}/battery\"," +
+									$"\"device_class\":\"battery\"," +
+									$"\"unit_of_measurement\":\"%\"," +
+									$"\"state_class\":\"measurement\"}}");
 							}
 						}
 					}
