@@ -1,10 +1,24 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.4] - 2026-01-16
+## [v2026.1.5] - 2026-01-19
 
 ### Added
+- QueHttpHelper implementing:
+	- SendWithRetriesAsync(requestFactory, client, maxRetries, cancellationToken)
+    - RecreateHttpClients() using SocketsHttpHandler with pooling/pooled lifetime settings
+    - IsTransientNetworkError() and related helpers
+
+### Removed
 - 
+
+## Changed
+- 
+
+## [v2026.1.4] - 2026-01-13
+
+### Added
+- QueHttpHelper with backoff retries.
 
 ### Removed
 - Development mode.

@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace HMX.HASSActronQue
 {
-	public class Que
+	public partial class Que
 	{
 		[Flags]
 		public enum UpdateItems
@@ -367,21 +367,15 @@ namespace HMX.HASSActronQue
 
 		static Que()
 		{
-			HttpClientHandler httpClientHandler = new HttpClientHandler();
+			// Use helper to create HttpClients with pooling controls
+			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.4.1)");
-
-			if (httpClientHandler.SupportsAutomaticDecompression)
-				httpClientHandler.AutomaticDecompression = System.Net.DecompressionMethods.All;
-
-			_httpClientAuth = new HttpClient(httpClientHandler);
-			_httpClient = new HttpClient(httpClientHandler);
-			_httpClientCommands = new HttpClient(httpClientHandler);
-			
+			Logging.WriteDebugLog("Que.Que(v2026.1.5.1)");
 		}
 
-		public static async void Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, ManualResetEvent eventStop)
+		// Changed to Task so callers can observe failures
+		public static async Task Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, ManualResetEvent eventStop)
 		{
 			Task taskMonitor;
 			string strDeviceUniqueIdentifierInput;
@@ -508,7 +502,15 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClientAuth.PostAsync(strPageURL, new FormUrlEncodedContent(dtFormContent), cancellationToken.Token).ConfigureAwait(false);
+				// Use resilient helper with retries
+				httpResponse = await SendWithRetriesAsync(() =>
+				{
+					var req = new HttpRequestMessage(HttpMethod.Post, strPageURL)
+					{
+						Content = new FormUrlEncodedContent(dtFormContent)
+					};
+					return req;
+				}, _httpClientAuth, -1, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
@@ -596,7 +598,14 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClientAuth.PostAsync(strPageURL, new FormUrlEncodedContent(dtFormContent), cancellationToken.Token).ConfigureAwait(false);
+				httpResponse = await SendWithRetriesAsync(() =>
+				{
+					var req = new HttpRequestMessage(HttpMethod.Post, strPageURL)
+					{
+						Content = new FormUrlEncodedContent(dtFormContent)
+					};
+					return req;
+				}, _httpClientAuth, -1, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
@@ -773,7 +782,10 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClient.GetAsync(strPageURL, cancellationToken.Token).ConfigureAwait(false);
+				httpResponse = await SendWithRetriesAsync(() =>
+				{
+					return new HttpRequestMessage(HttpMethod.Get, strPageURL);
+				}, _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
@@ -886,7 +898,10 @@ namespace HMX.HASSActronQue
 					cancellationToken = new CancellationTokenSource();
 					cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-					httpResponse = await _httpClient.GetAsync(strPageURL + unit.Serial, cancellationToken.Token).ConfigureAwait(false);
+					httpResponse = await SendWithRetriesAsync(() =>
+					{
+						return new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial);
+					}, _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
 
 					if (httpResponse.IsSuccessStatusCode)
 					{
@@ -1011,7 +1026,7 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClient.GetAsync(strPageURL + unit.Serial, cancellationToken.Token).ConfigureAwait(false);
+				httpResponse = await SendWithRetriesAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
@@ -1269,7 +1284,7 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClient.GetAsync(strPageURL, cancellationToken.Token).ConfigureAwait(false);
+				httpResponse = await SendWithRetriesAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 				{
@@ -2415,7 +2430,14 @@ namespace HMX.HASSActronQue
 				cancellationToken = new CancellationTokenSource();
 				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				httpResponse = await _httpClientCommands.PostAsync(strPageURL + command.Unit.Serial, content, cancellationToken.Token).ConfigureAwait(false);
+				httpResponse = await SendWithRetriesAsync(() =>
+				{
+					var req = new HttpRequestMessage(HttpMethod.Post, strPageURL + command.Unit.Serial)
+					{
+						Content = new StringContent(JsonConvert.SerializeObject(command.Data), Encoding.UTF8, "application/json")
+					};
+					return req;
+				}, _httpClientCommands, -1, cancellationToken.Token).ConfigureAwait(false);
 
 				if (httpResponse.IsSuccessStatusCode)
 					Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Response {1}/{2}", lRequestId.ToString("X8"), httpResponse.StatusCode.ToString(), httpResponse.ReasonPhrase);
