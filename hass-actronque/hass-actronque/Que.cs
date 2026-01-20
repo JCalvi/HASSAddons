@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.7)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.8)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -1447,7 +1447,7 @@ namespace HMX.HASSActronQue
 						payload_on = "on",
 						payload_off = "off",
 						device_class = "problem",
-						icon = "mdi: air-filter",
+						icon = "mdi:air-filter",
 						device = deviceInfo
 					}));
 
@@ -1462,7 +1462,7 @@ namespace HMX.HASSActronQue
 						device_class = "duration",
 						unit_of_measurement = "h",
 						state_class = "total_increasing",
-						icon = "mdi: clock-outline",
+						icon = "mdi:clock-outline",
 						device = deviceInfo
 					}));
 
