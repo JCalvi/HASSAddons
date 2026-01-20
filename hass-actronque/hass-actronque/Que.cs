@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.5.2)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.5)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -1343,11 +1343,13 @@ namespace HMX.HASSActronQue
 						current_temperature_topic = $"actronque{unit.Serial}/temperature",
 						fan_mode_command_topic = $"actronque{strDeviceNameModifier}/fan/set",
 						fan_mode_state_topic = $"actronque{unit.Serial}/fanmode",
+						current_hvac_action_topic = $"actronque{unit. Serial}/compressor",
 						modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
 						fan_modes = new[] { "auto", "low", "medium", "high" },
 						min_temp = 10,
 						max_temp = 32,
 						temp_step = 0.5,
+						temperature_unit = "C",
 						device = deviceInfo
 					}));
 
