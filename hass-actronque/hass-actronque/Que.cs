@@ -1295,8 +1295,7 @@ namespace HMX.HASSActronQue
 		{
 			AirConditionerZone zone;
 			int iDeviceIndex = 0;
-			string strHANameModifier = "", strDeviceNameModifier = "";
-			string strAirConditionerName = "", strAirConditionerNameMQTT = "";
+			string strHANameModifier = "", strDeviceNameModifier = "", strAirConditionerNameMQTT = "";
 
 			if (_bQueLogging) Logging.WriteDebugLog("Que.MQTTRegister()");
 
@@ -1318,7 +1317,6 @@ namespace HMX.HASSActronQue
 					strDeviceNameModifier = unit.Serial;
 				}
 
-				strAirConditionerName = string.Format("{0} ({1})", _strAirConditionerName, unit.Name);
 				strAirConditionerNameMQTT = string.Format("{0} ({1})", Service.DeviceNameMQTT, unit.Name);
 
 				// Create device info object for proper grouping in Home Assistant
@@ -1334,7 +1332,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = strAirConditionerName,
+						name = strAirConditionerNameMQTT,
 						unique_id = $"{unit.Serial}-AC",
 						default_entity_id = $"climate.actronque_{unit.Serial}",
 						mode_command_topic = $"actronque{strDeviceNameModifier}/mode/set",
@@ -1358,7 +1356,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Humidity",
+						name = $"{strAirConditionerNameMQTT} Humidity",
 						unique_id = $"{unit.Serial}-Humidity",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_humidity",
 						state_topic = $"actronque{unit.Serial}/humidity",
@@ -1372,7 +1370,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Temperature",
+						name = $"{strAirConditionerNameMQTT} Temperature",
 						unique_id = $"{unit.Serial}-Temperature",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_temperature",
 						state_topic = $"actronque{unit.Serial}/temperature",
@@ -1386,7 +1384,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}outdoortemperature/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Outdoor Temperature",
+						name = $"{strAirConditionerNameMQTT} Outdoor Temperature",
 						unique_id = $"{unit.Serial}-OutdoorTemperature",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_outdoor_temperature",
 						state_topic = $"actronque{unit.Serial}/outdoortemperature",
@@ -1400,7 +1398,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorcapacity/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Compressor Capacity",
+						name = $"{strAirConditionerNameMQTT} Compressor Capacity",
 						unique_id = $"{unit.Serial}-CompressorCapacity",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_compressor_capacity",
 						state_topic = $"actronque{unit.Serial}/compressorcapacity",
@@ -1414,7 +1412,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorpower/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Compressor Power",
+						name = $"{strAirConditionerNameMQTT} Compressor Power",
 						unique_id = $"{unit.Serial}-CompressorPower",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_compressor_power",
 						state_topic = $"actronque{unit.Serial}/compressorpower",
@@ -1428,7 +1426,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}coilinlettemperature/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Coil Inlet Temperature",
+						name = $"{strAirConditionerNameMQTT} Coil Inlet Temperature",
 						unique_id = $"{unit.Serial}-CoilInletTemperature",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_coil_inlet_temperature",
 						state_topic = $"actronque{unit.Serial}/coilinlettemperature",
@@ -1438,11 +1436,41 @@ namespace HMX.HASSActronQue
 						device = deviceInfo
 					}));
 
+				// Filter needs cleaning sensor
+				MQTT. SendMessage(string.Format("homeassistant/binary_sensor/actronque{0}/cleanfilter/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerNameMQTT} Clean Filter",
+						unique_id = $"{unit. Serial}-CleanFilter",
+						default_entity_id = $"binary_sensor.actronque_{unit.Serial}_clean_filter",
+						state_topic = $"actronque{unit.Serial}/cleanfilter",
+						payload_on = "on",
+						payload_off = "off",
+						device_class = "problem",
+						icon = "mdi: air-filter",
+						device = deviceInfo
+					}));
+
+				// Filter hours since clean sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/fantsfc/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerNameMQTT} Fan Time Since Filter Cleaned",
+						unique_id = $"{unit.Serial}-FanTSFC",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_fan_time_since_filter_cleaned",
+						state_topic = $"actronque{unit.Serial}/fantsfc",
+						device_class = "duration",
+						unit_of_measurement = "h",
+						state_class = "total_increasing",
+						icon = "mdi: clock-outline",
+						device = deviceInfo
+					}));
+
 				// Fan PWM sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanpwm/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Fan PWM",
+						name = $"{strAirConditionerNameMQTT} Fan PWM",
 						unique_id = $"{unit.Serial}-FanPWM",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_fan_pwm",
 						state_topic = $"actronque{unit.Serial}/fanpwm",
@@ -1456,7 +1484,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanrpm/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Fan RPM",
+						name = $"{strAirConditionerNameMQTT} Fan RPM",
 						unique_id = $"{unit.Serial}-FanRPM",
 						default_entity_id = $"sensor.actronque_{unit.Serial}_fan_rpm",
 						state_topic = $"actronque{unit.Serial}/fanrpm",
@@ -1470,7 +1498,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Control All Zones",
+						name = $"{strAirConditionerNameMQTT} Control All Zones",
 						unique_id = $"{unit.Serial}-ControlAllZones",
 						default_entity_id = $"switch.actronque_{unit.Serial}_control_all_zones",
 						state_topic = $"actronque{unit.Serial}/controlallzones",
@@ -1486,7 +1514,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/awaymode/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Away Mode",
+						name = $"{strAirConditionerNameMQTT} Away Mode",
 						unique_id = $"{unit.Serial}-AwayMode",
 						default_entity_id = $"switch.actronque_{unit.Serial}_away_mode",
 						state_topic = $"actronque{unit.Serial}/awaymode",
@@ -1502,7 +1530,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/quietmode/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Quiet Mode",
+						name = $"{strAirConditionerNameMQTT} Quiet Mode",
 						unique_id = $"{unit.Serial}-QuietMode",
 						default_entity_id = $"switch.actronque_{unit.Serial}_quiet_mode",
 						state_topic = $"actronque{unit.Serial}/quietmode",
@@ -1518,7 +1546,7 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/constantfanmode/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
-						name = $"{strAirConditionerName} Constant Fan Mode",
+						name = $"{strAirConditionerNameMQTT} Constant Fan Mode",
 						unique_id = $"{unit.Serial}-ConstantFanMode",
 						default_entity_id = $"switch.actronque_{unit.Serial}_constant_fan_mode",
 						state_topic = $"actronque{unit.Serial}/constantfanmode",

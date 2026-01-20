@@ -10,7 +10,6 @@ namespace HMX.HASSActronQue
 		// Base and file paths
 		private static string _strBaseURLQue = "https://que.actronair.com.au/";
 		private static string _strDeviceName;
-		private static string _strAirConditionerName = "Air Conditioner";
 		private static string _strDeviceIdFile = "/data/deviceid.json";
 		private static string _strPairingTokenFile = "/data/pairingtoken.json";
 		private static string _strBearerTokenFile = "/data/bearertoken.json";
