@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - 
 
 ## Changed
--
+- tidied up some naming.
 
 
 ## [v2026.1.5] - 2026-01-19

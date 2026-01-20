@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.6)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.7)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -1539,7 +1539,7 @@ namespace HMX.HASSActronQue
 						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
 							JsonConvert.SerializeObject(new
 							{
-								name = $"{strAirConditionerName} Zone {iZone}",
+								name = $"{zone.Name}",
 								unique_id = $"{unit.Serial}-z{iZone}s",
 								default_entity_id = $"switch.actronque_{unit.Serial}_zone_{iZone}",
 								state_topic = $"actronque{unit.Serial}/zone{iZone}",
@@ -1552,13 +1552,13 @@ namespace HMX.HASSActronQue
 						MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/set", unit.Serial, iZone);
 
 						// Zone temperature sensor
-						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
+						MQTT.SendMessage(string. Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
 							JsonConvert.SerializeObject(new
 							{
-								name = $"{strAirConditionerName} Zone {iZone} Temperature",
+								name = $"{zone. Name} Temperature",
 								unique_id = $"{unit.Serial}-z{iZone}t",
-								default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_temperature",
-								state_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
+								default_entity_id = $"sensor.actronque_{unit. Serial}_zone_{iZone}_temperature",
+								state_topic = $"actronque{unit. Serial}/zone{iZone}/temperature",
 								device_class = "temperature",
 								unit_of_measurement = "°C",
 								value_template = "{{ value | round(1) }}",
