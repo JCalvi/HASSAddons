@@ -1593,6 +1593,19 @@ namespace HMX.HASSActronQue
 								value_template = "{{ value | round(1) }}",
 								device = deviceInfo
 							}));
+							
+						// Zone damper position sensor
+						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}/position/config", strHANameModifier, iZone),
+							JsonConvert.SerializeObject(new
+							{
+								name = $"{zone.Name} Damper Position",
+								unique_id = $"{unit.Serial}-z{iZone}-position",
+								default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_damper_position",
+								state_topic = $"actronque{unit.Serial}/zone{iZone}/position",
+								unit_of_measurement = "%",
+								icon = "mdi:valve",
+								device = deviceInfo
+							}));							
 
 						if (_bPerZoneControls)
 						{
