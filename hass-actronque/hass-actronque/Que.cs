@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.9)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.10)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -1620,7 +1620,7 @@ namespace HMX.HASSActronQue
 								{
 									name = $"{zone.Name}",
 									unique_id = $"{unit.Serial}-z{iZone}-climate",
-									default_entity_id = $"climate.actronque_{unit.Serial}_zone_{iZone}",
+									default_entity_id = $"climate.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}",
 									mode_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/mode/set",
 									mode_state_topic = $"actronque{unit.Serial}/zone{iZone}/mode",
 									temperature_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/temperature/set",
@@ -1645,7 +1645,7 @@ namespace HMX.HASSActronQue
 										{
 											name = $"{zone.Name} Sensor {sensor} Battery",
 											unique_id = $"{unit.Serial}-z{iZone}-sensor{sensor}-battery",
-											default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_sensor_{sensor}_battery",
+											default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}_sensor_{sensor}_battery",
 											state_topic = $"actronque{unit.Serial}/zone{iZone}sensor{sensor}/battery",
 											device_class = "battery",
 											unit_of_measurement = "%",
