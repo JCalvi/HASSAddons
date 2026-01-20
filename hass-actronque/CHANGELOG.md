@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.1.6] - 2026-01-20
+
+### Added
+- json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
+
+### Removed
+- 
+
+## Changed
+-
+
+
 ## [v2026.1.5] - 2026-01-19
 
 ### Added
