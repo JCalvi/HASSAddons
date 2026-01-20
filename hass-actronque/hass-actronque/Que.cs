@@ -1320,24 +1320,211 @@ namespace HMX.HASSActronQue
 				strAirConditionerName = string.Format("{0} ({1})", _strAirConditionerName, unit.Name);
 				strAirConditionerNameMQTT = string.Format("{0} ({1})", Service.DeviceNameMQTT, unit.Name);
 
-				// Simplified config messages (compact and valid JSON)
-				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName}\",\"unique_id\":\"{unit.Serial}-AC\"}}");
+				// Create device info object for proper grouping in Home Assistant
+				var deviceInfo = new
+				{
+					identifiers = new[] { $"actronque_{unit.Serial}" },
+					name = strAirConditionerNameMQTT,
+					manufacturer = "Actron",
+					model = "Actron Que"
+				};
 
-				// sensors simplified
-				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName} Humidity\",\"unique_id\":\"{unit.Serial}-Humidity\"}}");
-				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier), $"{{\"name\":\"{strAirConditionerName} Temperature\",\"unique_id\":\"{unit.Serial}-Temperature\"}}");
+				// Climate entity with complete configuration
+				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = strAirConditionerName,
+						unique_id = $"{unit.Serial}-AC",
+						default_entity_id = $"climate.actronque_{unit.Serial}",
+						mode_command_topic = $"actronque{strDeviceNameModifier}/mode/set",
+						mode_state_topic = $"actronque{unit.Serial}/mode",
+						temperature_command_topic = $"actronque{strDeviceNameModifier}/temperature/set",
+						temperature_state_topic = $"actronque{unit.Serial}/settemperature",
+						current_temperature_topic = $"actronque{unit.Serial}/temperature",
+						fan_mode_command_topic = $"actronque{strDeviceNameModifier}/fan/set",
+						fan_mode_state_topic = $"actronque{unit.Serial}/fanmode",
+						modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
+						fan_modes = new[] { "auto", "low", "medium", "high" },
+						min_temp = 10,
+						max_temp = 32,
+						temp_step = 0.5,
+						device = deviceInfo
+					}));
 
-				// Publish switches and subscribe topics
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier), $"{{\"name\":\"Control All Zones\",\"unique_id\":\"{unit.Serial}-ControlAllZones\"}}");
+				// Humidity sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Humidity",
+						unique_id = $"{unit.Serial}-Humidity",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_humidity",
+						state_topic = $"actronque{unit.Serial}/humidity",
+						device_class = "humidity",
+						unit_of_measurement = "%",
+						value_template = "{{ value | round(1) }}",
+						device = deviceInfo
+					}));
+
+				// Temperature sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Temperature",
+						unique_id = $"{unit.Serial}-Temperature",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_temperature",
+						state_topic = $"actronque{unit.Serial}/temperature",
+						device_class = "temperature",
+						unit_of_measurement = "°C",
+						value_template = "{{ value | round(1) }}",
+						device = deviceInfo
+					}));
+
+				// Outdoor temperature sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}outdoortemperature/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Outdoor Temperature",
+						unique_id = $"{unit.Serial}-OutdoorTemperature",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_outdoor_temperature",
+						state_topic = $"actronque{unit.Serial}/outdoortemperature",
+						device_class = "temperature",
+						unit_of_measurement = "°C",
+						value_template = "{{ value | round(1) }}",
+						device = deviceInfo
+					}));
+
+				// Compressor capacity sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorcapacity/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Compressor Capacity",
+						unique_id = $"{unit.Serial}-CompressorCapacity",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_compressor_capacity",
+						state_topic = $"actronque{unit.Serial}/compressorcapacity",
+						unit_of_measurement = "%",
+						value_template = "{{ value | round(1) }}",
+						icon = "mdi:gauge",
+						device = deviceInfo
+					}));
+
+				// Compressor power sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorpower/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Compressor Power",
+						unique_id = $"{unit.Serial}-CompressorPower",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_compressor_power",
+						state_topic = $"actronque{unit.Serial}/compressorpower",
+						device_class = "power",
+						unit_of_measurement = "kW",
+						value_template = "{{ value | round(2) }}",
+						device = deviceInfo
+					}));
+
+				// Coil inlet temperature sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}coilinlettemperature/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Coil Inlet Temperature",
+						unique_id = $"{unit.Serial}-CoilInletTemperature",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_coil_inlet_temperature",
+						state_topic = $"actronque{unit.Serial}/coilinlettemperature",
+						device_class = "temperature",
+						unit_of_measurement = "°C",
+						value_template = "{{ value | round(2) }}",
+						device = deviceInfo
+					}));
+
+				// Fan PWM sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanpwm/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Fan PWM",
+						unique_id = $"{unit.Serial}-FanPWM",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_fan_pwm",
+						state_topic = $"actronque{unit.Serial}/fanpwm",
+						unit_of_measurement = "%",
+						value_template = "{{ value | round(0) }}",
+						icon = "mdi:fan",
+						device = deviceInfo
+					}));
+
+				// Fan RPM sensor
+				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanrpm/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Fan RPM",
+						unique_id = $"{unit.Serial}-FanRPM",
+						default_entity_id = $"sensor.actronque_{unit.Serial}_fan_rpm",
+						state_topic = $"actronque{unit.Serial}/fanrpm",
+						unit_of_measurement = "RPM",
+						value_template = "{{ value | round(0) }}",
+						icon = "mdi:fan",
+						device = deviceInfo
+					}));
+
+				// Control All Zones switch
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Control All Zones",
+						unique_id = $"{unit.Serial}-ControlAllZones",
+						default_entity_id = $"switch.actronque_{unit.Serial}_control_all_zones",
+						state_topic = $"actronque{unit.Serial}/controlallzones",
+						command_topic = $"actronque{strDeviceNameModifier}/controlallzones/set",
+						payload_on = "ON",
+						payload_off = "OFF",
+						icon = "mdi:home-group",
+						device = deviceInfo
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/controlallzones/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/awaymode/config", strHANameModifier), $"{{\"name\":\"Away Mode\",\"unique_id\":\"{unit.Serial}-AwayMode\"}}");
+				// Away Mode switch
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/awaymode/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Away Mode",
+						unique_id = $"{unit.Serial}-AwayMode",
+						default_entity_id = $"switch.actronque_{unit.Serial}_away_mode",
+						state_topic = $"actronque{unit.Serial}/awaymode",
+						command_topic = $"actronque{strDeviceNameModifier}/awaymode/set",
+						payload_on = "ON",
+						payload_off = "OFF",
+						icon = "mdi:home-export-outline",
+						device = deviceInfo
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/awaymode/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/quietmode/config", strHANameModifier), $"{{\"name\":\"Quiet Mode\",\"unique_id\":\"{unit.Serial}-QuietMode\"}}");
+				// Quiet Mode switch
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/quietmode/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Quiet Mode",
+						unique_id = $"{unit.Serial}-QuietMode",
+						default_entity_id = $"switch.actronque_{unit.Serial}_quiet_mode",
+						state_topic = $"actronque{unit.Serial}/quietmode",
+						command_topic = $"actronque{strDeviceNameModifier}/quietmode/set",
+						payload_on = "ON",
+						payload_off = "OFF",
+						icon = "mdi:volume-off",
+						device = deviceInfo
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/quietmode/set", unit.Serial);
 
-				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/constantfanmode/config", strHANameModifier), $"{{\"name\":\"Constant Fan Mode\",\"unique_id\":\"{unit.Serial}-ConstantFanMode\"}}");
+				// Constant Fan Mode switch
+				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/constantfanmode/config", strHANameModifier),
+					JsonConvert.SerializeObject(new
+					{
+						name = $"{strAirConditionerName} Constant Fan Mode",
+						unique_id = $"{unit.Serial}-ConstantFanMode",
+						default_entity_id = $"switch.actronque_{unit.Serial}_constant_fan_mode",
+						state_topic = $"actronque{unit.Serial}/constantfanmode",
+						command_topic = $"actronque{strDeviceNameModifier}/constantfanmode/set",
+						payload_on = "ON",
+						payload_off = "OFF",
+						icon = "mdi:fan-auto",
+						device = deviceInfo
+					}));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/constantfanmode/set", unit.Serial);
 
 				foreach (int iZone in unit.Zones.Keys)
@@ -1346,10 +1533,35 @@ namespace HMX.HASSActronQue
 
 					if (zone.Exists)
 					{
-						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), $"{{\"name\":\"{strAirConditionerName} Zone {iZone}\",\"unique_id\":\"{unit.Serial}-z{iZone}s\"}}");
+						// Zone switch
+						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
+							JsonConvert.SerializeObject(new
+							{
+								name = $"{strAirConditionerName} Zone {iZone}",
+								unique_id = $"{unit.Serial}-z{iZone}s",
+								default_entity_id = $"switch.actronque_{unit.Serial}_zone_{iZone}",
+								state_topic = $"actronque{unit.Serial}/zone{iZone}",
+								command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/set",
+								payload_on = "ON",
+								payload_off = "OFF",
+								icon = "mdi:home-thermometer",
+								device = deviceInfo
+							}));
 						MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/set", unit.Serial, iZone);
 
-						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone), $"{{\"name\":\"{strAirConditionerName} Zone {iZone}\",\"unique_id\":\"{unit.Serial}-z{iZone}t\"}}");
+						// Zone temperature sensor
+						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
+							JsonConvert.SerializeObject(new
+							{
+								name = $"{strAirConditionerName} Zone {iZone} Temperature",
+								unique_id = $"{unit.Serial}-z{iZone}t",
+								default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_temperature",
+								state_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
+								device_class = "temperature",
+								unit_of_measurement = "°C",
+								value_template = "{{ value | round(1) }}",
+								device = deviceInfo
+							}));
 
 						if (_bPerZoneControls)
 						{
@@ -1360,7 +1572,19 @@ namespace HMX.HASSActronQue
 
 							foreach (string sensor in zone.Sensors.Keys)
 							{
-								MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor), $"{{\"name\":\"{zone.Name} Sensor {sensor} Battery\",\"unique_id\":\"{unit.Serial}-z{iZone}-sensor{sensor}-battery\"}}");
+								// Zone sensor battery level
+								MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor),
+									JsonConvert.SerializeObject(new
+									{
+										name = $"{zone.Name} Sensor {sensor} Battery",
+										unique_id = $"{unit.Serial}-z{iZone}-sensor{sensor}-battery",
+										default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_sensor_{sensor}_battery",
+										state_topic = $"actronque{unit.Serial}/zone{iZone}sensor{sensor}/battery",
+										device_class = "battery",
+										unit_of_measurement = "%",
+										value_template = "{{ value | round(1) }}",
+										device = deviceInfo
+									}));
 							}
 						}
 					}
