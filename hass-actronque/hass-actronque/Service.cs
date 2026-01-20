@@ -29,7 +29,7 @@ namespace HMX.HASSActronQue
 			IHost webHost;
 			string strMQTTUser, strMQTTPassword, strMQTTBroker;
 			string strQueUser, strQuePassword, strQueSerial, strDeviceName;
-			bool bPerZoneControls, bQueLogging, bMQTTLogging, bMQTTTLS, bSeparateHeatCool;
+			bool bPerZoneControls, bQueLogging, bMQTTLogging, bMQTTTLS, bSeparateHeatCool, bShowBatterySensors;
 
 			Logging.WriteDebugLog("Service.Start() Build Date: {0}", Properties.Resources.BuildDate);
 
@@ -62,6 +62,7 @@ namespace HMX.HASSActronQue
 			Configuration.GetOptionalConfiguration(configuration, "QueSerial", out strQueSerial);
 
 			Configuration.GetOptionalConfiguration(configuration, "SeparateHeatCoolTargets", out bSeparateHeatCool);
+			Configuration.GetOptionalConfiguration(configuration, "ShowBatterySensors", out bShowBatterySensors, true);
 			Configuration.GetOptionalConfiguration(configuration, "DeviceName", out strDeviceName);
 			if (strDeviceName == "")
 			{
@@ -87,7 +88,7 @@ namespace HMX.HASSActronQue
 
 			MQTT.StartMQTT(strMQTTBroker, bMQTTLogging, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor);
 
-			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, bQueLogging, bPerZoneControls, bSeparateHeatCool, _eventStop);
+			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, bQueLogging, bPerZoneControls, bSeparateHeatCool, bShowBatterySensors, _eventStop);
 
 			webHost.Run();
 		}

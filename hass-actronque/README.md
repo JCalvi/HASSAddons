@@ -29,6 +29,9 @@ If you have multiple AC units connected to your Que, you can add this optional c
 ### SeparateHeatCoolTargets: bool
 This option specifies if you wish to use the new independently set target heating and cooling temperature settings introduced in HA 2023.9. This disables the single temperature set option that may impact existing automations.
 
+### ShowBatterySensors: bool
+This option controls whether battery level sensors are created for zone temperature sensors. When set to true (default), battery sensors will be created for each zone sensor when PerZoneControls is enabled. Set to false to hide these sensors if you don't need to monitor battery levels.
+
 ### DeviceName: string
 This option specifies a custom device name to authorise against the Actron cloud. If not specified this defaults to "HASSActronQue".
 

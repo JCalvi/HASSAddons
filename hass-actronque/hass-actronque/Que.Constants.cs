@@ -25,6 +25,7 @@ namespace HMX.HASSActronQue
 		private static string _strQueUser, _strQuePassword, _strSerialNumber;
 		private static bool _bPerZoneControls = false;
 		private static bool _bSeparateHeatCool = false;
+		private static bool _bShowBatterySensors = true;
 		private static bool _bQueLogging = true;
 
 		// Queue & HTTP clients
