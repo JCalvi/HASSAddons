@@ -1,9 +1,0 @@
-{
-  "MQTTUser": "",
-  "MQTTPassword": "",
-  "MQTTBroker": "core-mosquitto",
-  "PerZoneControls": false,
-  "QueUser": "queuser",
-  "QuePassword": "quepassword",
-  "DeviceName": "HASSActronQue"
-}

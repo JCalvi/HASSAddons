@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
+- option to add or not add batteries as sensors are useless for hard wired installs.
 
 ### Removed
 - 
