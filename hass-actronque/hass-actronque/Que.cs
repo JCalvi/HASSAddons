@@ -1539,7 +1539,7 @@ namespace HMX.HASSActronQue
 						MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
 							JsonConvert.SerializeObject(new
 							{
-								name = $"{strAirConditionerName} Zone {iZone}",
+								name = $"{zone.Name}",
 								unique_id = $"{unit.Serial}-z{iZone}s",
 								default_entity_id = $"switch.actronque_{unit.Serial}_zone_{iZone}",
 								state_topic = $"actronque{unit.Serial}/zone{iZone}",
@@ -1555,7 +1555,7 @@ namespace HMX.HASSActronQue
 						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
 							JsonConvert.SerializeObject(new
 							{
-								name = $"{strAirConditionerName} Zone {iZone} Temperature",
+								name = $"{zone.Name} Temperature",
 								unique_id = $"{unit.Serial}-z{iZone}t",
 								default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_temperature",
 								state_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
