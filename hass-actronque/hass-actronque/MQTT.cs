@@ -183,12 +183,7 @@ namespace HMX.HASSActronQue
 						payload = string.Format(strPayloadFormat, strParams);
 					else
 						payload = strPayloadFormat;
-					if (strTopic.Contains("/config"))
-					{
-						Logging.WriteDebugLog("MQTT.SendMessage() Config payload length: {0}, Topic: {1}", payload.Length, strTopic);
-						if (payload.Length > 1000)
-							Logging.WriteDebugLog("MQTT.SendMessage() Large config payload (first 500 chars): {0}", payload.Substring(0, Math.Min(500, payload.Length)));
-					}
+
 					MqttApplicationMessage message = new MqttApplicationMessageBuilder()
 						.WithTopic(strTopic)
 						.WithPayload(payload)
