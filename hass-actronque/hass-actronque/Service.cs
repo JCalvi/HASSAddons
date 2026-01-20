@@ -101,6 +101,27 @@ namespace HMX.HASSActronQue
 
 			MQTT.StopMQTT();
 		}
+		
+		private static bool ParseBoolPayload(string value)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+				return false;
+			
+			value = value.Trim();
+			
+			// Handle ON/OFF and variants (case-insensitive)
+			if (string.Equals(value, "ON", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(value, "1", StringComparison.OrdinalIgnoreCase))
+				return true;
+			
+			if (string.Equals(value, "OFF", StringComparison. OrdinalIgnoreCase) ||
+				string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(value, "0", StringComparison.OrdinalIgnoreCase))
+				return false;
+			
+			return false;
+		}		
 
 		private static void MQTTProcessor(string strTopic, string strPayload)
 		{
@@ -187,7 +208,8 @@ namespace HMX.HASSActronQue
 			{
 				iZone = int.Parse(strTopic.Substring(strUnitHeader.Length + 5, 1));
 
-				Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, strPayload == "ON" ? true : false);
+				Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, ParseBoolPayload(strPayload));
+				
 			}
 			// Master
 			else if (strTopic.StartsWith(strUnitHeader + "/mode/set"))
@@ -223,22 +245,22 @@ namespace HMX.HASSActronQue
 			// Control All Zones
 			else if (strTopic.StartsWith(strUnitHeader + "/controlallzones/set"))
 			{
-				Que.ChangeControlAllZones(lRequestId, Que.Units[strUnit], strPayload == "ON" ? true : false);
+				Que. ChangeControlAllZones(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
 			}
 			// Away Mode
 			else if (strTopic.StartsWith(strUnitHeader + "/awaymode/set"))
 			{
-				Que.AwayMode(lRequestId, Que.Units[strUnit], strPayload == "ON" ? true : false);
+				Que.AwayMode(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
 			}
 			// Quiet Mode
 			else if (strTopic.StartsWith(strUnitHeader + "/quietmode/set"))
 			{
-				Que.QuietMode(lRequestId, Que.Units[strUnit], strPayload == "ON" ? true : false);
+				Que.QuietMode(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
 			}
 			// Constant Fan Mode
 			else if (strTopic.StartsWith(strUnitHeader + "/constantfanmode/set"))
 			{
-				Que.ConstantFanMode(lRequestId, Que.Units[strUnit], strPayload == "ON" ? true : false);
+				Que.ConstantFanMode(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
 			}			
 			// Fan Speed
 			else if (strTopic.StartsWith(strUnitHeader + "/fan/set"))

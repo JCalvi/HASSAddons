@@ -1477,10 +1477,10 @@ namespace HMX.HASSActronQue
 						unique_id = $"{unit. Serial}-CleanFilter",
 						default_entity_id = $"binary_sensor.actronque_{unit.Serial}_clean_filter",
 						state_topic = $"actronque{unit.Serial}/cleanfilter",
-						payload_on = "on",
-						payload_off = "off",
-						state_on = "on",
-						state_off = "off",
+						payload_on = "ON",
+						payload_off = "OFF",
+						state_on = "ON",
+						state_off = "OFF",
 						device_class = "problem",
 						icon = "mdi:air-filter",
 						device = deviceInfo
@@ -1538,10 +1538,10 @@ namespace HMX.HASSActronQue
 						default_entity_id = $"switch.actronque_{unit.Serial}_control_all_zones",
 						state_topic = $"actronque{unit.Serial}/controlallzones",
 						command_topic = $"actronque{strDeviceNameModifier}/controlallzones/set",
-						payload_on = "on",
-						payload_off = "off",
-						state_on = "on",
-						state_off = "off",
+						payload_on = "ON",
+						payload_off = "OFF",
+						state_on = "ON",
+						state_off = "OFF",
 						icon = "mdi:home-group",
 						device = deviceInfo
 					}));
@@ -1556,10 +1556,10 @@ namespace HMX.HASSActronQue
 						default_entity_id = $"switch.actronque_{unit.Serial}_away_mode",
 						state_topic = $"actronque{unit.Serial}/awaymode",
 						command_topic = $"actronque{strDeviceNameModifier}/awaymode/set",
-						payload_on = "on",
-						payload_off = "off",
-						state_on = "on",
-						state_off = "off",						
+						payload_on = "ON",
+						payload_off = "OFF",
+						state_on = "ON",
+						state_off = "OFF",						
 						icon = "mdi:home-export-outline",
 						device = deviceInfo
 					}));
@@ -1574,10 +1574,10 @@ namespace HMX.HASSActronQue
 						default_entity_id = $"switch.actronque_{unit.Serial}_quiet_mode",
 						state_topic = $"actronque{unit.Serial}/quietmode",
 						command_topic = $"actronque{strDeviceNameModifier}/quietmode/set",
-						payload_on = "on",
-						payload_off = "off",
-						state_on = "on",
-						state_off = "off",						
+						payload_on = "ON",
+						payload_off = "OFF",
+						state_on = "ON",
+						state_off = "OFF",						
 						icon = "mdi:volume-off",
 						device = deviceInfo
 					}));
@@ -1592,10 +1592,10 @@ namespace HMX.HASSActronQue
 						default_entity_id = $"switch.actronque_{unit.Serial}_constant_fan_mode",
 						state_topic = $"actronque{unit.Serial}/constantfanmode",
 						command_topic = $"actronque{strDeviceNameModifier}/constantfanmode/set",
-						payload_on = "on",
-						payload_off = "off",
-						state_on = "on",
-						state_off = "off",						
+						payload_on = "ON",
+						payload_off = "OFF",
+						state_on = "ON",
+						state_off = "OFF",						
 						icon = "mdi:fan-auto",
 						device = deviceInfo
 					}));
@@ -1616,10 +1616,10 @@ namespace HMX.HASSActronQue
 								default_entity_id = $"switch.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}",
 								state_topic = $"actronque{unit.Serial}/zone{iZone}",
 								command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/set",
-								payload_on = "on",
-								payload_off = "off",
-								state_on = "on",
-								state_off = "off",
+								payload_on = "ON",
+								payload_off = "OFF",
+								state_on = "ON",
+								state_off = "OFF",
 								icon = "mdi:home-thermometer",
 								device = deviceInfo
 							}));
@@ -1869,14 +1869,14 @@ namespace HMX.HASSActronQue
 				MQTT.SendMessage(string.Format("actronque{0}/coilinlettemperature", unit.Serial), unit.Data.CoilInletTemperature.ToString("F2"));
 				MQTT.SendMessage(string.Format("actronque{0}/fanpwm", unit.Serial), unit.Data.FanPWM.ToString("F0"));
 				MQTT.SendMessage(string.Format("actronque{0}/fanrpm", unit.Serial), unit.Data.FanRPM.ToString("F0"));
-				MQTT.SendMessage(string.Format("actronque{0}/cleanfilter", unit.Serial), unit.Data.CleanFilter ? "on" : "off");
+				MQTT.SendMessage(string.Format("actronque{0}/cleanfilter", unit.Serial), unit.Data.CleanFilter ? "ON" : "OFF");
 				MQTT.SendMessage(string.Format("actronque{0}/fantsfc", unit.Serial), (unit.Data.FanTSFC / 6).ToString("F0"));
 
 				// Control/Away/Quiet/Constant Fan
-				MQTT.SendMessage(string.Format("actronque{0}/controlallzones", unit.Serial), unit.Data.ControlAllZones ? "on" : "off");
-				MQTT.SendMessage(string.Format("actronque{0}/awaymode", unit.Serial), unit.Data.AwayMode ? "on" : "off");
-				MQTT.SendMessage(string.Format("actronque{0}/quietmode", unit.Serial), unit.Data.QuietMode ? "on" : "off");
-				MQTT.SendMessage(string.Format("actronque{0}/constantfanmode", unit.Serial), unit.Data.ConstantFanMode ? "on" : "off");
+				MQTT.SendMessage(string.Format("actronque{0}/controlallzones", unit.Serial), unit.Data.ControlAllZones ? "ON" : "OFF");
+				MQTT.SendMessage(string.Format("actronque{0}/awaymode", unit.Serial), unit.Data.AwayMode ? "ON" : "OFF");
+				MQTT.SendMessage(string.Format("actronque{0}/quietmode", unit.Serial), unit.Data.QuietMode ? "ON" : "OFF");
+				MQTT.SendMessage(string.Format("actronque{0}/constantfanmode", unit.Serial), unit.Data.ConstantFanMode ? "ON" : "OFF");
 			}
 
 			// Zones
@@ -1884,7 +1884,7 @@ namespace HMX.HASSActronQue
 			{
 				if (unit.Zones[iIndex].Exists && items.HasFlag((UpdateItems)(1 << iIndex)))
 				{
-					MQTT.SendMessage(string.Format("actronque{0}/zone{1}", unit.Serial, iIndex), unit.Zones[iIndex].State ? "on" : "off");
+					MQTT.SendMessage(string.Format("actronque{0}/zone{1}", unit.Serial, iIndex), unit.Zones[iIndex].State ? "ON" : "OFF");
 					MQTT.SendMessage(string.Format("actronque{0}/zone{1}/temperature", unit.Serial, iIndex), unit.Zones[iIndex].Temperature.ToString("N1"));
 					MQTT.SendMessage(string.Format("actronque{0}/zone{1}/position", unit.Serial, iIndex), (unit.Zones[iIndex].Position * 5).ToString());
 
