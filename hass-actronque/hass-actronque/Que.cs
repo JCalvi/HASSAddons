@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.11)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.12)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -1479,6 +1479,8 @@ namespace HMX.HASSActronQue
 						state_topic = $"actronque{unit.Serial}/cleanfilter",
 						payload_on = "on",
 						payload_off = "off",
+						state_on = "on",
+						state_off = "off",
 						device_class = "problem",
 						icon = "mdi:air-filter",
 						device = deviceInfo
@@ -1538,6 +1540,8 @@ namespace HMX.HASSActronQue
 						command_topic = $"actronque{strDeviceNameModifier}/controlallzones/set",
 						payload_on = "on",
 						payload_off = "off",
+						state_on = "on",
+						state_off = "off",
 						icon = "mdi:home-group",
 						device = deviceInfo
 					}));
@@ -1554,6 +1558,8 @@ namespace HMX.HASSActronQue
 						command_topic = $"actronque{strDeviceNameModifier}/awaymode/set",
 						payload_on = "on",
 						payload_off = "off",
+						state_on = "on",
+						state_off = "off",						
 						icon = "mdi:home-export-outline",
 						device = deviceInfo
 					}));
@@ -1570,6 +1576,8 @@ namespace HMX.HASSActronQue
 						command_topic = $"actronque{strDeviceNameModifier}/quietmode/set",
 						payload_on = "on",
 						payload_off = "off",
+						state_on = "on",
+						state_off = "off",						
 						icon = "mdi:volume-off",
 						device = deviceInfo
 					}));
@@ -1586,6 +1594,8 @@ namespace HMX.HASSActronQue
 						command_topic = $"actronque{strDeviceNameModifier}/constantfanmode/set",
 						payload_on = "on",
 						payload_off = "off",
+						state_on = "on",
+						state_off = "off",						
 						icon = "mdi:fan-auto",
 						device = deviceInfo
 					}));
@@ -1608,6 +1618,8 @@ namespace HMX.HASSActronQue
 								command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/set",
 								payload_on = "on",
 								payload_off = "off",
+								state_on = "on",
+								state_off = "off",
 								icon = "mdi:home-thermometer",
 								device = deviceInfo
 							}));
