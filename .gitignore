@@ -1,0 +1,4 @@
+# Build artifacts - do not track BuildDate.txt
+**/Resources/BuildDate.txt
+**/Recources/BuildDate.txt
+BuildDate.txt
