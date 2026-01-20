@@ -22,6 +22,7 @@
 		"QuePassword": "quepassword",
 		"QueLogs": true,
 		"SeparateHeatCoolTargets": false,
+		"ShowBatterySensors": true,
 		"DeviceName": "HASSActronQue"
 	},
 	"schema": {
@@ -36,6 +37,7 @@
 		"QueSerial": "str?",
 		"QueLogs": "bool?",
 		"SeparateHeatCoolTargets": "bool?",
+		"ShowBatterySensors": "bool?",
 		"DeviceName": "str?"
 	}
 }

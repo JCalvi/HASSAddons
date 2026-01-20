@@ -29,7 +29,7 @@ namespace HMX.HASSActronQue
 
 		// Changed to Task so callers can observe failures
 		// Note: eventStop is the ManualResetEvent used elsewhere
-		public static async Task Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, ManualResetEvent eventStop)
+		public static async Task Initialise(string strQueUser, string strQuePassword, string strSerialNumber, string strDeviceName, bool bQueLogs, bool bPerZoneControls, bool bSeparateHeatCool, bool bShowBatterySensors, ManualResetEvent eventStop)
 		{
 			string strDeviceUniqueIdentifierInput;
 			string[] strTokens;
@@ -43,6 +43,7 @@ namespace HMX.HASSActronQue
 			_bQueLogging = bQueLogs;
 			_bPerZoneControls = bPerZoneControls;
 			_bSeparateHeatCool = bSeparateHeatCool;
+			_bShowBatterySensors = bShowBatterySensors;
 			_eventStop = eventStop;
 
 			_httpClientAuth.BaseAddress = new Uri(_strBaseURLQue);
@@ -1593,21 +1594,24 @@ namespace HMX.HASSActronQue
 									device = deviceInfo
 								}));
 
-							foreach (string sensor in zone.Sensors.Keys)
+							if (_bShowBatterySensors)
 							{
-								// Zone sensor battery level
-								MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor),
-									JsonConvert.SerializeObject(new
-									{
-										name = $"{zone.Name} Sensor {sensor} Battery",
-										unique_id = $"{unit.Serial}-z{iZone}-sensor{sensor}-battery",
-										default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_sensor_{sensor}_battery",
-										state_topic = $"actronque{unit.Serial}/zone{iZone}sensor{sensor}/battery",
-										device_class = "battery",
-										unit_of_measurement = "%",
-										value_template = "{{ value | round(1) }}",
-										device = deviceInfo
-									}));
+								foreach (string sensor in zone.Sensors.Keys)
+								{
+									// Zone sensor battery level
+									MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}sensor{2}battery/config", strHANameModifier, iZone, sensor),
+										JsonConvert.SerializeObject(new
+										{
+											name = $"{zone.Name} Sensor {sensor} Battery",
+											unique_id = $"{unit.Serial}-z{iZone}-sensor{sensor}-battery",
+											default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_sensor_{sensor}_battery",
+											state_topic = $"actronque{unit.Serial}/zone{iZone}sensor{sensor}/battery",
+											device_class = "battery",
+											unit_of_measurement = "%",
+											value_template = "{{ value | round(1) }}",
+											device = deviceInfo
+										}));
+								}
 							}
 						}
 					}
