@@ -1572,6 +1572,27 @@ namespace HMX.HASSActronQue
 							MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/temperature/low/set", unit.Serial, iZone);
 							MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/mode/set", unit.Serial, iZone);
 
+							// Per-zone climate entity
+							MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/zone{1}/config", strHANameModifier, iZone),
+								JsonConvert.SerializeObject(new
+								{
+									name = $"{zone.Name}",
+									unique_id = $"{unit.Serial}-z{iZone}-climate",
+									default_entity_id = $"climate.actronque_{unit.Serial}_zone_{iZone}",
+									mode_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/mode/set",
+									mode_state_topic = $"actronque{unit.Serial}/zone{iZone}/mode",
+									temperature_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/temperature/set",
+									temperature_state_topic = $"actronque{unit.Serial}/zone{iZone}/settemperature",
+									current_temperature_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
+									current_hvac_action_topic = $"actronque{unit.Serial}/zone{iZone}/compressor",
+									modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
+									min_temp = 10,
+									max_temp = 32,
+									temp_step = 0.5,
+									temperature_unit = "C",
+									device = deviceInfo
+								}));
+
 							foreach (string sensor in zone.Sensors.Keys)
 							{
 								// Zone sensor battery level
