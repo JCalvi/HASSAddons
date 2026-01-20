@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.8)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.9)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -1570,7 +1570,7 @@ namespace HMX.HASSActronQue
 							{
 								name = $"{zone.Name}",
 								unique_id = $"{unit.Serial}-z{iZone}s",
-								default_entity_id = $"switch.actronque_{unit.Serial}_zone_{iZone}",
+								default_entity_id = $"switch.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}",
 								state_topic = $"actronque{unit.Serial}/zone{iZone}",
 								command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/set",
 								payload_on = "on",
@@ -1586,7 +1586,7 @@ namespace HMX.HASSActronQue
 							{
 								name = $"{zone.Name} Temperature",
 								unique_id = $"{unit.Serial}-z{iZone}t",
-								default_entity_id = $"sensor.actronque_{unit. Serial}_zone_{iZone}_temperature",
+								default_entity_id = $"sensor.actronque_{unit. Serial}_zone_{iZone}_{SanitizeName(zone.Name)}_temperature",
 								state_topic = $"actronque{unit. Serial}/zone{iZone}/temperature",
 								device_class = "temperature",
 								unit_of_measurement = "°C",
@@ -1595,12 +1595,12 @@ namespace HMX.HASSActronQue
 							}));
 							
 						// Zone damper position sensor
-						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}/position/config", strHANameModifier, iZone),
+						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}position/config", strHANameModifier, iZone),
 							JsonConvert.SerializeObject(new
 							{
 								name = $"{zone.Name} Damper Position",
 								unique_id = $"{unit.Serial}-z{iZone}-position",
-								default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_damper_position",
+								default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}_damper_position",
 								state_topic = $"actronque{unit.Serial}/zone{iZone}/position",
 								unit_of_measurement = "%",
 								icon = "mdi:valve",
@@ -1912,6 +1912,12 @@ namespace HMX.HASSActronQue
 
 			return dblSetTemperature;
 		}
+		
+		private static string SanitizeName(string name)
+		{
+			// Convert to lowercase, replace spaces/special chars with underscores, trim extra underscores
+			return System. Text.RegularExpressions. Regex.Replace(name.ToLower(), @"[^a-z0-9_]", "_").Trim('_');
+		}		
 
 		private static void AddCommandToQueue(QueueCommand command)
 		{
