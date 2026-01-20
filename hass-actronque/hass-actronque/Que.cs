@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.10)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.11)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -1329,28 +1329,61 @@ namespace HMX.HASSActronQue
 				};
 
 				// Climate entity with complete configuration
-				MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier),
-					JsonConvert.SerializeObject(new
-					{
-						name = strAirConditionerNameMQTT,
-						unique_id = $"{unit.Serial}-AC",
-						default_entity_id = $"climate.actronque_{unit.Serial}",
-						mode_command_topic = $"actronque{strDeviceNameModifier}/mode/set",
-						mode_state_topic = $"actronque{unit.Serial}/mode",
-						temperature_command_topic = $"actronque{strDeviceNameModifier}/temperature/set",
-						temperature_state_topic = $"actronque{unit.Serial}/settemperature",
-						current_temperature_topic = $"actronque{unit.Serial}/temperature",
-						fan_mode_command_topic = $"actronque{strDeviceNameModifier}/fan/set",
-						fan_mode_state_topic = $"actronque{unit.Serial}/fanmode",
-						current_hvac_action_topic = $"actronque{unit. Serial}/compressor",
-						modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
-						fan_modes = new[] { "auto", "low", "medium", "high" },
-						min_temp = 10,
-						max_temp = 32,
-						temp_step = 0.5,
-						temperature_unit = "C",
-						device = deviceInfo
-					}));
+
+				if (_bSeparateHeatCool)
+				{
+					MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier),
+						JsonConvert.SerializeObject(new
+						{
+							name = strAirConditionerNameMQTT,
+							unique_id = $"{unit.Serial}-AC",
+							default_entity_id = $"climate.actronque_{unit.Serial}",
+							mode_command_topic = $"actronque{strDeviceNameModifier}/mode/set",
+							mode_state_topic = $"actronque{unit.Serial}/mode",
+							// advertise separate high/low
+							temperature_high_command_topic = $"actronque{strDeviceNameModifier}/temperature/high/set",
+							temperature_low_command_topic = $"actronque{strDeviceNameModifier}/temperature/low/set",
+							temperature_high_state_topic = $"actronque{unit.Serial}/settemperature/high",
+							temperature_low_state_topic = $"actronque{unit.Serial}/settemperature/low",
+							current_temperature_topic = $"actronque{unit.Serial}/temperature",
+							fan_mode_command_topic = $"actronque{strDeviceNameModifier}/fan/set",
+							fan_mode_state_topic = $"actronque{unit.Serial}/fanmode",
+							current_hvac_action_topic = $"actronque{unit.Serial}/compressor",
+							modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
+							fan_modes = new[] { "auto", "low", "medium", "high" },
+							min_temp = 10,
+							max_temp = 32,
+							temp_step = 0.5,
+							temperature_unit = "C",
+							device = deviceInfo
+						}));
+				}
+				else
+				{
+					// existing single-temp discovery (unchanged)
+					MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/config", strHANameModifier),
+						JsonConvert.SerializeObject(new
+						{
+							name = strAirConditionerNameMQTT,
+							unique_id = $"{unit.Serial}-AC",
+							default_entity_id = $"climate.actronque_{unit.Serial}",
+							mode_command_topic = $"actronque{strDeviceNameModifier}/mode/set",
+							mode_state_topic = $"actronque{unit.Serial}/mode",
+							temperature_command_topic = $"actronque{strDeviceNameModifier}/temperature/set",
+							temperature_state_topic = $"actronque{unit.Serial}/settemperature",
+							current_temperature_topic = $"actronque{unit.Serial}/temperature",
+							fan_mode_command_topic = $"actronque{strDeviceNameModifier}/fan/set",
+							fan_mode_state_topic = $"actronque{unit.Serial}/fanmode",
+							current_hvac_action_topic = $"actronque{unit.Serial}/compressor",
+							modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
+							fan_modes = new[] { "auto", "low", "medium", "high" },
+							min_temp = 10,
+							max_temp = 32,
+							temp_step = 0.5,
+							temperature_unit = "C",
+							device = deviceInfo
+						}));
+				}
 
 				// Humidity sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier),
@@ -1615,25 +1648,54 @@ namespace HMX.HASSActronQue
 							MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/mode/set", unit.Serial, iZone);
 
 							// Per-zone climate entity
-							MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/zone{1}/config", strHANameModifier, iZone),
-								JsonConvert.SerializeObject(new
-								{
-									name = $"{zone.Name}",
-									unique_id = $"{unit.Serial}-z{iZone}-climate",
-									default_entity_id = $"climate.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}",
-									mode_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/mode/set",
-									mode_state_topic = $"actronque{unit.Serial}/zone{iZone}/mode",
-									temperature_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/temperature/set",
-									temperature_state_topic = $"actronque{unit.Serial}/zone{iZone}/settemperature",
-									current_temperature_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
-									current_hvac_action_topic = $"actronque{unit.Serial}/zone{iZone}/compressor",
-									modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
-									min_temp = 10,
-									max_temp = 32,
-									temp_step = 0.5,
-									temperature_unit = "C",
-									device = deviceInfo
-								}));
+							if (_bSeparateHeatCool)
+							{
+								MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/zone{1}/config", strHANameModifier, iZone),
+									JsonConvert.SerializeObject(new
+									{
+										name = $"{zone.Name}",
+										unique_id = $"{unit.Serial}-z{iZone}-climate",
+										default_entity_id = $"climate.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}",
+										mode_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/mode/set",
+										mode_state_topic = $"actronque{unit.Serial}/zone{iZone}/mode",
+										// advertise separate high/low setpoint command & state topics
+										temperature_high_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/temperature/high/set",
+										temperature_low_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/temperature/low/set",
+										temperature_high_state_topic = $"actronque{unit.Serial}/zone{iZone}/settemperature/high",
+										temperature_low_state_topic = $"actronque{unit.Serial}/zone{iZone}/settemperature/low",
+										current_temperature_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
+										current_hvac_action_topic = $"actronque{unit.Serial}/zone{iZone}/compressor",
+										modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
+										min_temp = 10,
+										max_temp = 32,
+										temp_step = 0.5,
+										temperature_unit = "C",
+										device = deviceInfo
+									}));
+							}
+							else
+							{
+								// existing single-temperature discovery (unchanged)
+								MQTT.SendMessage(string.Format("homeassistant/climate/actronque{0}/zone{1}/config", strHANameModifier, iZone),
+									JsonConvert.SerializeObject(new
+									{
+										name = $"{zone.Name}",
+										unique_id = $"{unit.Serial}-z{iZone}-climate",
+										default_entity_id = $"climate.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}",
+										mode_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/mode/set",
+										mode_state_topic = $"actronque{unit.Serial}/zone{iZone}/mode",
+										temperature_command_topic = $"actronque{strDeviceNameModifier}/zone{iZone}/temperature/set",
+										temperature_state_topic = $"actronque{unit.Serial}/zone{iZone}/settemperature",
+										current_temperature_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
+										current_hvac_action_topic = $"actronque{unit.Serial}/zone{iZone}/compressor",
+										modes = new[] { "off", "auto", "cool", "heat", "fan_only" },
+										min_temp = 10,
+										max_temp = 32,
+										temp_step = 0.5,
+										temperature_unit = "C",
+										device = deviceInfo
+									}));
+							}
 
 							if (_bShowBatterySensors)
 							{
