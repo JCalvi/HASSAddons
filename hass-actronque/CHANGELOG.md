@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 - json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
 - option to add batteries (these sensors are useless for hard wired installs).
-- more robust state handling
+- more robust state handling.
+- central ExecuteRequestAsync helper.
 
 ### Removed
 - process partial status overloads.

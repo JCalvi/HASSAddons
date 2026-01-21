@@ -152,5 +152,56 @@ namespace HMX.HASSActronQue
 
             return response;
         }
+
+		private static async Task<(bool Success, string Content, System.Net.HttpStatusCode StatusCode, Exception Error)> ExecuteRequestAsync(
+			Func<HttpRequestMessage> requestFactory,
+			HttpClient client,
+			int timeoutSeconds = -1,
+			long requestId = 0)
+		{
+			HttpResponseMessage httpResponse = null;
+			CancellationTokenSource cts = null;
+
+			try
+			{
+				cts = new CancellationTokenSource();
+
+				if (timeoutSeconds > 0)
+					cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+				else if (_iCancellationTime > 0)
+					cts.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
+
+				// SendWithRetriesAsync is the repo's resilient helper (returns HttpResponseMessage)
+				httpResponse = await SendWithRetriesAsync(requestFactory, client, -1, cts.Token).ConfigureAwait(false);
+
+				if (httpResponse == null)
+				{
+					return (false, null, 0, new Exception("SendWithRetriesAsync returned null HttpResponseMessage"));
+				}
+
+				var content = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+				return (httpResponse.IsSuccessStatusCode, content, httpResponse.StatusCode, null);
+			}
+			catch (OperationCanceledException oce)
+			{
+				Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, oce, "HTTP operation timed out or was cancelled.");
+				return (false, null, 0, oce);
+			}
+			catch (Exception ex)
+			{
+				if (ex.InnerException != null)
+					Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, ex.InnerException, "Exception during HTTP request.");
+				else
+					Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, ex, "Exception during HTTP request.");
+
+				return (false, null, 0, ex);
+			}
+			finally
+			{
+				try { httpResponse?.Dispose(); } catch { }
+				try { cts?.Dispose(); } catch { }
+			}
+		}
+		
     }
 }

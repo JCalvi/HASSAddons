@@ -23,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.15)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.17)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -116,22 +116,18 @@ namespace HMX.HASSActronQue
 
 		private static async Task<bool> GeneratePairingToken()
 		{
-			HttpResponseMessage httpResponse = null;
-			CancellationTokenSource cancellationToken = null;
-			Dictionary<string, string> dtFormContent = new Dictionary<string, string>();
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/user-devices";
-			string strResponse;
 			bool bRetVal = true;
 
 			Logging.WriteDebugLog("Que.GeneratePairingToken()");
 
-			if (_strDeviceUniqueIdentifier == "")
+			if (string.IsNullOrEmpty(_strDeviceUniqueIdentifier))
 			{
 				_strDeviceUniqueIdentifier = GenerateDeviceId();
 				Logging.WriteDebugLog("Que.GeneratePairingToken() Device Id: {0}", _strDeviceUniqueIdentifier);
 
-				// Update Device Id File
+				// Update Device Id File (best-effort)
 				try
 				{
 					await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier)).ConfigureAwait(false);
@@ -142,65 +138,55 @@ namespace HMX.HASSActronQue
 				}
 			}
 
-			dtFormContent.Add("username", _strQueUser);
-			dtFormContent.Add("password", _strQuePassword);
-			dtFormContent.Add("deviceName", _strDeviceName);
-			dtFormContent.Add("client", "ios");
-			dtFormContent.Add("deviceUniqueIdentifier", _strDeviceUniqueIdentifier);
+			var dtFormContent = new Dictionary<string, string>
+			{
+				["username"] = _strQueUser,
+				["password"] = _strQuePassword,
+				["deviceName"] = _strDeviceName,
+				["client"] = "ios",
+				["deviceUniqueIdentifier"] = _strDeviceUniqueIdentifier
+			};
+
+			var result = await ExecuteRequestAsync(() =>
+			{
+				var req = new HttpRequestMessage(HttpMethod.Post, strPageURL)
+				{
+					Content = new FormUrlEncodedContent(dtFormContent)
+				};
+				return req;
+			}, _httpClientAuth, -1, lRequestId).ConfigureAwait(false);
+
+			if (!result.Success)
+			{
+				if (result.StatusCode != 0)
+					Logging.WriteDebugLogError("Que.GeneratePairingToken()", lRequestId, $"Unable to process API response: {result.StatusCode}");
+				bRetVal = false;
+				goto Cleanup;
+			}
 
 			try
 			{
-				cancellationToken = new CancellationTokenSource();
-				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
-
-				// Use resilient helper with retries
-				httpResponse = await SendWithRetriesAsync(() =>
+				var jsonResponse = JObject.Parse(result.Content);
+				var pairingTokenValue = (string)jsonResponse["pairingToken"];
+				if (!string.IsNullOrEmpty(pairingTokenValue))
 				{
-					var req = new HttpRequestMessage(HttpMethod.Post, strPageURL)
+					_pairingToken = new PairingToken(pairingTokenValue);
+
+					// Update Token File
+					try
 					{
-						Content = new FormUrlEncodedContent(dtFormContent)
-					};
-					return req;
-				}, _httpClientAuth, -1, cancellationToken.Token).ConfigureAwait(false);
-
-				if (httpResponse.IsSuccessStatusCode)
-				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-					var jsonResponse = JObject.Parse(strResponse);
-					var pairingTokenValue = (string)jsonResponse["pairingToken"];
-					if (!string.IsNullOrEmpty(pairingTokenValue))
-					{
-						_pairingToken = new PairingToken(pairingTokenValue);
-
-						// Update Token File
-						try
-						{
-							await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken)).ConfigureAwait(false);
-						}
-						catch (Exception eException)
-						{
-							Logging.WriteDebugLogError("Que.GeneratePairingToken()", eException, "Unable to update pairing token json file.");
-						}
+						await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken)).ConfigureAwait(false);
 					}
-					else
+					catch (Exception eException)
 					{
-						Logging.WriteDebugLogError("Que.GeneratePairingToken()", lRequestId, "pairingToken not found in response.");
-						bRetVal = false;
+						Logging.WriteDebugLogError("Que.GeneratePairingToken()", eException, "Unable to update pairing token json file.");
 					}
 				}
 				else
 				{
-					Logging.WriteDebugLogError("Que.GeneratePairingToken()", lRequestId, $"Unable to process API response: {httpResponse.StatusCode}/{httpResponse.ReasonPhrase}");
+					Logging.WriteDebugLogError("Que.GeneratePairingToken()", lRequestId, "pairingToken not found in response.");
 					bRetVal = false;
-					goto Cleanup;
 				}
-			}
-			catch (OperationCanceledException eException)
-			{
-				Logging.WriteDebugLogError("Que.GeneratePairingToken()", eException, "HTTP operation timed out.");
-				bRetVal = false;
-				goto Cleanup;
 			}
 			catch (Exception eException)
 			{
@@ -210,13 +196,9 @@ namespace HMX.HASSActronQue
 					Logging.WriteDebugLogError("Que.GeneratePairingToken()", lRequestId, eException, "Exception in HTTP response processing.");
 
 				bRetVal = false;
-				goto Cleanup;
 			}
 
 		Cleanup:
-			cancellationToken?.Dispose();
-			httpResponse?.Dispose();
-
 			if (!bRetVal)
 				_pairingToken = null;
 
@@ -225,95 +207,88 @@ namespace HMX.HASSActronQue
 
 		private static async Task<bool> GenerateBearerToken()
 		{
-			HttpResponseMessage httpResponse = null;
-			CancellationTokenSource cancellationToken = null;
-			Dictionary<string, string> dtFormContent = new Dictionary<string, string>();
-			QueToken queToken = null;
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/oauth/token";
-			string strResponse;
 			bool bRetVal = true;
 
 			Logging.WriteDebugLog("Que.GenerateBearerToken()");
 
-			dtFormContent.Add("grant_type", "refresh_token");
-			dtFormContent.Add("refresh_token", _pairingToken.Token);
-			dtFormContent.Add("client_id", "app");
-
-			try
+			var dtFormContent = new Dictionary<string, string>
 			{
-				cancellationToken = new CancellationTokenSource();
-				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
+				["grant_type"] = "refresh_token",
+				["refresh_token"] = _pairingToken?.Token ?? "",
+				["client_id"] = "app"
+			};
 
-				httpResponse = await SendWithRetriesAsync(() =>
+			var result = await ExecuteRequestAsync(() =>
+			{
+				var req = new HttpRequestMessage(HttpMethod.Post, strPageURL)
 				{
-					var req = new HttpRequestMessage(HttpMethod.Post, strPageURL)
+					Content = new FormUrlEncodedContent(dtFormContent)
+				};
+				return req;
+			}, _httpClientAuth, -1, lRequestId).ConfigureAwait(false);
+
+			if (!result.Success)
+			{
+				if (result.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+				{
+					Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, "Unauthorized - refreshing pairing token.");
+					_pairingToken = null;
+				}
+				else if (result.StatusCode == System.Net.HttpStatusCode.BadRequest)
+				{
+					System.Threading.Interlocked.Increment(ref _iFailedBearerRequests);
+
+					if (_iFailedBearerRequests == _iFailedBearerRequestMaximum)
 					{
-						Content = new FormUrlEncodedContent(dtFormContent)
-					};
-					return req;
-				}, _httpClientAuth, -1, cancellationToken.Token).ConfigureAwait(false);
-
-				if (httpResponse.IsSuccessStatusCode)
-				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-					var jsonResponse = JObject.Parse(strResponse);
-
-					queToken = new QueToken();
-					queToken.BearerToken = (string)jsonResponse["access_token"];
-					var expiresInStr = (string)jsonResponse["expires_in"];
-					if (int.TryParse(expiresInStr, out int expiresIn))
-						queToken.TokenExpires = DateTime.Now.AddSeconds(expiresIn);
+						Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, "BadRequest - reached max failed attempts, clearing pairing token.");
+						_pairingToken = null;
+					}
 					else
-						queToken.TokenExpires = DateTime.Now.AddSeconds(3600); // fallback
-
-					_queToken = queToken;
-
-					_httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
-					_httpClientCommands.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
-
-					// Update Token File
-					try
-					{
-						await File.WriteAllTextAsync(_strBearerTokenFile, JsonConvert.SerializeObject(_queToken)).ConfigureAwait(false);
-					}
-					catch (Exception eException)
-					{
-						Logging.WriteDebugLogError("Que.GenerateBearerToken()", eException, "Unable to update bearer token json file.");
-					}
+						Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, $"BadRequest attempt {_iFailedBearerRequests} of {_iFailedBearerRequestMaximum}");
+				}
+				else if (result.StatusCode != 0)
+				{
+					Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, $"HTTP error: {result.StatusCode}/{result.Error?.Message}");
 				}
 				else
 				{
-					if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-					{
-						Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, "Unauthorized - refreshing pairing token.");
-						_pairingToken = null;
-					}
-					else if (httpResponse.StatusCode == System.Net.HttpStatusCode.BadRequest)
-					{
-						System.Threading.Interlocked.Increment(ref _iFailedBearerRequests);
-
-						if (_iFailedBearerRequests == _iFailedBearerRequestMaximum)
-						{
-							Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, "BadRequest - reached max failed attempts, clearing pairing token.");
-							_pairingToken = null;
-						}
-						else
-							Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, $"BadRequest attempt {_iFailedBearerRequests} of {_iFailedBearerRequestMaximum}");
-					}
-					else
-						Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, $"HTTP error: {httpResponse.StatusCode}/{httpResponse.ReasonPhrase}");
-
-					bRetVal = false;
-					goto Cleanup;
+					// Exception already logged by ExecuteRequestAsync
 				}
-			}
-			catch (OperationCanceledException eException)
-			{
-				Logging.WriteDebugLogError("Que.GenerateBearerToken()", eException, "HTTP operation timed out.");
 				bRetVal = false;
 				goto Cleanup;
+			}
+
+			try
+			{
+				var jsonResponse = JObject.Parse(result.Content);
+
+				var queToken = new QueToken
+				{
+					BearerToken = (string)jsonResponse["access_token"]
+				};
+
+				var expiresInStr = (string)jsonResponse["expires_in"];
+				if (int.TryParse(expiresInStr, out int expiresIn))
+					queToken.TokenExpires = DateTime.Now.AddSeconds(expiresIn);
+				else
+					queToken.TokenExpires = DateTime.Now.AddSeconds(3600); // fallback
+
+				_queToken = queToken;
+
+				_httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
+				_httpClientCommands.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
+
+				// Update Token File
+				try
+				{
+					await File.WriteAllTextAsync(_strBearerTokenFile, JsonConvert.SerializeObject(_queToken)).ConfigureAwait(false);
+				}
+				catch (Exception eException)
+				{
+					Logging.WriteDebugLogError("Que.GenerateBearerToken()", eException, "Unable to update bearer token json file.");
+				}
 			}
 			catch (Exception eException)
 			{
@@ -323,19 +298,15 @@ namespace HMX.HASSActronQue
 					Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, eException, "Exception in HTTP response processing.");
 
 				bRetVal = false;
-				goto Cleanup;
 			}
 
-			// Reset Failed Request Counter
-			_iFailedBearerRequests = 0;
-
-		Cleanup:
-			cancellationToken?.Dispose();
-			httpResponse?.Dispose();
-
-			if (!bRetVal)
+			// Reset Failed Request Counter if success
+			if (bRetVal)
+				_iFailedBearerRequests = 0;
+			else
 				_queToken = null;
 
+		Cleanup:
 			return bRetVal;
 		}
 
@@ -398,11 +369,8 @@ namespace HMX.HASSActronQue
 		private async static Task<bool> GetAirConditionerSerial()
 		{
 			AirConditionerUnit unit;
-			HttpResponseMessage httpResponse = null;
-			CancellationTokenSource cancellationToken = null;
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/ac-systems?includeAcms=true&includeNeo=true";
-			string strResponse;
 			bool bRetVal = true;
 			string strSerial, strDescription, strType;
 
@@ -411,79 +379,65 @@ namespace HMX.HASSActronQue
 			if (!IsTokenValid())
 			{
 				bRetVal = false;
-				goto Cleanup;
+				return bRetVal;
+			}
+
+			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _httpClient, -1, lRequestId).ConfigureAwait(false);
+
+			if (!result.Success)
+			{
+				if (result.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+				{
+					Logging.WriteDebugLogError("Que.GetAirConditionerSerial()", lRequestId, "Unauthorized response.");
+					_eventAuthenticationFailure.Set();
+				}
+				else
+					Logging.WriteDebugLogError("Que.GetAirConditionerSerial()", lRequestId, $"HTTP error {result.StatusCode}");
+
+				bRetVal = false;
+				return bRetVal;
 			}
 
 			try
 			{
-				cancellationToken = new CancellationTokenSource();
-				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
+				var strResponse = result.Content;
 
-				httpResponse = await SendWithRetriesAsync(() =>
+				// normalize key name that might differ
+				strResponse = strResponse.Replace("ac-system", "acsystem");
+
+				if (!strResponse.Contains("acsystem"))
 				{
-					return new HttpRequestMessage(HttpMethod.Get, strPageURL);
-				}, _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
+					Logging.WriteDebugLog("Que.GetAirConditionerSerial() No data returned from Que service - check credentials.");
+					bRetVal = false;
+					return bRetVal;
+				}
 
-				if (httpResponse.IsSuccessStatusCode)
+				var jsonResponse = JObject.Parse(strResponse);
+				var embedded = jsonResponse["_embedded"] as JObject;
+				if (embedded != null)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-					// normalize key name that might differ
-					strResponse = strResponse.Replace("ac-system", "acsystem");
-
-					if (!strResponse.Contains("acsystem"))
+					var acsystems = embedded["acsystem"] as JArray;
+					if (acsystems != null)
 					{
-						Logging.WriteDebugLog("Que.GetAirConditionerSerial() No data returned from Que service - check credentials.");
-						bRetVal = false;
-						goto Cleanup;
-					}
-
-					var jsonResponse = JObject.Parse(strResponse);
-					var embedded = jsonResponse["_embedded"] as JObject;
-					if (embedded != null)
-					{
-						var acsystems = embedded["acsystem"] as JArray;
-						if (acsystems != null)
+						for (int iIndex = 0; iIndex < acsystems.Count; iIndex++)
 						{
-							for (int iIndex = 0; iIndex < acsystems.Count; iIndex++)
+							var ac = acsystems[iIndex];
+							strSerial = (string)ac["serial"];
+							strDescription = (string)ac["description"];
+							strType = (string)ac["type"];
+
+							Logging.WriteDebugLog("Que.GetAirConditionerSerial() Found AC: {0} - {1} ({2})", strSerial, strDescription, strType);
+
+							if (_strSerialNumber == "" || _strSerialNumber == strSerial)
 							{
-								var ac = acsystems[iIndex];
-								strSerial = (string)ac["serial"];
-								strDescription = (string)ac["description"];
-								strType = (string)ac["type"];
+								unit = new AirConditionerUnit(strDescription?.Trim() ?? "Unknown", strSerial);
+								_airConditionerUnits.Add(strSerial, unit);
 
-								Logging.WriteDebugLog("Que.GetAirConditionerSerial() Found AC: {0} - {1} ({2})", strSerial, strDescription, strType);
-
-								if (_strSerialNumber == "" || _strSerialNumber == strSerial)
-								{
-									unit = new AirConditionerUnit(strDescription?.Trim() ?? "Unknown", strSerial);
-									_airConditionerUnits.Add(strSerial, unit);
-
-									Logging.WriteDebugLog("Que.GetAirConditionerSerial() Monitoring AC: {0}", strSerial);
-								}
+								Logging.WriteDebugLog("Que.GetAirConditionerSerial() Monitoring AC: {0}", strSerial);
 							}
 						}
 					}
 				}
-				else
-				{
-					if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-					{
-						Logging.WriteDebugLogError("Que.GetAirConditionerSerial()", lRequestId, "Unauthorized response.");
-						_eventAuthenticationFailure.Set();
-					}
-					else
-						Logging.WriteDebugLogError("Que.GetAirConditionerSerial()", lRequestId, $"HTTP error {httpResponse.StatusCode}");
-
-					bRetVal = false;
-					goto Cleanup;
-				}
-			}
-			catch (OperationCanceledException eException)
-			{
-				Logging.WriteDebugLogError("Que.GetAirConditionerSerial()", lRequestId, eException, "Operation timed out.");
-				bRetVal = false;
-				goto Cleanup;
 			}
 			catch (Exception eException)
 			{
@@ -492,12 +446,7 @@ namespace HMX.HASSActronQue
 				else
 					Logging.WriteDebugLogError("Que.GetAirConditionerSerial()", lRequestId, eException, "Exception.");
 				bRetVal = false;
-				goto Cleanup;
 			}
-
-		Cleanup:
-			cancellationToken?.Dispose();
-			httpResponse?.Dispose();
 
 			return bRetVal;
 		}
@@ -505,7 +454,6 @@ namespace HMX.HASSActronQue
 		private async static Task<bool> GetAirConditionerZones()
 		{
 			HttpResponseMessage httpResponse = null;
-			CancellationTokenSource cancellationToken = null;
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/ac-systems/status/latest?serial=";
 			string strResponse;
@@ -522,92 +470,78 @@ namespace HMX.HASSActronQue
 				if (!IsTokenValid())
 				{
 					bRetVal = false;
-					goto Cleanup;
+					return bRetVal;
+				}
+
+				var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _httpClient, -1, lRequestId).ConfigureAwait(false);
+
+				if (!result.Success)
+				{
+					if (result.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+					{
+						Logging.WriteDebugLogError("Que.GetAirConditionerZones()", lRequestId, "Unauthorized response.");
+						_eventAuthenticationFailure.Set();
+					}
+					else
+						Logging.WriteDebugLogError("Que.GetAirConditionerZones()", lRequestId, $"HTTP error {result.StatusCode}");
+
+					bRetVal = false;
+					return bRetVal;
 				}
 
 				try
 				{
-					cancellationToken = new CancellationTokenSource();
-					cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
+					strResponse = result.Content;
+					var jsonResponse = JObject.Parse(strResponse);
 
-					httpResponse = await SendWithRetriesAsync(() =>
+					// Zones
+					if (jsonResponse.TryGetValue("lastKnownState", out JToken lastKnownStateToken) && lastKnownStateToken is JObject lastKnownState && lastKnownState.TryGetValue("RemoteZoneInfo", out JToken remoteZoneInfoToken) && remoteZoneInfoToken is JArray remoteZoneInfo)
 					{
-						return new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial);
-					}, _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
-
-					if (httpResponse.IsSuccessStatusCode)
-					{
-						strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-						var jsonResponse = JObject.Parse(strResponse);
-
-						// Zones
-						if (jsonResponse.TryGetValue("lastKnownState", out JToken lastKnownStateToken) && lastKnownStateToken is JObject lastKnownState && lastKnownState.TryGetValue("RemoteZoneInfo", out JToken remoteZoneInfoToken) && remoteZoneInfoToken is JArray remoteZoneInfo)
+						for (int iZoneIndex = 0; iZoneIndex < remoteZoneInfo.Count; iZoneIndex++)
 						{
-							for (int iZoneIndex = 0; iZoneIndex < remoteZoneInfo.Count; iZoneIndex++)
+							var zoneInfo = remoteZoneInfo[iZoneIndex];
+							bool exists = false;
+							var nvExistsToken = zoneInfo["NV_Exists"];
+							if (nvExistsToken != null)
+								bool.TryParse(nvExistsToken.ToString(), out exists);
+
+							if (exists)
 							{
-								var zoneInfo = remoteZoneInfo[iZoneIndex];
-								bool exists = false;
-								var nvExistsToken = zoneInfo["NV_Exists"];
-								if (nvExistsToken != null)
-									bool.TryParse(nvExistsToken.ToString(), out exists);
+								zone = new AirConditionerZone();
+								zone.Sensors = new Dictionary<string, AirConditionerSensor>();
+								zone.Exists = true;
 
-								if (exists)
+								zone.Name = (string)zoneInfo["NV_Title"];
+								if (string.IsNullOrEmpty(zone.Name))
+									zone.Name = "Zone " + (iZoneIndex + 1);
+								zone.Temperature = (double?)(zoneInfo["LiveTemp_oC"]) ?? 0.0;
+
+								if (zoneInfo is JObject z && z.TryGetValue("Sensors", out JToken sensorsToken) && sensorsToken is JObject sensorsObj)
 								{
-									zone = new AirConditionerZone();
-									zone.Sensors = new Dictionary<string, AirConditionerSensor>();
-									zone.Exists = true;
-
-									zone.Name = (string)zoneInfo["NV_Title"];
-									if (string.IsNullOrEmpty(zone.Name))
-										zone.Name = "Zone " + (iZoneIndex + 1);
-									zone.Temperature = (double?)(zoneInfo["LiveTemp_oC"]) ?? 0.0;
-
-									if (zoneInfo is JObject z && z.TryGetValue("Sensors", out JToken sensorsToken) && sensorsToken is JObject sensorsObj)
+									foreach (JProperty sensorJson in sensorsObj.Properties())
 									{
-										foreach (JProperty sensorJson in sensorsObj.Properties())
-										{
-											sensor = new AirConditionerSensor();
-											sensor.Name = zone.Name + " Sensor " + sensorJson.Name;
-											sensor.Serial = sensorJson.Name;
-											zone.Sensors.Add(sensorJson.Name, sensor);
-										}
+										sensor = new AirConditionerSensor();
+										sensor.Name = zone.Name + " Sensor " + sensorJson.Name;
+										sensor.Serial = sensorJson.Name;
+										zone.Sensors.Add(sensorJson.Name, sensor);
 									}
 								}
-								else
-								{
-									zone = new AirConditionerZone();
-									zone.Sensors = new Dictionary<string, AirConditionerSensor>();
-									zone.Exists = false;
-								}
-
-								unit.Zones.Add(iZoneIndex + 1, zone);
-								_iZoneCount++;
 							}
-						}
-						else
-						{
-							Logging.WriteDebugLog("Que.GetAirConditionerZones() No zone data returned; will retry.");
+							else
+							{
+								zone = new AirConditionerZone();
+								zone.Sensors = new Dictionary<string, AirConditionerSensor>();
+								zone.Exists = false;
+							}
+
+							unit.Zones.Add(iZoneIndex + 1, zone);
+							_iZoneCount++;
 						}
 					}
 					else
 					{
-						if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-						{
-							Logging.WriteDebugLogError("Que.GetAirConditionerZones()", lRequestId, "Unauthorized response.");
-							_eventAuthenticationFailure.Set();
-						}
-						else
-							Logging.WriteDebugLogError("Que.GetAirConditionerZones()", lRequestId, $"HTTP error {httpResponse.StatusCode}");
-
-						bRetVal = false;
-						goto Cleanup;
+						Logging.WriteDebugLog("Que.GetAirConditionerZones() No zone data returned; will retry.");
 					}
-				}
-				catch (OperationCanceledException eException)
-				{
-					Logging.WriteDebugLogError("Que.GetAirConditionerZones()", lRequestId, eException, "Operation timed out.");
-					bRetVal = false;
-					goto Cleanup;
 				}
 				catch (Exception eException)
 				{
@@ -616,12 +550,8 @@ namespace HMX.HASSActronQue
 					else
 						Logging.WriteDebugLogError("Que.GetAirConditionerZones()", lRequestId, eException, "Exception.");
 					bRetVal = false;
-					goto Cleanup;
+					return bRetVal;
 				}
-
-			Cleanup:
-				cancellationToken?.Dispose();
-				httpResponse?.Dispose();
 			}
 
 			return bRetVal;
@@ -629,62 +559,48 @@ namespace HMX.HASSActronQue
 
 		private async static Task<UpdateItems> GetAirConditionerFullStatus(AirConditionerUnit unit)
 		{
-			HttpResponseMessage httpResponse = null;
-			CancellationTokenSource cancellationToken = null;
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/ac-systems/status/latest?serial=";
-			string strResponse;
 			UpdateItems updateItems = UpdateItems.None;
 			if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() for unit {0}", unit.Serial);
 
 			if (!IsTokenValid())
-				goto Cleanup;
+				return UpdateItems.None;
+
+			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _httpClient, -1, lRequestId).ConfigureAwait(false);
+
+			if (!result.Success)
+			{
+				if (result.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+				{
+					Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, "Unauthorized response.");
+					_eventAuthenticationFailure.Set();
+				}
+				else
+					Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, $"HTTP error {result.StatusCode}");
+
+				return UpdateItems.None;
+			}
 
 			try
 			{
-				cancellationToken = new CancellationTokenSource();
-				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
+				var strResponse = result.Content;
+				if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() response received");
 
-				httpResponse = await SendWithRetriesAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
-
-				if (httpResponse.IsSuccessStatusCode)
+				lock (_oLockData)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-					if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerFullStatus() response received");
-
-					lock (_oLockData)
-					{
-						unit.Data.LastUpdated = DateTime.Now;
-					}
-
-					var jsonResponse = JObject.Parse(strResponse);
-
-					var lastKnownState = jsonResponse["lastKnownState"] as JObject ?? new JObject();
-
-					ProcessFullStatus(lRequestId, unit, lastKnownState);
-
-					// mark all items as updated (main + zones present)
-					updateItems = UpdateItems.Main;
-					for (int i = 1; i <= 8; i++)
-						updateItems |= (UpdateItems)(1 << i);
+					unit.Data.LastUpdated = DateTime.Now;
 				}
-				else
-				{
-					if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-					{
-						Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, "Unauthorized response.");
-						_eventAuthenticationFailure.Set();
-					}
-					else
-						Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, $"HTTP error {httpResponse.StatusCode}");
 
-					goto Cleanup;
-				}
-			}
-			catch (OperationCanceledException eException)
-			{
-				Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, eException, "Operation timed out.");
-				goto Cleanup;
+				var jsonResponse = JObject.Parse(strResponse);
+				var lastKnownState = jsonResponse["lastKnownState"] as JObject ?? new JObject();
+
+				ProcessFullStatus(lRequestId, unit, lastKnownState);
+
+				// mark all items as updated (main + zones present)
+				updateItems = UpdateItems.Main;
+				for (int i = 1; i <= 8; i++)
+					updateItems |= (UpdateItems)(1 << i);
 			}
 			catch (Exception eException)
 			{
@@ -692,12 +608,7 @@ namespace HMX.HASSActronQue
 					Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, eException.InnerException, "Exception.");
 				else
 					Logging.WriteDebugLogError("Que.GetAirConditionerFullStatus()", lRequestId, eException, "Exception.");
-				goto Cleanup;
 			}
-
-		Cleanup:
-			cancellationToken?.Dispose();
-			httpResponse?.Dispose();
 
 			return updateItems;
 		}
@@ -885,236 +796,141 @@ namespace HMX.HASSActronQue
 
 		private async static Task<UpdateItems> GetAirConditionerEvents(AirConditionerUnit unit)
 		{
-			HttpResponseMessage httpResponse = null;
-			CancellationTokenSource cancellationToken = null;
 			long lRequestId = RequestManager.GetRequestId();
-			string strPageURL, strPageURLFirstEvent = "api/v0/client/ac-systems/events/latest?serial=";
-			string strResponse;
+			string strPageURLFirstEvent = "api/v0/client/ac-systems/events/latest?serial=";
+			string strPageURL = string.IsNullOrEmpty(unit.NextEventURL) ? strPageURLFirstEvent + unit.Serial : unit.NextEventURL;
 			bool bRetVal = true;
 			string strEventType;
 			int iIndex = 0;
 			UpdateItems updateItems = UpdateItems.None;
 
-			strPageURL = string.IsNullOrEmpty(unit.NextEventURL) ? strPageURLFirstEvent + unit.Serial : unit.NextEventURL;
-
 			Logging.WriteDebugLog("Que.GetAirConditionerEvents() Unit: {0}", unit.Serial);
 
 			if (!IsTokenValid())
 			{
-				bRetVal = false;
-				goto Cleanup;
+				return UpdateItems.None;
+			}
+
+			// Execute the HTTP request via the centralized helper (disposes response internally)
+			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _httpClient, -1, lRequestId).ConfigureAwait(false);
+
+			if (!result.Success)
+			{
+				if (result.StatusCode == System.Net.HttpStatusCode.NotFound)
+					Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, "NotFound - check serial.");
+				else if (result.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+				{
+					Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, "Unauthorized response.");
+					_eventAuthenticationFailure.Set();
+				}
+				else
+					Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, $"HTTP error {result.StatusCode}");
+
+				unit.NextEventURL = "";
+				return UpdateItems.None;
 			}
 
 			try
 			{
-				cancellationtoken: ;
-				cancellationToken = new CancellationTokenSource();
-				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
+				var strResponse = result.Content;
 
-				httpResponse = await SendWithRetriesAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _httpClient, -1, cancellationToken.Token).ConfigureAwait(false);
-
-				if (httpResponse.IsSuccessStatusCode)
+				lock (_oLockData)
 				{
-					strResponse = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
+					unit.Data.LastUpdated = DateTime.Now;
+				}
 
-					lock (_oLockData)
+				// Normalize event key name variation from upstream
+				strResponse = strResponse.Replace("ac-newer-events", "acnewerevents");
+
+				var jsonResponse = JObject.Parse(strResponse);
+
+				var links = jsonResponse["_links"] as JObject;
+				if (links != null && links["acnewerevents"] != null)
+				{
+					unit.NextEventURL = (string)links["acnewerevents"]["href"] ?? "";
+					if (unit.NextEventURL.StartsWith("/"))
+						unit.NextEventURL = unit.NextEventURL.Substring(1);
+				}
+
+				var events = jsonResponse["events"] as JArray ?? new JArray();
+
+				for (int iEvent = events.Count - 1; iEvent >= 0; iEvent--)
+				{
+					var ev = events[iEvent] as JObject;
+					strEventType = (string)ev?["type"];
+
+					if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() Event Type: {0}", strEventType);
+
+					switch (strEventType)
 					{
-						unit.Data.LastUpdated = DateTime.Now;
-					}
-
-					strResponse = strResponse.Replace("ac-newer-events", "acnewerevents");
-
-					var jsonResponse = JObject.Parse(strResponse);
-
-					var links = jsonResponse["_links"] as JObject;
-					if (links != null && links["acnewerevents"] != null)
-					{
-						unit.NextEventURL = (string)links["acnewerevents"]["href"] ?? "";
-						if (unit.NextEventURL.StartsWith("/"))
-							unit.NextEventURL = unit.NextEventURL.Substring(1);
-					}
-
-					var events = jsonResponse["events"] as JArray ?? new JArray();
-
-					for (int iEvent = events.Count - 1; iEvent >= 0; iEvent--)
-					{
-						var ev = events[iEvent] as JObject;
-						strEventType = (string)ev?["type"];
-
-						if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() Event Type: {0}", strEventType);
-
-						switch (strEventType)
-						{
-							case "status-change-broadcast":
-								var data = ev["data"] as JObject;
-								if (data != null)
+						case "status-change-broadcast":
+							var data = ev["data"] as JObject;
+							if (data != null)
+							{
+								foreach (JProperty change in data.Properties())
 								{
-									foreach (JProperty change in data.Properties())
+									if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() Incremental Update: {0}", change.Name);
+
+									// If this change confirms a pending optimistic expectation, confirm it
+									ConfirmPendingForUnit(unit.Serial, change.Name, change.Value);
+
+									// Fast-path mapped handlers for common top-level names
+									if (_statusChangeHandlers.TryGetValue(change.Name, out var handler))
 									{
-										if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerEvents() Incremental Update: {0}", change.Name);
-
-										// If this change confirms a pending optimistic expectation, confirm it
-										ConfirmPendingForUnit(unit.Serial, change.Name, change.Value);
-
-										// use the ProcessPartialStatus mapping as in original
-										if (change.Name == "LiveAircon.CompressorMode")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorState);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "LiveAircon.CompressorCapacity")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorCapacity);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "LiveAircon.OutdoorUnit.CompPower")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CompressorPower);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "UserAirconSettings.Mode")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Mode);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "UserAirconSettings.FanMode")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanMode);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "UserAirconSettings.isOn")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.On);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "UserAirconSettings.AwayMode")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.AwayMode);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "UserAirconSettings.QuietMode")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.QuietMode);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "MasterInfo.ControlAllZones")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.ControlAllZones);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "MasterInfo.LiveTemp_oC")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Temperature);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "MasterInfo.LiveOutdoorTemp_oC")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.OutdoorTemperature);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "MasterInfo.LiveHumidity_pc")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.Humidity);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "UserAirconSettings.TemperatureSetpoint_Cool_oC")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.SetTemperatureCooling);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "UserAirconSettings.TemperatureSetpoint_Heat_oC")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.SetTemperatureHeating);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "LiveAircon.CoilInlet")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CoilInletTemperature);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "LiveAircon.FanPWM")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanPWM);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "LiveAircon.FanRPM")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanRPM);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "Alerts.CleanFilter")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.CleanFilter);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name == "ACStats.NV_FanRunTime_10m")
-										{
-											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Data.FanTSFC);
-											updateItems |= UpdateItems.Main;
-										}
-										else if (change.Name.StartsWith("RemoteZoneInfo["))
-										{
-											iIndex = ExtractIndexFromBracket(change.Name);
-											if (iIndex >= 0 && unit.Zones.ContainsKey(iIndex + 1))
-											{
-												updateItems |= (UpdateItems)(1 << (iIndex + 1));
-
-												if (change.Name.EndsWith("].LiveTemp_oC"))
-													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Temperature);
-												else if (change.Name.EndsWith("].TemperatureSetpoint_Cool_oC"))
-													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureCooling);
-												else if (change.Name.EndsWith("].TemperatureSetpoint_Heat_oC"))
-													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureHeating);
-												else if (change.Name.EndsWith("].ZonePosition"))
-													ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Position);
-											}
-										}
-										else if (change.Name.StartsWith("UserAirconSettings.EnabledZones["))
-										{
-											iIndex = ExtractIndexFromBracket(change.Name);
-											if (iIndex >= 0 && unit.Zones.ContainsKey(iIndex + 1))
-											{
-												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].State);
-												updateItems |= UpdateItems.Main;
-												updateItems |= (UpdateItems)(1 << (iIndex + 1));
-											}
-										}
+										updateItems |= handler(lRequestId, unit, change.Value);
+										continue;
 									}
+
+									// Zone-indexed updates: RemoteZoneInfo[...] (per-zone values)
+									if (change.Name.StartsWith("RemoteZoneInfo["))
+									{
+										iIndex = ExtractIndexFromBracket(change.Name);
+										if (iIndex >= 0 && unit.Zones.ContainsKey(iIndex + 1))
+										{
+											updateItems |= (UpdateItems)(1 << (iIndex + 1));
+
+											if (change.Name.EndsWith("].LiveTemp_oC"))
+												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Temperature);
+											else if (change.Name.EndsWith("].TemperatureSetpoint_Cool_oC"))
+												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureCooling);
+											else if (change.Name.EndsWith("].TemperatureSetpoint_Heat_oC"))
+												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].SetTemperatureHeating);
+											else if (change.Name.EndsWith("].ZonePosition"))
+												ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].Position);
+										}
+										continue;
+									}
+
+									// EnabledZones array items (master enable flags per zone)
+									if (change.Name.StartsWith("UserAirconSettings.EnabledZones["))
+									{
+										iIndex = ExtractIndexFromBracket(change.Name);
+										if (iIndex >= 0 && unit.Zones.ContainsKey(iIndex + 1))
+										{
+											ProcessPartialStatus(lRequestId, change.Name, change.Value.ToString(), ref unit.Zones[iIndex + 1].State);
+											updateItems |= UpdateItems.Main;
+											updateItems |= (UpdateItems)(1 << (iIndex + 1));
+										}
+										continue;
+									}
+
+									// Unhandled change: optional debug log
+									if (_bQueLogging)
+										Logging.WriteDebugLog("Que.GetAirConditionerEvents() Unhandled change: {0}", change.Name);
 								}
-								break;
+							}
+							break;
 
-							case "full-status-broadcast":
-								var dataFull = ev["data"] as JObject ?? new JObject();
-								ProcessFullStatus(lRequestId, unit, dataFull);
+						case "full-status-broadcast":
+							var dataFull = ev["data"] as JObject ?? new JObject();
+							ProcessFullStatus(lRequestId, unit, dataFull);
 
-								updateItems |= UpdateItems.Main;
-								for (int i = 1; i <= 8; i++)
-									updateItems |= (UpdateItems)(1 << i);
-								break;
-						}
+							updateItems |= UpdateItems.Main;
+							for (int i = 1; i <= 8; i++)
+								updateItems |= (UpdateItems)(1 << i);
+							break;
 					}
 				}
-				else
-				{
-					if (httpResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
-						Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, "NotFound - check serial.");
-					else if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-					{
-						Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, "Unauthorized response.");
-						_eventAuthenticationFailure.Set();
-					}
-					else
-						Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, $"HTTP error {httpResponse.StatusCode}");
-
-					bRetVal = false;
-					goto Cleanup;
-				}
-			}
-			catch (OperationCanceledException eException)
-			{
-				Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, eException, "Operation timed out.");
-				bRetVal = false;
-				goto Cleanup;
 			}
 			catch (Exception eException)
 			{
@@ -1123,16 +939,9 @@ namespace HMX.HASSActronQue
 				else
 					Logging.WriteDebugLogError("Que.GetAirConditionerEvents()", lRequestId, eException, "Exception.");
 
-				bRetVal = false;
-				goto Cleanup;
-			}
-
-		Cleanup:
-			cancellationToken?.Dispose();
-			httpResponse?.Dispose();
-
-			if (!bRetVal)
 				unit.NextEventURL = "";
+				return UpdateItems.None;
+			}
 
 			return updateItems;
 		}
@@ -2190,8 +1999,6 @@ namespace HMX.HASSActronQue
 
 		private static async Task<bool> SendCommand(QueueCommand command)
 		{
-			HttpResponseMessage httpResponse = null;
-			CancellationTokenSource cancellationToken = null;
 			long lRequestId = RequestManager.GetRequestId(command.RequestId);
 			string strPageURL = "api/v0/client/ac-systems/cmds/send?serial=";
 			bool bRetVal = true;
@@ -2199,57 +2006,34 @@ namespace HMX.HASSActronQue
 			if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Original Request ID: 0x{0}", command.OriginalRequestId.ToString("X8"));
 			if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Sending to serial {0}", command.Unit.Serial);
 
-			try
+			var json = JsonConvert.SerializeObject(command.Data);
+			var result = await ExecuteRequestAsync(() =>
 			{
-				cancellationToken = new CancellationTokenSource();
-				cancellationToken.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
-
-				httpResponse = await SendWithRetriesAsync(() =>
+				var req = new HttpRequestMessage(HttpMethod.Post, strPageURL + command.Unit.Serial)
 				{
-					var req = new HttpRequestMessage(HttpMethod.Post, strPageURL + command.Unit.Serial)
-					{
-						Content = new StringContent(JsonConvert.SerializeObject(command.Data), Encoding.UTF8, "application/json")
-					};
-					return req;
-				}, _httpClientCommands, -1, cancellationToken.Token).ConfigureAwait(false);
+					Content = new StringContent(json, Encoding.UTF8, "application/json")
+				};
+				return req;
+			}, _httpClientCommands, -1, lRequestId).ConfigureAwait(false);
 
-				if (httpResponse.IsSuccessStatusCode)
-					Logging.WriteDebugLog("Que.SendCommand() Response OK");
-				else
+			if (!result.Success)
+			{
+				if (result.StatusCode == System.Net.HttpStatusCode.NotFound)
+					Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "NotFound - check serial.");
+				else if (result.StatusCode == System.Net.HttpStatusCode.Unauthorized)
 				{
-					if (httpResponse.StatusCode == System.Net.HttpStatusCode.NotFound)
-						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "NotFound - check serial.");
-					else if (httpResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-					{
-						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unauthorized response.");
-						_eventAuthenticationFailure.Set();
-					}
-					else
-						Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, $"HTTP error {httpResponse.StatusCode}");
-
-					bRetVal = false;
-					goto Cleanup;
+					Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Unauthorized response.");
+					_eventAuthenticationFailure.Set();
 				}
-			}
-			catch (OperationCanceledException eException)
-			{
-				Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, eException, "Operation timed out.");
-				bRetVal = false;
-				goto Cleanup;
-			}
-			catch (Exception eException)
-			{
-				if (eException.InnerException != null)
-					Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, eException.InnerException, "Exception.");
 				else
-					Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, eException, "Exception.");
-				bRetVal = false;
-				goto Cleanup;
-			}
+					Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, $"HTTP error {result.StatusCode}");
 
-		Cleanup:
-			cancellationToken?.Dispose();
-			httpResponse?.Dispose();
+				bRetVal = false;
+			}
+			else
+			{
+				if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Response OK");
+			}
 
 			return bRetVal;
 		}
