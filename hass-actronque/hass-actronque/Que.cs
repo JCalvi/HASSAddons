@@ -718,16 +718,6 @@ namespace HMX.HASSActronQue
 			}
 		}
 
-		// Utility helpers kept elsewhere where appropriate to avoid duplication.
-
-		private static string SanitizeName(string name)
-		{
-			// Convert to lowercase, replace spaces/special chars with underscores, trim extra underscores
-			return System.Text.RegularExpressions.Regex.Replace(name.ToLower(), @"[^a-z0-9_]", "_").Trim('_');
-		}
-
-		// Pending/optimistic helpers remain in Que.Pending.cs
-
 		private static string GenerateDeviceId()
 		{
 			Random random = new Random();

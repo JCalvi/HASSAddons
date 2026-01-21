@@ -6,6 +6,13 @@ namespace HMX.HASSActronQue
 {
 	public partial class Que
 	{
+
+		private static string SanitizeName(string name)
+		{
+			// Convert to lowercase, replace spaces/special chars with underscores, trim extra underscores
+			return System.Text.RegularExpressions.Regex.Replace(name.ToLower(), @"[^a-z0-9_]", "_").Trim('_');
+		}
+		
 		private static void MQTTRegister()
 		{
 			AirConditionerZone zone;
