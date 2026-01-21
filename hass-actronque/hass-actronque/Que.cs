@@ -3,7 +3,6 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -24,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.13)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.15)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -824,53 +823,64 @@ namespace HMX.HASSActronQue
 			}
 		}
 
-		private static void ProcessPartialStatus(long lRequestId, string strName, string strValue, ref double dblTarget)
-		{
-			double dblTemp = 0.0;
-
-			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessPartialStatus() Change: {0}", strName);
-
-			if (!double.TryParse(strValue ?? "", out dblTemp))
-				Logging.WriteDebugLog("Que.ProcessPartialStatus() Unable to read state information: {0}", strName);
-			else
-			{
-				lock (_oLockData)
-				{
-					dblTarget = dblTemp;
-				}
-			}
-		}
-
-		private static void ProcessPartialStatus(long lRequestId, string strName, string strValue, ref string strTarget)
+		private static void ProcessPartialStatus<T>(long lRequestId, string strName, string strValue, ref T target)
 		{
 			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessPartialStatus() Change: {0}", strName);
 
-			if ((strValue ?? "") == "")
-				Logging.WriteDebugLog("Que.ProcessPartialStatus() Unable to read state information: {0}", strName);
-			else
+			// string handling
+			if (typeof(T) == typeof(string))
 			{
-				lock (_oLockData)
+				if ((strValue ?? "") == "")
 				{
-					strTarget = strValue;
+					Logging.WriteDebugLog("Que.ProcessPartialStatus() Unable to read state information: {0}", strName);
 				}
+				else
+				{
+					lock (_oLockData)
+					{
+						// cast via object to avoid generic constraints
+						target = (T)(object)strValue;
+					}
+				}
+				return;
 			}
-		}
 
-		private static void ProcessPartialStatus(long lRequestId, string strName, string strValue, ref bool bTarget)
-		{
-			bool bTemp;
-
-			if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessPartialStatus() Change: {0}", strName);
-
-			if (!bool.TryParse(strValue ?? "", out bTemp))
-				Logging.WriteDebugLog("Que.ProcessPartialStatus() Unable to read state information: {0}", strName);
-			else
+			// bool handling
+			if (typeof(T) == typeof(bool))
 			{
-				lock (_oLockData)
+				if (!bool.TryParse(strValue ?? "", out bool bTemp))
 				{
-					bTarget = bTemp;
+					Logging.WriteDebugLog("Que.ProcessPartialStatus() Unable to read state information: {0}", strName);
 				}
+				else
+				{
+					lock (_oLockData)
+					{
+						target = (T)(object)bTemp;
+					}
+				}
+				return;
 			}
+
+			// double handling
+			if (typeof(T) == typeof(double))
+			{
+				if (!double.TryParse(strValue ?? "", out double dblTemp))
+				{
+					Logging.WriteDebugLog("Que.ProcessPartialStatus() Unable to read state information: {0}", strName);
+				}
+				else
+				{
+					lock (_oLockData)
+					{
+						target = (T)(object)dblTemp;
+					}
+				}
+				return;
+			}
+
+			// Fallback: unsupported target type
+			Logging.WriteDebugLog("Que.ProcessPartialStatus() Unsupported target type: {0} for {1}", typeof(T).FullName, strName);
 		}
 
 		private async static Task<UpdateItems> GetAirConditionerEvents(AirConditionerUnit unit)

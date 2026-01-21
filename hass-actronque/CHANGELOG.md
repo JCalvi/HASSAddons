@@ -1,17 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.6] - 2026-01-20
+## [v2026.1.6] - 2026-01-21
 
 ### Added
 - json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
-- option to add or not add batteries as sensors are useless for hard wired installs.
+- option to add batteries (these sensors are useless for hard wired installs).
+- more robust state handling
 
 ### Removed
-- 
+- process partial status overloads.
 
 ## Changed
 - tidied up some naming.
+- lots of minor improvements.
 
 
 ## [v2026.1.5] - 2026-01-19
