@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - process partial status overloads.
 
 ## Changed
+- split Que.cs into targeted sub-component files. 
 - tidied up some naming.
 - lots of minor improvements.
 
