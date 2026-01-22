@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - option to add batteries (these sensors are useless for hard wired installs).
 - more robust state handling.
 - central ExecuteRequestAsync helper.
+- ownsClient boolean that controls whether to dispose the inner HttpClient (default false for shared client).
 
 ### Removed
 - process partial status overloads.
@@ -15,6 +16,8 @@ All notable changes to this project will be documented in this file.
 ## Changed
 - split Que.cs into targeted sub-component files.
 - HttpClient/SocketsHttpHandler ownership fix to reduce potential memory leaks.
+- reduced polling for on/off to 60/600 seconds to further save data load on Actron cloud.
+- replace unbounded Queue<QueueCommand> with a ConcurrentQueue plus an atomic counter and limit.
 - tidied up some naming.
 - lots of minor improvements.
 
