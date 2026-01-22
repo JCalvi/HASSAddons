@@ -17,7 +17,6 @@ All notable changes to this project will be documented in this file.
 - split Que.cs into targeted sub-component files.
 - HttpClient/SocketsHttpHandler ownership fix to reduce potential memory leaks.
 - reduced polling for on/off to 60/600 seconds to further save data load on Actron cloud.
-- replace unbounded Queue<QueueCommand> with a ConcurrentQueue plus an atomic counter and limit.
 - tidied up some naming.
 - lots of minor improvements.
 

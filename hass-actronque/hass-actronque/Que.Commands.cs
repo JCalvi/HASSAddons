@@ -14,9 +14,6 @@ namespace HMX.HASSActronQue
         {
             // Request id for logging/tracing
             long lRequestId = RequestManager.GetRequestId();
-
-            // Path for command posting (kept the same semantics as the original code).
-            // If your real endpoint differs, keep the original string here.
             string strPageURL = "api/v0/aircon/commands/"; 
 
             bool bRetVal = true;
@@ -56,7 +53,6 @@ namespace HMX.HASSActronQue
             return bRetVal;
         }
 
-        // Adds a command to the bounded, thread-safe queue.
         private static void AddCommandToQueue(QueueCommand command)
         {
             if (_bQueLogging) Logging.WriteDebugLog("Que.AddCommandToQueue() New Command ID: 0x{0}", command.RequestId.ToString("X8"));
@@ -64,8 +60,11 @@ namespace HMX.HASSActronQue
             // add pending expectations & optimistic publishes
             AddPendingFromCommand(command);
 
-            // Use the thread-safe bounded enqueue helper which signals _eventQueue
-            TryEnqueueQueueCommand(command);
+            lock (_oLockQueue)
+            {
+                _queueCommands.Enqueue(command);
+                _eventQueue.Set();
+            }
         }
 
         private static void SendMQTTFailedCommandAlert(QueueCommand command)
@@ -74,7 +73,6 @@ namespace HMX.HASSActronQue
             MQTT.SendMessage(string.Format("actronque{0}/lastfailedcommand", command.Unit.Serial), command.RequestId.ToString());
         }
 
-        // Process the queue: peek head, skip expired, attempt send, dequeue on success.
         private static async Task<bool> ProcessQueue()
         {
             QueueCommand command;
@@ -83,12 +81,11 @@ namespace HMX.HASSActronQue
 
             while (true)
             {
-                // Preserve single-threaded processing semantics via the existing lock
                 lock (_oLockQueue)
                 {
-                    // TryPeek to inspect head without removing it
-                    if (_queueCommands.TryPeek(out command))
+                    if (_queueCommands.Count > 0)
                     {
+                        command = _queueCommands.Peek();
                         if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessQueue() Attempting Command: 0x{0}", command.RequestId.ToString("X8"));
 
                         if (command.Expires <= DateTime.Now)
@@ -97,44 +94,29 @@ namespace HMX.HASSActronQue
 
                             SendMQTTFailedCommandAlert(command);
 
-                            // Remove the expired head and update the counter
-                            if (_queueCommands.TryDequeue(out _))
-                                Interlocked.Decrement(ref _queueCount);
+                            _queueCommands.Dequeue();
 
-                            // Continue to next item
                             continue;
                         }
                     }
                     else
-                    {
                         command = null;
-                    }
                 }
 
                 if (command == null)
                     break;
 
-                // Attempt to send. Do not modify queue before we know send succeeded.
                 if (await SendCommand(command).ConfigureAwait(false))
                 {
                     lock (_oLockQueue)
                     {
                         Logging.WriteDebugLog("Que.ProcessQueue() Command Complete: 0x{0}", command.RequestId.ToString("X8"));
-
-                        // Remove the head (which should be the command we just processed).
-                        if (_queueCommands.TryDequeue(out _))
-                            Interlocked.Decrement(ref _queueCount);
+                        _queueCommands.Dequeue();
 
                         bRetVal = true;
                     }
                 }
-                else
-                {
-                    // Send failed: keep the command on the queue (same behavior as before).
-                    // Optionally add retry-limiting or move to dead-letter queue here.
-                }
             }
-
             if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessQueue() Complete");
 
             return bRetVal;
