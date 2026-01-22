@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - reduced polling for on/off to 60/600 seconds to further save data load on Actron cloud.
 - tidied up some naming.
 - lots of minor improvements.
+- some dockerfile improvments for ram management etc.
 
 
 ## [v2026.1.5] - 2026-01-19
