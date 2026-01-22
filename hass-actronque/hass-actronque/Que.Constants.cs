@@ -41,8 +41,8 @@ namespace HMX.HASSActronQue
 		// Timer/default values (seconds)
 		private static int _iCancellationTime = 15; // Seconds
 		private static int _iPollInterval = 30; // Seconds
-		private static int _iPollIntervalOn = 30; // Seconds
-		private static int _iPollIntervalOff = 300; // Seconds		
+		private static int _iPollIntervalOn = 60; // Seconds
+		private static int _iPollIntervalOff = 600; // Seconds		
 		private static int _iAuthenticationInterval = 60; // Seconds
 		private static int _iQueueInterval = 4; // Seconds
 		private static int _iCommandExpiry = 12; // Seconds
