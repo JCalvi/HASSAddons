@@ -21,7 +21,7 @@ namespace HMX.HASSActronQue
             resp.EnsureSuccessStatusCode();
 
             await using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-            using var doc = await JsonDocument.ParseAsync(stream, default, ct).ConfigureAwait(false);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
             return doc.RootElement.GetRawText();
         }
 
