@@ -1,7 +1,6 @@
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Text;
+using System.Threading.Tasks;
 using System.Net.Http;
 using Newtonsoft.Json;
 
@@ -9,13 +8,10 @@ namespace HMX.HASSActronQue
 {
     public partial class Que
     {
-        // Sends a command to a unit. Returns true on success.
         private static async Task<bool> SendCommand(QueueCommand command)
         {
-            // Request id for logging/tracing
-            long lRequestId = RequestManager.GetRequestId();
-            string strPageURL = "api/v0/aircon/commands/"; 
-
+            long lRequestId = RequestManager.GetRequestId(command.RequestId);
+            string strPageURL = "api/v0/client/ac-systems/cmds/send?serial=";
             bool bRetVal = true;
 
             if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Original Request ID: 0x{0}", command.OriginalRequestId.ToString("X8"));
