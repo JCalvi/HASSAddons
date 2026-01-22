@@ -55,7 +55,7 @@ namespace HMX.HASSActronQue
 					Content = new FormUrlEncodedContent(dtFormContent)
 				};
 				return req;
-			}, _httpClientAuth, -1, lRequestId).ConfigureAwait(false);
+			}, _sharedHttpClient, -1, lRequestId).ConfigureAwait(false);
 
 			if (!result.Success)
 			{
@@ -128,7 +128,7 @@ namespace HMX.HASSActronQue
 					Content = new FormUrlEncodedContent(dtFormContent)
 				};
 				return req;
-			}, _httpClientAuth, -1, lRequestId).ConfigureAwait(false);
+			}, _sharedHttpClient, -1, lRequestId).ConfigureAwait(false);
 
 			if (!result.Success)
 			{
@@ -178,8 +178,7 @@ namespace HMX.HASSActronQue
 
 				_queToken = queToken;
 
-				_httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
-				_httpClientCommands.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
+				_sharedHttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
 
 				// Update Token File
 				try

@@ -45,9 +45,7 @@ namespace HMX.HASSActronQue
 			_bShowBatterySensors = bShowBatterySensors;
 			_eventStop = eventStop;
 
-			_httpClientAuth.BaseAddress = new Uri(_strBaseURLQue);
-			_httpClient.BaseAddress = new Uri(_strBaseURLQue);
-			_httpClientCommands.BaseAddress = new Uri(_strBaseURLQue);
+			_sharedHttpClient.BaseAddress = new Uri(_strBaseURLQue);
 
 			// Get Device Id
 			try
@@ -144,7 +142,7 @@ namespace HMX.HASSActronQue
 				return bRetVal;
 			}
 
-			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _httpClient, -1, lRequestId).ConfigureAwait(false);
+			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _sharedHttpClient, -1, lRequestId).ConfigureAwait(false);
 
 			if (!result.Success)
 			{
@@ -234,7 +232,7 @@ namespace HMX.HASSActronQue
 					return bRetVal;
 				}
 
-				var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _httpClient, -1, lRequestId).ConfigureAwait(false);
+				var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _sharedHttpClient, -1, lRequestId).ConfigureAwait(false);
 
 				if (!result.Success)
 				{
@@ -328,7 +326,7 @@ namespace HMX.HASSActronQue
 			if (!IsTokenValid())
 				return UpdateItems.None;
 
-			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _httpClient, -1, lRequestId).ConfigureAwait(false);
+			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL + unit.Serial), _sharedHttpClient, -1, lRequestId).ConfigureAwait(false);
 
 			if (!result.Success)
 			{
@@ -390,7 +388,7 @@ namespace HMX.HASSActronQue
 				return UpdateItems.None;
 			}
 
-			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _httpClient, -1, lRequestId).ConfigureAwait(false);
+			var result = await ExecuteRequestAsync(() => new HttpRequestMessage(HttpMethod.Get, strPageURL), _sharedHttpClient, -1, lRequestId).ConfigureAwait(false);
 
 			if (!result.Success)
 			{

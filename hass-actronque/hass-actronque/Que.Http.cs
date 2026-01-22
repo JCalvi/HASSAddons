@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,9 +17,12 @@ namespace HMX.HASSActronQue
 
         public async Task<string> GetJsonAsync(string path, CancellationToken ct)
         {
-            var resp = await _http.GetAsync(path, ct).ConfigureAwait(false);
+            using var resp = await _http.GetAsync(path, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             resp.EnsureSuccessStatusCode();
-            return await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var doc = await JsonDocument.ParseAsync(stream, default, ct).ConfigureAwait(false);
+            return doc.RootElement.GetRawText();
         }
 
         // Methods for Authenticate, RenewToken, PostCommand, with retry/backoff logic

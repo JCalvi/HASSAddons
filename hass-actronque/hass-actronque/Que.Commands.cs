@@ -25,7 +25,7 @@ namespace HMX.HASSActronQue
                     Content = new StringContent(json, Encoding.UTF8, "application/json")
                 };
                 return req;
-            }, _httpClientCommands, -1, lRequestId).ConfigureAwait(false);
+            }, _sharedHttpClient, -1, lRequestId).ConfigureAwait(false);
 
             if (!result.Success)
             {

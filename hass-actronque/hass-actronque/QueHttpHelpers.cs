@@ -19,8 +19,6 @@ namespace HMX.HASSActronQue
             TimeSpan.FromSeconds(15)
         };
 
-        private static readonly object _httpClientLock = new object();
-
         // Recreate clients when persistent socket problems observed
         private static void RecreateHttpClients()
         {
@@ -28,9 +26,8 @@ namespace HMX.HASSActronQue
             {
                 try
                 {
-                    _httpClientAuth?.Dispose();
-                    _httpClient?.Dispose();
-                    _httpClientCommands?.Dispose();
+                    _sharedHttpClient?.Dispose();
+                    _sharedHandler?.Dispose();
                 }
                 catch { }
 
@@ -43,15 +40,13 @@ namespace HMX.HASSActronQue
                     MaxConnectionsPerServer = 10
                 };
 
-                _httpClientAuth = new HttpClient(handler, disposeHandler: true) { BaseAddress = new Uri(_strBaseURLQue) };
-                _httpClient = new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri(_strBaseURLQue) };
-                _httpClientCommands = new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri(_strBaseURLQue) };
+                _sharedHandler = handler;
+                // Use disposeHandler: false and manage handler disposal explicitly to avoid accidental handler disposal when disposing client
+                _sharedHttpClient = new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri(_strBaseURLQue) };
 
                 // We will use per-request CancellationTokenSource for fine-grained timeouts.
                 // leave HttpClient.Timeout unset or infinite to avoid double timeouts:
-                _httpClientAuth.Timeout = Timeout.InfiniteTimeSpan;
-                _httpClient.Timeout = Timeout.InfiniteTimeSpan;
-                _httpClientCommands.Timeout = Timeout.InfiniteTimeSpan;
+                _sharedHttpClient.Timeout = Timeout.InfiniteTimeSpan;
             }
         }
 

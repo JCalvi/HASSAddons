@@ -29,7 +29,9 @@ namespace HMX.HASSActronQue
 
 		// Queue & HTTP clients
 		private static Queue<QueueCommand> _queueCommands = new Queue<QueueCommand>();
-		private static HttpClient _httpClient = null, _httpClientAuth = null, _httpClientCommands = null;
+		private static SocketsHttpHandler _sharedHandler = null;
+		private static HttpClient _sharedHttpClient = null;
+		private static readonly object _httpClientLock = new object();
 
 		// Timer/default values (seconds)
 		private static int _iCancellationTime = 15; // Seconds
