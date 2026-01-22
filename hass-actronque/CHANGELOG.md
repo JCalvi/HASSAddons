@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.6] - 2026-01-21
+## [v2026.1.6] - 2026-01-22
 
 ### Added
 - json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
@@ -13,7 +13,8 @@ All notable changes to this project will be documented in this file.
 - process partial status overloads.
 
 ## Changed
-- split Que.cs into targeted sub-component files. 
+- split Que.cs into targeted sub-component files.
+- HttpClient/SocketsHttpHandler ownership fix to reduce potential memory leaks.
 - tidied up some naming.
 - lots of minor improvements.
 

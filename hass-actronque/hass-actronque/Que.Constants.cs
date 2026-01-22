@@ -29,7 +29,14 @@ namespace HMX.HASSActronQue
 
 		// Queue & HTTP clients
 		private static Queue<QueueCommand> _queueCommands = new Queue<QueueCommand>();
+
+		// NOTE: we keep the three named HttpClient fields for compatibility with existing call sites,
+		// but they will all reference a single shared HttpClient instance created/managed by RecreateHttpClients().
 		private static HttpClient _httpClient = null, _httpClientAuth = null, _httpClientCommands = null;
+
+		// Internals for owning the handler + client lifecycle
+		// _sharedHandler is the single SocketsHttpHandler instance created for the shared client.
+		private static System.Net.Http.SocketsHttpHandler _sharedHandler = null;
 
 		// Timer/default values (seconds)
 		private static int _iCancellationTime = 15; // Seconds

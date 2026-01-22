@@ -19,6 +19,7 @@ namespace HMX.HASSActronQue
             TimeSpan.FromSeconds(15)
         };
 
+        // Lock used when creating/disposing clients and handler
         private static readonly object _httpClientLock = new object();
 
         // Recreate clients when persistent socket problems observed
@@ -28,9 +29,11 @@ namespace HMX.HASSActronQue
             {
                 try
                 {
-                    _httpClientAuth?.Dispose();
-                    _httpClient?.Dispose();
-                    _httpClientCommands?.Dispose();
+                    // Dispose previous client references and the shared handler (if any).
+                    try { _httpClientAuth?.Dispose(); } catch { }
+                    try { _httpClient?.Dispose(); } catch { }
+                    try { _httpClientCommands?.Dispose(); } catch { }
+                    try { _sharedHandler?.Dispose(); } catch { }
                 }
                 catch { }
 
@@ -43,9 +46,14 @@ namespace HMX.HASSActronQue
                     MaxConnectionsPerServer = 10
                 };
 
-                _httpClientAuth = new HttpClient(handler, disposeHandler: true) { BaseAddress = new Uri(_strBaseURLQue) };
-                _httpClient = new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri(_strBaseURLQue) };
-                _httpClientCommands = new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri(_strBaseURLQue) };
+                // Create a single shared HttpClient that does NOT dispose the handler; we manage handler disposal explicitly.
+                var sharedClient = new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri(_strBaseURLQue) };
+
+                // Assign shared handler/client into the module-level holders
+                _sharedHandler = handler;
+                _httpClientAuth = sharedClient;
+                _httpClient = sharedClient;
+                _httpClientCommands = sharedClient;
 
                 // We will use per-request CancellationTokenSource for fine-grained timeouts.
                 // leave HttpClient.Timeout unset or infinite to avoid double timeouts:
