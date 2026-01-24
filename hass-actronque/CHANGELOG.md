@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.6] - 2026-01-22
+## [v2026.1.6] - 2026-01-24
 
 ### Added
 - json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
@@ -19,7 +19,8 @@ All notable changes to this project will be documented in this file.
 - reduced polling for on/off to 60/600 seconds to further save data load on Actron cloud.
 - tidied up some naming.
 - lots of minor improvements.
-- some dockerfile improvments for ram management etc.
+- some docker-file improvements for ram management etc.
+- restore compressor power to Watts.
 
 
 ## [v2026.1.5] - 2026-01-19

@@ -172,8 +172,8 @@ namespace HMX.HASSActronQue
 						default_entity_id = $"sensor.actronque_{unit.Serial}_compressor_power",
 						state_topic = $"actronque{unit.Serial}/compressorpower",
 						device_class = "power",
-						unit_of_measurement = "kW",
-						value_template = "{{ value | round(2) }}",
+						unit_of_measurement = "W",
+						value_template = "{{ value | round(1) }}",
 						device = deviceInfo
 					}));
 
