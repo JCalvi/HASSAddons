@@ -12,26 +12,30 @@ namespace HMX.HASSActronQue
     {
         // Tunables
         private static readonly TimeSpan DefaultPerRequestTimeout = TimeSpan.FromSeconds(30);
+        private static readonly object _httpClientInitLock = new object();
 
         // Helper to initialize HttpClient instances from IHttpClientFactory.
         // Called once during startup after DI is configured.
         private static void InitializeHttpClientsFromFactory()
         {
-            if (_httpClientFactory == null)
+            lock (_httpClientInitLock)
             {
-                throw new InvalidOperationException("IHttpClientFactory not initialized. Call ConfigureHttpClients first.");
+                if (_httpClientFactory == null)
+                {
+                    throw new InvalidOperationException("IHttpClientFactory not initialized. Call ConfigureHttpClients first.");
+                }
+
+                // Create named clients from factory
+                // All three fields point to factory-managed clients (can be the same or different based on configuration)
+                _httpClient = _httpClientFactory.CreateClient("ActronQueApi");
+                _httpClientAuth = _httpClientFactory.CreateClient("ActronQueAuth");
+                _httpClientCommands = _httpClientFactory.CreateClient("ActronQueApi");
+
+                Logging.WriteDebugLog("InitializeHttpClientsFromFactory() HttpClient instances created from factory");
+                Logging.WriteDebugLog("  _httpClient hash: {0}", _httpClient.GetHashCode());
+                Logging.WriteDebugLog("  _httpClientAuth hash: {0}", _httpClientAuth.GetHashCode());
+                Logging.WriteDebugLog("  _httpClientCommands hash: {0}", _httpClientCommands.GetHashCode());
             }
-
-            // Create named clients from factory
-            // All three fields point to factory-managed clients (can be the same or different based on configuration)
-            _httpClient = _httpClientFactory.CreateClient("ActronQueApi");
-            _httpClientAuth = _httpClientFactory.CreateClient("ActronQueAuth");
-            _httpClientCommands = _httpClientFactory.CreateClient("ActronQueApi");
-
-            Logging.WriteDebugLog("InitializeHttpClientsFromFactory() HttpClient instances created from factory");
-            Logging.WriteDebugLog("  _httpClient hash: {0}", _httpClient.GetHashCode());
-            Logging.WriteDebugLog("  _httpClientAuth hash: {0}", _httpClientAuth.GetHashCode());
-            Logging.WriteDebugLog("  _httpClientCommands hash: {0}", _httpClientCommands.GetHashCode());
         }
 
         // Utility to determine whether an exception is transient and can be retried.

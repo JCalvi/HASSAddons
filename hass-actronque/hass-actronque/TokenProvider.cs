@@ -12,7 +12,7 @@ namespace HMX.HASSActronQue
 	/// Thread-safe token provider that caches bearer tokens and refreshes them when expired.
 	/// Uses SemaphoreSlim to serialize token refresh operations.
 	/// </summary>
-	public class TokenProvider
+	public class TokenProvider : IDisposable
 	{
 		private readonly SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 		private readonly IHttpClientFactory _httpClientFactory;
@@ -21,6 +21,7 @@ namespace HMX.HASSActronQue
 		
 		private QueToken _cachedToken;
 		private DateTime _tokenExpiry = DateTime.MinValue;
+		private bool _disposed = false;
 
 		public TokenProvider(IHttpClientFactory httpClientFactory, string bearerTokenFile, PairingToken pairingToken)
 		{
@@ -35,7 +36,7 @@ namespace HMX.HASSActronQue
 		public async Task<string> GetTokenAsync(CancellationToken cancellationToken = default)
 		{
 			// Fast path: return cached token if still valid
-			if (_cachedToken != null && _tokenExpiry > DateTime.Now)
+			if (_cachedToken != null && _tokenExpiry > DateTime.UtcNow)
 			{
 				return _cachedToken.BearerToken;
 			}
@@ -45,7 +46,7 @@ namespace HMX.HASSActronQue
 			try
 			{
 				// Double-check after acquiring lock (another thread may have refreshed)
-				if (_cachedToken != null && _tokenExpiry > DateTime.Now)
+				if (_cachedToken != null && _tokenExpiry > DateTime.UtcNow)
 				{
 					return _cachedToken.BearerToken;
 				}
@@ -125,7 +126,7 @@ namespace HMX.HASSActronQue
 					Content = new FormUrlEncodedContent(formContent)
 				};
 
-				var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+				using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 				
 				if (!response.IsSuccessStatusCode)
 				{
@@ -133,7 +134,7 @@ namespace HMX.HASSActronQue
 					return null;
 				}
 
-				var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+				var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 				var jsonResponse = JObject.Parse(content);
 
 				var queToken = new QueToken
@@ -143,9 +144,9 @@ namespace HMX.HASSActronQue
 
 				var expiresInStr = (string)jsonResponse["expires_in"];
 				if (int.TryParse(expiresInStr, out int expiresIn))
-					queToken.TokenExpires = DateTime.Now.AddSeconds(expiresIn);
+					queToken.TokenExpires = DateTime.UtcNow.AddSeconds(expiresIn);
 				else
-					queToken.TokenExpires = DateTime.Now.AddSeconds(3600); // fallback
+					queToken.TokenExpires = DateTime.UtcNow.AddSeconds(3600); // fallback
 
 				// Persist token to file
 				try
@@ -187,6 +188,15 @@ namespace HMX.HASSActronQue
 			catch (Exception ex)
 			{
 				Logging.WriteDebugLogError("TokenProvider.LoadCachedToken()", ex, "Unable to load cached token.");
+			}
+		}
+
+		public void Dispose()
+		{
+			if (!_disposed)
+			{
+				_refreshLock?.Dispose();
+				_disposed = true;
 			}
 		}
 	}

@@ -748,5 +748,22 @@ namespace HMX.HASSActronQue
 
 			return sbDeviceId.ToString();
 		}
+
+		/// <summary>
+		/// Cleanup method to dispose resources when the application shuts down.
+		/// Call this from your shutdown handler.
+		/// </summary>
+		public static void Cleanup()
+		{
+			try
+			{
+				(_serviceProvider as IDisposable)?.Dispose();
+				Logging.WriteDebugLog("Que.Cleanup() ServiceProvider disposed");
+			}
+			catch (Exception ex)
+			{
+				Logging.WriteDebugLogError("Que.Cleanup()", ex, "Error disposing ServiceProvider");
+			}
+		}
 	}
 }

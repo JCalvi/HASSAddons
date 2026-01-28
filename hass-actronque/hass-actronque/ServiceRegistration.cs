@@ -45,8 +45,8 @@ namespace HMX.HASSActronQue
 				client.Timeout = System.Threading.Timeout.InfiniteTimeSpan; // Use per-request timeouts
 			})
 			.AddHttpMessageHandler<BearerTokenHandler>()
-			.AddPolicyHandler(GetRetryPolicy())
-			.AddPolicyHandler(GetCircuitBreakerPolicy())
+			.AddPolicyHandler(GetCircuitBreakerPolicy()) // Circuit breaker first to stop requests when circuit is open
+			.AddPolicyHandler(GetRetryPolicy()) // Retry policy second, respects circuit breaker state
 			.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
 			{
 				AutomaticDecompression = DecompressionMethods.All,

@@ -49,23 +49,37 @@ namespace HMX.HASSActronQue
 					if (!string.IsNullOrEmpty(newToken))
 					{
 						// Clone the request (can't reuse the original)
-						var retryRequest = await CloneHttpRequestMessageAsync(request).ConfigureAwait(false);
+						var retryRequest = await CloneHttpRequestMessageAsync(request, cancellationToken).ConfigureAwait(false);
 						retryRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", newToken);
 
 						Logging.WriteDebugLog("BearerTokenHandler.SendAsync() Retrying request with new token");
 						response = await base.SendAsync(retryRequest, cancellationToken).ConfigureAwait(false);
 					}
+					else
+					{
+						// Token refresh failed - return 401 response
+						Logging.WriteDebugLog("BearerTokenHandler.SendAsync() Token refresh failed, returning 401");
+						return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+						{
+							ReasonPhrase = "Token refresh failed"
+						};
+					}
 				}
 				catch (Exception ex)
 				{
 					Logging.WriteDebugLogError("BearerTokenHandler.SendAsync()", ex, "Failed to refresh token on 401");
+					// Return 401 response on exception
+					return new HttpResponseMessage(HttpStatusCode.Unauthorized)
+					{
+						ReasonPhrase = $"Token refresh exception: {ex.Message}"
+					};
 				}
 			}
 
 			return response;
 		}
 
-		private static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRequestMessage request)
+		private static async Task<HttpRequestMessage> CloneHttpRequestMessageAsync(HttpRequestMessage request, CancellationToken cancellationToken)
 		{
 			var clone = new HttpRequestMessage(request.Method, request.RequestUri)
 			{
@@ -85,7 +99,7 @@ namespace HMX.HASSActronQue
 			// Copy content if present
 			if (request.Content != null)
 			{
-				var originalContent = await request.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+				var originalContent = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
 				var contentClone = new ByteArrayContent(originalContent);
 
 				// Copy content headers
