@@ -107,7 +107,7 @@ namespace HMX.HASSActronQue
 						}));
 				}
 
-				// Humidity sensor
+				// Humidity sensor (Average of indoor sensors)
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}humidity/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
@@ -121,7 +121,7 @@ namespace HMX.HASSActronQue
 						device = deviceInfo
 					}));
 
-				// Temperature sensor
+				// Temperature sensor (Average of indoor sensors)
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
