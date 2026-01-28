@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.6] - 2026-01-24
+## [v2026.1.6] - 2026-01-28
 
 ### Added
 - json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
@@ -21,6 +21,8 @@ All notable changes to this project will be documented in this file.
 - lots of minor improvements.
 - some docker-file improvements for ram management etc.
 - restore compressor power to Watts.
+- refactor to IHttpClientFactory + DelegatingHandler + Polly
+- fix compiler warnings
 
 
 ## [v2026.1.5] - 2026-01-19

@@ -88,7 +88,12 @@ namespace HMX.HASSActronQue
 
 			MQTT.StartMQTT(strMQTTBroker, bMQTTLogging, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor);
 
-			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, bQueLogging, bPerZoneControls, bSeparateHeatCool, bShowBatterySensors, _eventStop);
+			// Ensure HTTP clients and token provider are initialized before starting Que.
+			Que.InitializeHttpClients();
+
+			// Que.Initialise is async; wait synchronously so startup failures are observed (removes CS4014).
+			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, bQueLogging, bPerZoneControls, bSeparateHeatCool, bShowBatterySensors, _eventStop)
+			   .GetAwaiter().GetResult();
 
 			webHost.Run();
 		}
@@ -245,7 +250,7 @@ namespace HMX.HASSActronQue
 			// Control All Zones
 			else if (strTopic.StartsWith(strUnitHeader + "/controlallzones/set"))
 			{
-				Que. ChangeControlAllZones(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
+				Que.ChangeControlAllZones(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
 			}
 			// Away Mode
 			else if (strTopic.StartsWith(strUnitHeader + "/awaymode/set"))

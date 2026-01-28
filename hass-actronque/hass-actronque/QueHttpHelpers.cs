@@ -12,58 +12,20 @@ namespace HMX.HASSActronQue
     {
         // Tunables
         private static readonly TimeSpan DefaultPerRequestTimeout = TimeSpan.FromSeconds(30);
-        private static readonly int DefaultMaxRetries = 3;
-        private static readonly TimeSpan[] RetryDelays = new[] {
-            TimeSpan.FromSeconds(1),
-            TimeSpan.FromSeconds(5),
-            TimeSpan.FromSeconds(15)
-        };
 
-        // Lock used when creating/disposing clients and handler
+        // Lock used when creating clients historically; kept for compatibility but we use IHttpClientFactory now
         private static readonly object _httpClientLock = new object();
 
-        // Recreate clients when persistent socket problems observed
+        // When using IHttpClientFactory we should NOT dispose factory-managed clients mid-flight.
+        // Keep RecreateHttpClients as a no-op to avoid use-after-dispose races.
         private static void RecreateHttpClients()
         {
-            lock (_httpClientLock)
-            {
-                try
-                {
-                    // Dispose previous client references and the shared handler (if any).
-                    try { _httpClientAuth?.Dispose(); } catch { }
-                    try { _httpClient?.Dispose(); } catch { }
-                    try { _httpClientCommands?.Dispose(); } catch { }
-                    try { _sharedHandler?.Dispose(); } catch { }
-                }
-                catch { }
-
-                // Use SocketsHttpHandler for better pooling control where available
-                var handler = new SocketsHttpHandler()
-                {
-                    AutomaticDecompression = DecompressionMethods.All,
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-                    PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
-                    MaxConnectionsPerServer = 10
-                };
-
-                // Create a single shared HttpClient that does NOT dispose the handler; we manage handler disposal explicitly.
-                var sharedClient = new HttpClient(handler, disposeHandler: false) { BaseAddress = new Uri(_strBaseURLQue) };
-
-                // Assign shared handler/client into the module-level holders
-                _sharedHandler = handler;
-                _httpClientAuth = sharedClient;
-                _httpClient = sharedClient;
-                _httpClientCommands = sharedClient;
-
-                // We will use per-request CancellationTokenSource for fine-grained timeouts.
-                // leave HttpClient.Timeout unset or infinite to avoid double timeouts:
-                _httpClientAuth.Timeout = Timeout.InfiniteTimeSpan;
-                _httpClient.Timeout = Timeout.InfiniteTimeSpan;
-                _httpClientCommands.Timeout = Timeout.InfiniteTimeSpan;
-            }
+            // No-op under IHttpClientFactory. Keep for compatibility with existing call sites.
+            Logging.WriteDebugLog("RecreateHttpClients() invoked - no-op under IHttpClientFactory.");
         }
 
         // Utility to determine whether an exception is transient and can be retried.
+        // (Polly configuration will handle retries; this helper is kept for diagnostics)
         private static bool IsTransientNetworkError(Exception ex)
         {
             if (ex is HttpRequestException) return true;
@@ -73,92 +35,29 @@ namespace HMX.HASSActronQue
             return false;
         }
 
-        // Send a request with retries. Accepts a factory because HttpRequestMessage cannot be reused.
+        // Send a single request attempt; per-request timeout is handled by creating a linked CancellationTokenSource.
+        // Polly policies attached to the HttpClient will provide retries/circuit-breaker.
         // Returns the HttpResponseMessage for caller to process; caller MUST dispose it.
-        private static async Task<HttpResponseMessage> SendWithRetriesAsync(Func<HttpRequestMessage> requestFactory, HttpClient client, int maxRetries = -1, CancellationToken cancel = default)
+        private static async Task<HttpResponseMessage> SendWithRetriesAsync(Func<HttpRequestMessage> requestFactory, HttpClient client, CancellationToken cancel = default)
         {
-            if (maxRetries < 0) maxRetries = DefaultMaxRetries;
+            HttpRequestMessage request = null;
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            cts.CancelAfter(DefaultPerRequestTimeout);
 
-            HttpResponseMessage response = null;
-            Exception lastEx = null;
-
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            try
             {
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
-                cts.CancelAfter(DefaultPerRequestTimeout);
-
-                HttpRequestMessage request = null;
-                try
-                {
-                    request = requestFactory();
-
-                    // For servers that don't handle keep-alive well, allow forcing Connection: close on retries:
-                    if (attempt > 1)
-                        request.Headers.ConnectionClose = true;
-
-                    response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
-
-                    // If 5xx or 408 -> transient server error: consider retrying
-                    if ((int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.RequestTimeout)
-                    {
-                        // log and retry
-                        Logging.WriteDebugLog("SendWithRetriesAsync() transient HTTP status {0} on attempt {1}", response.StatusCode, attempt);
-                        response.Dispose();
-
-                        if (attempt < maxRetries)
-                            await Task.Delay(RetryDelays[Math.Min(attempt - 1, RetryDelays.Length - 1)]).ConfigureAwait(false);
-                        continue;
-                    }
-
-                    // For 4xx, do not retry (except maybe 429 which could be transient). Caller should handle 401/403.
-                    if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500 && response.StatusCode != (HttpStatusCode)429)
-                    {
-                        return response;
-                    }
-
-                    // success-ish (2xx or other not transient codes)
-                    return response;
-                }
-                catch (Exception ex) when (IsTransientNetworkError(ex))
-                {
-                    lastEx = ex;
-                    // log details including SocketErrorCode if available
-                    if (ex.InnerException is SocketException sockEx)
-                    {
-                        Logging.WriteDebugLog("SendWithRetriesAsync() SocketException attempt {0}: {1} ({2})", attempt, sockEx.SocketErrorCode, sockEx.Message);
-                    }
-                    else
-                    {
-                        Logging.WriteDebugLog("SendWithRetriesAsync() transient exception attempt {0}: {1}", attempt, ex.Message);
-                    }
-
-                    try { request?.Dispose(); } catch { }
-
-                    // On persistent socket problems, recreate the clients before next attempt to avoid stuck/half-closed pooled connections
-                    if (attempt == 2)
-                    {
-                        Logging.WriteDebugLog("SendWithRetriesAsync() recreating HttpClients after repeated errors.");
-                        RecreateHttpClients();
-                    }
-
-                    if (attempt < maxRetries)
-                    {
-                        await Task.Delay(RetryDelays[Math.Min(attempt - 1, RetryDelays.Length - 1)]).ConfigureAwait(false);
-                        continue;
-                    }
-
-                    // final attempt failed -> break and throw below
-                }
+                request = requestFactory();
+                // Send once - rely on the HttpClient's policy handlers (Polly) for retries.
+                var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+                return response;
             }
-
-            // If we reach here, everything failed
-            if (lastEx != null)
+            catch (Exception ex) when (IsTransientNetworkError(ex))
             {
-                Logging.WriteDebugLog("SendWithRetriesAsync() all attempts failed: {0}", lastEx.Message);
-                throw lastEx;
+                // Log transient error for diagnostics; the configured HttpClient Polly policies will also log retries.
+                Logging.WriteDebugLog("SendWithRetriesAsync() transient exception: {0}", ex.Message);
+                try { request?.Dispose(); } catch { }
+                throw;
             }
-
-            return response;
         }
 
 		private static async Task<(bool Success, string Content, System.Net.HttpStatusCode StatusCode, Exception Error)> ExecuteRequestAsync(
@@ -179,8 +78,8 @@ namespace HMX.HASSActronQue
 				else if (_iCancellationTime > 0)
 					cts.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
 
-				// SendWithRetriesAsync is the repo's resilient helper (returns HttpResponseMessage)
-				httpResponse = await SendWithRetriesAsync(requestFactory, client, -1, cts.Token).ConfigureAwait(false);
+				// Use SendWithRetriesAsync (single attempt) and rely on Polly attached to the HttpClient for retry/circuit-breaker.
+				httpResponse = await SendWithRetriesAsync(requestFactory, client, cts.Token).ConfigureAwait(false);
 
 				if (httpResponse == null)
 				{
@@ -190,26 +89,21 @@ namespace HMX.HASSActronQue
 				var content = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 				return (httpResponse.IsSuccessStatusCode, content, httpResponse.StatusCode, null);
 			}
-			catch (OperationCanceledException oce)
+			catch (Exception e)
 			{
-				Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, oce, "HTTP operation timed out or was cancelled.");
-				return (false, null, 0, oce);
-			}
-			catch (Exception ex)
-			{
-				if (ex.InnerException != null)
-					Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, ex.InnerException, "Exception during HTTP request.");
+				// Log exception details (requestId is used for correlation in existing logs)
+				if (e is TaskCanceledException)
+					Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, e, "Request cancelled or timed out.");
 				else
-					Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, ex, "Exception during HTTP request.");
+					Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", requestId, e, "Exception during HTTP request.");
 
-				return (false, null, 0, ex);
+				return (false, null, 0, e);
 			}
 			finally
 			{
-				try { httpResponse?.Dispose(); } catch { }
 				try { cts?.Dispose(); } catch { }
+				try { httpResponse?.Dispose(); } catch { }
 			}
 		}
-		
     }
 }

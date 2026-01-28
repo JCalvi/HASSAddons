@@ -31,12 +31,11 @@ namespace HMX.HASSActronQue
 		private static Queue<QueueCommand> _queueCommands = new Queue<QueueCommand>();
 
 		// NOTE: we keep the three named HttpClient fields for compatibility with existing call sites,
-		// but they will all reference a single shared HttpClient instance created/managed by RecreateHttpClients().
+		// but they will be initialized by InitializeHttpClients() to factory-managed clients.
 		private static HttpClient _httpClient = null, _httpClientAuth = null, _httpClientCommands = null;
 
-		// Internals for owning the handler + client lifecycle
-		// _sharedHandler is the single SocketsHttpHandler instance created for the shared client.
-		private static System.Net.Http.SocketsHttpHandler _sharedHandler = null;
+		// Token provider (DI-managed) - initialized by InitializeHttpClients()
+		private static TokenProvider _tokenProvider = null;
 
 		// Timer/default values (seconds)
 		private static int _iCancellationTime = 15; // Seconds
@@ -47,10 +46,6 @@ namespace HMX.HASSActronQue
 		private static int _iQueueInterval = 4; // Seconds
 		private static int _iCommandExpiry = 12; // Seconds
 		private static int _iPostCommandSleepTimerNeoNoEventsMode = 10; // Seconds
-
-		// Failure counters
-		private static int _iFailedBearerRequests = 0;
-		private static int _iFailedBearerRequestMaximum = 10; // Retries
 
 		// State & sync
 		private static int _iZoneCount = 0;

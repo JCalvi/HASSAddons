@@ -23,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.22)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.24)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -109,9 +109,10 @@ namespace HMX.HASSActronQue
 			}
 
 			// Start monitors as background Tasks to integrate with async/await better.
-			Task.Run(TokenMonitor);
-			Task.Run(AirConditionerMonitor);
-			Task.Run(QueueMonitor);
+			// Explicitly discard the returned Task to indicate intentional fire-and-forget and avoid CS4014.
+			_ = Task.Run(TokenMonitor);
+			_ = Task.Run(AirConditionerMonitor);
+			_ = Task.Run(QueueMonitor);
 		}
 
 		// NOTE: The following methods were intentionally moved to focused partial files:

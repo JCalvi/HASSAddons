@@ -11,7 +11,7 @@ COPY hass-actronque/hass-actronque.csproj hass-actronque/
 RUN dotnet restore hass-actronque/hass-actronque.csproj -a $TARGETARCH
 COPY . .
 WORKDIR /src/hass-actronque
-RUN dotnet build  hass-actronque.csproj -c Release -o /app -a $TARGETARCH 
+RUN dotnet build  hass-actronque.csproj -c Release -o /app -a $TARGETARCH --warnaserror
 
 FROM build AS publish
 # Using TrimMode=partial for stability (standard for .NET 9 apps)
