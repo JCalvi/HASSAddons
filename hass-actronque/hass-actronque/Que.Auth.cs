@@ -178,8 +178,8 @@ namespace HMX.HASSActronQue
 
 				_queToken = queToken;
 
-				_httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
-				_httpClientCommands.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _queToken.BearerToken);
+				// NOTE: Token attachment to requests is now handled by BearerTokenHandler via TokenProvider.
+				// We no longer mutate DefaultRequestHeaders.Authorization on the shared clients.
 
 				// Update Token File
 				try

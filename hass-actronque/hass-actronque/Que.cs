@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HMX.HASSActronQue
 {
@@ -19,11 +20,29 @@ namespace HMX.HASSActronQue
 
 		static Que()
 		{
-			// Use helper to create HttpClients with pooling controls
-			RecreateHttpClients();
-
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.1.6.22)");
+			Logging.WriteDebugLog("Que.Que(v2026.1.6.23-IHttpClientFactory)");
+		}
+
+		/// <summary>
+		/// Configures the DI container and IHttpClientFactory for HTTP clients.
+		/// Must be called before Initialise.
+		/// </summary>
+		public static void ConfigureHttpClients(PairingToken pairingToken)
+		{
+			var services = new ServiceCollection();
+			
+			// Register HTTP clients with Polly policies
+			services.AddActronQueHttpClients(_strBaseURLQue, pairingToken, _strBearerTokenFile);
+			
+			// Build service provider
+			_serviceProvider = services.BuildServiceProvider();
+			_httpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
+			
+			// Initialize the static HttpClient fields from factory
+			InitializeHttpClientsFromFactory();
+			
+			Logging.WriteDebugLog("Que.ConfigureHttpClients() DI and IHttpClientFactory configured");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -44,10 +63,6 @@ namespace HMX.HASSActronQue
 			_bSeparateHeatCool = bSeparateHeatCool;
 			_bShowBatterySensors = bShowBatterySensors;
 			_eventStop = eventStop;
-
-			_httpClientAuth.BaseAddress = new Uri(_strBaseURLQue);
-			_httpClient.BaseAddress = new Uri(_strBaseURLQue);
-			_httpClientCommands.BaseAddress = new Uri(_strBaseURLQue);
 
 			// Get Device Id
 			try
@@ -107,6 +122,9 @@ namespace HMX.HASSActronQue
 			{
 				Logging.WriteDebugLogError("Que.Initialise()", eException, "Unable to read pairing token json file.");
 			}
+
+			// Configure HTTP clients with DI and Polly policies
+			ConfigureHttpClients(_pairingToken);
 
 			// Start monitors as background Tasks to integrate with async/await better.
 			Task.Run(TokenMonitor);
