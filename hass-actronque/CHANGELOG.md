@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.1.7] - 2026-01-30
+
+### Added
+- 
+
+### Removed
+- 
+
+## Changed
+- changed polly to Microsoft.Extensions.Http.Resilience
+
+
 ## [v2026.1.6] - 2026-01-30
 
 ### Added

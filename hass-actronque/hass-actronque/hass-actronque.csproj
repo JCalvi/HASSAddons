@@ -13,12 +13,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Floating versions -->
     <PackageReference Include="MQTTnet.Extensions.ManagedClient" Version="*" />
     <PackageReference Include="Newtonsoft.Json" Version="*" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="*" />
-    <!-- Align Polly to the version expected by Microsoft.Extensions.Http.Polly -->
-    <PackageReference Include="Polly" Version="*" />
-    <PackageReference Include="Polly.Extensions.Http" Version="*" />
+
+    <!-- Use the latest Microsoft first-party HTTP resilience integration -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="*" />
   </ItemGroup>
 
   <ItemGroup>
