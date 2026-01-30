@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,7 +40,8 @@ namespace HMX.HASSActronQue
 			{
 				services.AddControllers();
 				services.AddHttpContextAccessor();
-				services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
+				// IActionContextAccessor/ActionContextAccessor is obsolete in ASP.NET 10.
+				// Remove the obsolete registration and use IHttpContextAccessor where needed.
 			}
 			catch (Exception eException)
 			{

@@ -1,10 +1,10 @@
-FROM mcr.microsoft.com/dotnet/runtime-deps:9.0-alpine AS base
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine AS base
 RUN apk add --update --no-cache icu-libs tzdata && rm -rf /var/cache/apk/*
 
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 WORKDIR /app
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 ARG TARGETARCH
 WORKDIR /src
 COPY hass-actronque/hass-actronque.csproj hass-actronque/
@@ -14,7 +14,7 @@ WORKDIR /src/hass-actronque
 RUN dotnet build  hass-actronque.csproj -c Release -o /app -a $TARGETARCH --warnaserror
 
 FROM build AS publish
-# Using TrimMode=partial for stability (standard for .NET 9 apps)
+# Using TrimMode=partial for stability (standard for .NET 10 apps)
 # Added DebuggerSupport=false to strip debug symbols and reduce RAM
 RUN dotnet publish hass-actronque.csproj -c Release -o /app -a $TARGETARCH \
     --self-contained true \

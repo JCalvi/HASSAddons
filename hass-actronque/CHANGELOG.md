@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [v2026.1.6] - 2026-01-28
+## [v2026.1.6] - 2026-01-30
 
 ### Added
 - json serialised mqtt strings and added fields to ensure compatibility with HAOS17.
@@ -23,6 +23,8 @@ All notable changes to this project will be documented in this file.
 - restore compressor power to Watts.
 - refactor to IHttpClientFactory + DelegatingHandler + Polly
 - fix compiler warnings
+- updated package references to dynamic to fetch latest versions at build.
+- update to .net 10
 
 
 ## [v2026.1.5] - 2026-01-19
