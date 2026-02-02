@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.2.1] - 2026-02-02
+
+### Added
+- 
+
+### Removed
+- 
+
+## Changed
+- Fixed Token refresh.
+- More aggressive memory conservation.
+
 ## [v2026.1.7] - 2026-01-30
 
 ### Added

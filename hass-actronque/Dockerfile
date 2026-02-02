@@ -31,9 +31,13 @@ COPY --from=publish /app .
 # Disable Server GC (uses 1 heap per CPU core) in favour of Workstation GC (1 heap total)
 ENV DOTNET_gcServer=0
 
-# Limit the GC Heap size. (0x6400000 = 100MB). 
+# Limit the GC Heap size. (0x400000 = 64MB). 
 # This prevents the app from growing indefinitely until the container is killed.
-ENV DOTNET_GCHeapHardLimit=0x6400000
+ENV DOTNET_GCHeapHardLimit=0x4000000
+
+# More aggressive GC
+ENV DOTNET_GCConserveMemory=9
+ENV DOTNET_GCHighMemPercent=50
 
 # Tell the GC to release virtual memory back to the OS immediately
 ENV DOTNET_GCRetainVM=0
