@@ -1,11 +1,11 @@
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace HMX.HASSActronQue
 {
@@ -14,9 +14,16 @@ namespace HMX.HASSActronQue
 		private readonly IHttpClientFactory _httpClientFactory;
 		private readonly string _tokenFilePath;
 		private readonly Func<string> _getPairingToken;
+		private QueToken _currentToken;
 		private readonly SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
 
-		private QueToken _currentToken;
+		// Reusable JSON settings for this class
+		private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
+		{
+			NullValueHandling = NullValueHandling.Ignore,
+			DefaultValueHandling = DefaultValueHandling.Ignore,
+			Formatting = Formatting.None
+		};
 
 		public TokenProvider(IHttpClientFactory httpClientFactory, string tokenFilePath, Func<string> getPairingToken)
 		{
@@ -100,7 +107,7 @@ namespace HMX.HASSActronQue
 
 				try
 				{
-					await File.WriteAllTextAsync(_tokenFilePath, JsonConvert.SerializeObject(_currentToken)).ConfigureAwait(false);
+					await File.WriteAllTextAsync(_tokenFilePath, JsonConvert.SerializeObject(_currentToken, _jsonSettings)).ConfigureAwait(false);
 				}
 				catch
 				{

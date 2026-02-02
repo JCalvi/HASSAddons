@@ -31,7 +31,7 @@ COPY --from=publish /app .
 # Disable Server GC (uses 1 heap per CPU core) in favour of Workstation GC (1 heap total)
 ENV DOTNET_gcServer=0
 
-# Limit the GC Heap size. (0x400000 = 64MB). 
+# Limit the GC Heap size. (0x4000000 = 64MB). 
 # This prevents the app from growing indefinitely until the container is killed.
 ENV DOTNET_GCHeapHardLimit=0x4000000
 
@@ -41,6 +41,16 @@ ENV DOTNET_GCHighMemPercent=50
 
 # Tell the GC to release virtual memory back to the OS immediately
 ENV DOTNET_GCRetainVM=0
+
+# Disable tiered compilation (reduces JIT memory overhead)
+ENV DOTNET_TieredCompilation=0
+
+# Reduce thread pool size (saves stack memory)
+ENV DOTNET_ThreadPool_UnfairSemaphoreSpinLimit=0
+
+# Use less aggressive memory allocation for small objects
+ENV DOTNET_GCLOHThreshold=80000
+
 
 # Globalization Invariant mode saves ~20-30MB by not loading culture data but is required to load en-AU in this package.
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false

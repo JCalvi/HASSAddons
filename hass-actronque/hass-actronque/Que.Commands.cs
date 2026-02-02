@@ -17,7 +17,7 @@ namespace HMX.HASSActronQue
             if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Original Request ID: 0x{0}", command.OriginalRequestId.ToString("X8"));
             if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Sending to serial {0}", command.Unit.Serial);
 
-            var json = JsonConvert.SerializeObject(command.Data);
+            var json = JsonConvert.SerializeObject(command.Data, _jsonSettings);
             var result = await ExecuteRequestAsync(() =>
             {
                 var req = new HttpRequestMessage(HttpMethod.Post, strPageURL + command.Unit.Serial)
@@ -66,7 +66,7 @@ namespace HMX.HASSActronQue
         private static void SendMQTTFailedCommandAlert(QueueCommand command)
         {
             Logging.WriteDebugLog("Que.SendMQTTFailedCommandAlert() Command failed: {0}", command.RequestId.ToString());
-            MQTT.SendMessage(string.Format("actronque{0}/lastfailedcommand", command.Unit.Serial), command.RequestId.ToString());
+            MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.LastFailedCommand, command.Unit.Serial), command.RequestId.ToString());
         }
 
         private static async Task<bool> ProcessQueue()

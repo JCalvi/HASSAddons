@@ -29,7 +29,7 @@ namespace HMX.HASSActronQue
 				// Update Device Id File (best-effort)
 				try
 				{
-					await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier)).ConfigureAwait(false);
+					await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier, _jsonSettings)).ConfigureAwait(false);
 				}
 				catch (Exception eException)
 				{
@@ -74,7 +74,7 @@ namespace HMX.HASSActronQue
 					// Update Token File
 					try
 					{
-						await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken)).ConfigureAwait(false);
+						await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken, _jsonSettings)).ConfigureAwait(false);
 					}
 					catch (Exception eException)
 					{

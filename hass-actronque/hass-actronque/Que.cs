@@ -23,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.2.1.0)");
+			Logging.WriteDebugLog("Que.Que(v2026.2.1.1)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -80,7 +80,7 @@ namespace HMX.HASSActronQue
 						// Update Device Id File
 						try
 						{
-							await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier)).ConfigureAwait(false);
+							await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier, _jsonSettings)).ConfigureAwait(false);
 						}
 						catch (Exception eException)
 						{

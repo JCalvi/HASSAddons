@@ -26,7 +26,7 @@ namespace HMX.HASSActronQue
 				Logging.WriteDebugLog("Que.MQTTRegister() Registering Unit: {0}", unit.Serial);
 
 				// Clear Last Failed Command
-				MQTT.SendMessage(string.Format("actronque{0}/lastfailedcommand", unit.Serial), "");
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.LastFailedCommand, unit.Serial), "");
 
 				if (iDeviceIndex == 0)
 				{
@@ -78,7 +78,7 @@ namespace HMX.HASSActronQue
 							temp_step = 0.5,
 							temperature_unit = "C",
 							device = deviceInfo
-						}));
+						}, _jsonSettings));
 				}
 				else
 				{
@@ -104,7 +104,7 @@ namespace HMX.HASSActronQue
 							temp_step = 0.5,
 							temperature_unit = "C",
 							device = deviceInfo
-						}));
+						}, _jsonSettings));
 				}
 
 				// Humidity sensor (Average of indoor sensors)
@@ -119,7 +119,7 @@ namespace HMX.HASSActronQue
 						unit_of_measurement = "%",
 						value_template = "{{ value | round(1) }}",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Temperature sensor (Average of indoor sensors)
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}temperature/config", strHANameModifier),
@@ -133,7 +133,7 @@ namespace HMX.HASSActronQue
 						unit_of_measurement = "°C",
 						value_template = "{{ value | round(1) }}",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Outdoor temperature sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}outdoortemperature/config", strHANameModifier),
@@ -147,7 +147,7 @@ namespace HMX.HASSActronQue
 						unit_of_measurement = "°C",
 						value_template = "{{ value | round(1) }}",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Compressor capacity sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorcapacity/config", strHANameModifier),
@@ -161,7 +161,7 @@ namespace HMX.HASSActronQue
 						value_template = "{{ value | round(1) }}",
 						icon = "mdi:gauge",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Compressor power sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}compressorpower/config", strHANameModifier),
@@ -175,7 +175,7 @@ namespace HMX.HASSActronQue
 						unit_of_measurement = "W",
 						value_template = "{{ value | round(1) }}",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Coil inlet temperature sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}coilinlettemperature/config", strHANameModifier),
@@ -189,14 +189,14 @@ namespace HMX.HASSActronQue
 						unit_of_measurement = "°C",
 						value_template = "{{ value | round(2) }}",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Filter needs cleaning sensor
-				MQTT. SendMessage(string.Format("homeassistant/binary_sensor/actronque{0}/cleanfilter/config", strHANameModifier),
+				MQTT.SendMessage(string.Format("homeassistant/binary_sensor/actronque{0}/cleanfilter/config", strHANameModifier),
 					JsonConvert.SerializeObject(new
 					{
 						name = $"{strAirConditionerNameMQTT} Clean Filter",
-						unique_id = $"{unit. Serial}-CleanFilter",
+						unique_id = $"{unit.Serial}-CleanFilter",
 						default_entity_id = $"binary_sensor.actronque_{unit.Serial}_clean_filter",
 						state_topic = $"actronque{unit.Serial}/cleanfilter",
 						payload_on = "ON",
@@ -206,7 +206,7 @@ namespace HMX.HASSActronQue
 						device_class = "problem",
 						icon = "mdi:air-filter",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Filter hours since clean sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/fantsfc/config", strHANameModifier),
@@ -221,7 +221,7 @@ namespace HMX.HASSActronQue
 						state_class = "total_increasing",
 						icon = "mdi:clock-outline",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Fan PWM sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanpwm/config", strHANameModifier),
@@ -235,7 +235,7 @@ namespace HMX.HASSActronQue
 						value_template = "{{ value | round(0) }}",
 						icon = "mdi:fan",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Fan RPM sensor
 				MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}fanrpm/config", strHANameModifier),
@@ -249,7 +249,7 @@ namespace HMX.HASSActronQue
 						value_template = "{{ value | round(0) }}",
 						icon = "mdi:fan",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 
 				// Control All Zones switch
 				MQTT.SendMessage(string.Format("homeassistant/switch/actronque{0}/controlallzones/config", strHANameModifier),
@@ -266,7 +266,7 @@ namespace HMX.HASSActronQue
 						state_off = "OFF",
 						icon = "mdi:home-group",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/controlallzones/set", unit.Serial);
 
 				// Away Mode switch
@@ -284,7 +284,7 @@ namespace HMX.HASSActronQue
 						state_off = "OFF",						
 						icon = "mdi:home-export-outline",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/awaymode/set", unit.Serial);
 
 				// Quiet Mode switch
@@ -302,7 +302,7 @@ namespace HMX.HASSActronQue
 						state_off = "OFF",						
 						icon = "mdi:volume-off",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/quietmode/set", unit.Serial);
 
 				// Constant Fan Mode switch
@@ -320,7 +320,7 @@ namespace HMX.HASSActronQue
 						state_off = "OFF",						
 						icon = "mdi:fan-auto",
 						device = deviceInfo
-					}));
+					}, _jsonSettings));
 				MQTT.Subscribe($"actronque{strDeviceNameModifier}/constantfanmode/set", unit.Serial);
 
 				foreach (int iZone in unit.Zones.Keys)
@@ -344,22 +344,22 @@ namespace HMX.HASSActronQue
 								state_off = "OFF",
 								icon = "mdi:home-thermometer",
 								device = deviceInfo
-							}));
+							}, _jsonSettings));
 						MQTT.Subscribe($"actronque{strDeviceNameModifier}/zone{iZone}/set", unit.Serial, iZone);
 
 						// Zone temperature sensor
-						MQTT.SendMessage(string. Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
+						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/airconzone{1}/config", strHANameModifier, iZone),
 							JsonConvert.SerializeObject(new
 							{
 								name = $"{zone.Name} Temperature",
 								unique_id = $"{unit.Serial}-z{iZone}t",
-								default_entity_id = $"sensor.actronque_{unit. Serial}_zone_{iZone}_{SanitizeName(zone.Name)}_temperature",
-								state_topic = $"actronque{unit. Serial}/zone{iZone}/temperature",
+								default_entity_id = $"sensor.actronque_{unit.Serial}_zone_{iZone}_{SanitizeName(zone.Name)}_temperature",
+								state_topic = $"actronque{unit.Serial}/zone{iZone}/temperature",
 								device_class = "temperature",
 								unit_of_measurement = "°C",
 								value_template = "{{ value | round(1) }}",
 								device = deviceInfo
-							}));
+							}, _jsonSettings));
 							
 						// Zone damper position sensor
 						MQTT.SendMessage(string.Format("homeassistant/sensor/actronque{0}/zone{1}position/config", strHANameModifier, iZone),
@@ -372,7 +372,7 @@ namespace HMX.HASSActronQue
 								unit_of_measurement = "%",
 								icon = "mdi:valve",
 								device = deviceInfo
-							}));							
+							}, _jsonSettings));							
 
 						if (_bPerZoneControls)
 						{
@@ -405,7 +405,7 @@ namespace HMX.HASSActronQue
 										temp_step = 0.5,
 										temperature_unit = "C",
 										device = deviceInfo
-									}));
+									}, _jsonSettings));
 							}
 							else
 							{
@@ -428,7 +428,7 @@ namespace HMX.HASSActronQue
 										temp_step = 0.5,
 										temperature_unit = "C",
 										device = deviceInfo
-									}));
+									}, _jsonSettings));
 							}
 
 							if (_bShowBatterySensors)
@@ -447,7 +447,7 @@ namespace HMX.HASSActronQue
 											unit_of_measurement = "%",
 											value_template = "{{ value | round(1) }}",
 											device = deviceInfo
-										}));
+										}, _jsonSettings));
 								}
 							}
 						}
@@ -490,19 +490,19 @@ namespace HMX.HASSActronQue
 				{
 					case "AUTO":
 					case "AUTO+CONT":
-						MQTT.SendMessage(string.Format("actronque{0}/fanmode", unit.Serial), "auto");
+						MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.FanMode, unit.Serial), "auto");
 						break;
 					case "LOW":
 					case "LOW+CONT":
-						MQTT.SendMessage(string.Format("actronque{0}/fanmode", unit.Serial), "low");
+						MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.FanMode, unit.Serial), "low");
 						break;
 					case "MED":
 					case "MED+CONT":
-						MQTT.SendMessage(string.Format("actronque{0}/fanmode", unit.Serial), "medium");
+						MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.FanMode, unit.Serial), "medium");
 						break;
 					case "HIGH":
 					case "HIGH+CONT":
-						MQTT.SendMessage(string.Format("actronque{0}/fanmode", unit.Serial), "high");
+						MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.FanMode, unit.Serial), "high");
 						break;
 					default:
 						Logging.WriteDebugLog("Que.MQTTUpdateData() Unexpected Fan Mode: {0}", unit.Data.FanMode);
@@ -510,14 +510,14 @@ namespace HMX.HASSActronQue
 				}
 
 				// Temperature / humidity / power / mode
-				MQTT.SendMessage(string.Format("actronque{0}/temperature", unit.Serial), unit.Data.Temperature.ToString("N1"));
-				MQTT.SendMessage(string.Format("actronque{0}/outdoortemperature", unit.Serial), unit.Data.OutdoorTemperature.ToString("N1"));
-				MQTT.SendMessage(string.Format("actronque{0}/humidity", unit.Serial), unit.Data.Humidity.ToString("N1"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Temperature, unit.Serial), unit.Data.Temperature.ToString("N1"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.OutdoorTemperature, unit.Serial), unit.Data.OutdoorTemperature.ToString("N1"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Humidity, unit.Serial), unit.Data.Humidity.ToString("N1"));
 
 				if (!unit.Data.On)
 				{
-					MQTT.SendMessage(string.Format("actronque{0}/mode", unit.Serial), "off");
-					MQTT.SendMessage(string.Format("actronque{0}/settemperature", unit.Serial), GetSetTemperature(unit.Data.SetTemperatureHeating, unit.Data.SetTemperatureCooling).ToString("N1"));
+					MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Mode, unit.Serial), "off");
+					MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.SetTemperature, unit.Serial), GetSetTemperature(unit.Data.SetTemperatureHeating, unit.Data.SetTemperatureCooling).ToString("N1"));
 
 					// Change polling to off value
 					_iPollInterval = _iPollIntervalOff;
@@ -532,20 +532,20 @@ namespace HMX.HASSActronQue
 					switch (unit.Data.Mode)
 					{
 						case "AUTO":
-							MQTT.SendMessage(string.Format("actronque{0}/mode", unit.Serial), "auto");
-							MQTT.SendMessage(string.Format("actronque{0}/settemperature", unit.Serial), GetSetTemperature(unit.Data.SetTemperatureHeating, unit.Data.SetTemperatureCooling).ToString("N1"));
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Mode, unit.Serial), "auto");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.SetTemperature, unit.Serial), GetSetTemperature(unit.Data.SetTemperatureHeating, unit.Data.SetTemperatureCooling).ToString("N1"));
 							break;
 						case "COOL":
-							MQTT.SendMessage(string.Format("actronque{0}/mode", unit.Serial), "cool");
-							MQTT.SendMessage(string.Format("actronque{0}/settemperature", unit.Serial), unit.Data.SetTemperatureCooling.ToString("N1"));
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Mode, unit.Serial), "cool");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.SetTemperature, unit.Serial), unit.Data.SetTemperatureCooling.ToString("N1"));
 							break;
 						case "HEAT":
-							MQTT.SendMessage(string.Format("actronque{0}/mode", unit.Serial), "heat");
-							MQTT.SendMessage(string.Format("actronque{0}/settemperature", unit.Serial), unit.Data.SetTemperatureHeating.ToString("N1"));
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Mode, unit.Serial), "heat");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.SetTemperature, unit.Serial), unit.Data.SetTemperatureHeating.ToString("N1"));
 							break;
 						case "FAN":
-							MQTT.SendMessage(string.Format("actronque{0}/mode", unit.Serial), "fan_only");
-							MQTT.SendMessage(string.Format("actronque{0}/settemperature", unit.Serial), "");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Mode, unit.Serial), "fan_only");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.SetTemperature, unit.Serial), "");
 							break;
 						default:
 							Logging.WriteDebugLog("Que.MQTTUpdateData() Unexpected Mode: {0}", unit.Data.Mode);
@@ -553,8 +553,8 @@ namespace HMX.HASSActronQue
 					}
 				}
 
-				MQTT.SendMessage(string.Format("actronque{0}/settemperature/high", unit.Serial), unit.Data.SetTemperatureCooling.ToString("N1"));
-				MQTT.SendMessage(string.Format("actronque{0}/settemperature/low", unit.Serial), unit.Data.SetTemperatureHeating.ToString("N1"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.SetTemperatureHigh, unit.Serial), unit.Data.SetTemperatureCooling.ToString("N1"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.SetTemperatureLow, unit.Serial), unit.Data.SetTemperatureHeating.ToString("N1"));
 
 				// Compressor
 				if (unit.Data.CompressorCapacity > 0)
@@ -562,16 +562,16 @@ namespace HMX.HASSActronQue
 					switch (unit.Data.CompressorState)
 					{
 						case "HEAT":
-							MQTT.SendMessage(string.Format("actronque{0}/compressor", unit.Serial), "heating");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Compressor, unit.Serial), "heating");
 							break;
 						case "COOL":
-							MQTT.SendMessage(string.Format("actronque{0}/compressor", unit.Serial), "cooling");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Compressor, unit.Serial), "cooling");
 							break;
 						case "OFF":
-							MQTT.SendMessage(string.Format("actronque{0}/compressor", unit.Serial), "off");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Compressor, unit.Serial), "off");
 							break;
 						case "IDLE":
-							MQTT.SendMessage(string.Format("actronque{0}/compressor", unit.Serial), unit.Data.On ? "idle" : "off");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Compressor, unit.Serial), unit.Data.On ? "idle" : "off");
 							break;
 						default:
 							Logging.WriteDebugLog("Que.MQTTUpdateData() Unexpected Compressor State: {0}", unit.Data.CompressorState);
@@ -580,25 +580,25 @@ namespace HMX.HASSActronQue
 				}
 				else
 				{
-					MQTT.SendMessage(string.Format("actronque{0}/compressor", unit.Serial), unit.Data.On ? "idle" : "off");
+					MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Compressor, unit.Serial), unit.Data.On ? "idle" : "off");
 				}
 
 				// Compressor Capacity & Power
-				MQTT.SendMessage(string.Format("actronque{0}/compressorcapacity", unit.Serial), unit.Data.CompressorCapacity.ToString("F1"));
-				MQTT.SendMessage(string.Format("actronque{0}/compressorpower", unit.Serial), unit.Data.CompressorPower.ToString("F2"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.CompressorCapacity, unit.Serial), unit.Data.CompressorCapacity.ToString("F1"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.CompressorPower, unit.Serial), unit.Data.CompressorPower.ToString("F2"));
 
 				// Other sensors
-				MQTT.SendMessage(string.Format("actronque{0}/coilinlettemperature", unit.Serial), unit.Data.CoilInletTemperature.ToString("F2"));
-				MQTT.SendMessage(string.Format("actronque{0}/fanpwm", unit.Serial), unit.Data.FanPWM.ToString("F0"));
-				MQTT.SendMessage(string.Format("actronque{0}/fanrpm", unit.Serial), unit.Data.FanRPM.ToString("F0"));
-				MQTT.SendMessage(string.Format("actronque{0}/cleanfilter", unit.Serial), unit.Data.CleanFilter ? "ON" : "OFF");
-				MQTT.SendMessage(string.Format("actronque{0}/fantsfc", unit.Serial), (unit.Data.FanTSFC / 6).ToString("F0"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.CoilInletTemperature, unit.Serial), unit.Data.CoilInletTemperature.ToString("F2"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.FanPWM, unit.Serial), unit.Data.FanPWM.ToString("F0"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.FanRPM, unit.Serial), unit.Data.FanRPM.ToString("F0"));
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.CleanFilter, unit.Serial), unit.Data.CleanFilter ? "ON" : "OFF");
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.FanTSFC, unit.Serial), (unit.Data.FanTSFC / 6).ToString("F0"));
 
 				// Control/Away/Quiet/Constant Fan
-				MQTT.SendMessage(string.Format("actronque{0}/controlallzones", unit.Serial), unit.Data.ControlAllZones ? "ON" : "OFF");
-				MQTT.SendMessage(string.Format("actronque{0}/awaymode", unit.Serial), unit.Data.AwayMode ? "ON" : "OFF");
-				MQTT.SendMessage(string.Format("actronque{0}/quietmode", unit.Serial), unit.Data.QuietMode ? "ON" : "OFF");
-				MQTT.SendMessage(string.Format("actronque{0}/constantfanmode", unit.Serial), unit.Data.ConstantFanMode ? "ON" : "OFF");
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ControlAllZones, unit.Serial), unit.Data.ControlAllZones ? "ON" : "OFF");
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.AwayMode, unit.Serial), unit.Data.AwayMode ? "ON" : "OFF");
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.QuietMode, unit.Serial), unit.Data.QuietMode ? "ON" : "OFF");
+				MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ConstantFanMode, unit.Serial), unit.Data.ConstantFanMode ? "ON" : "OFF");
 			}
 
 			// Zones
@@ -606,36 +606,36 @@ namespace HMX.HASSActronQue
 			{
 				if (unit.Zones[iIndex].Exists && items.HasFlag((UpdateItems)(1 << iIndex)))
 				{
-					MQTT.SendMessage(string.Format("actronque{0}/zone{1}", unit.Serial, iIndex), unit.Zones[iIndex].State ? "ON" : "OFF");
-					MQTT.SendMessage(string.Format("actronque{0}/zone{1}/temperature", unit.Serial, iIndex), unit.Zones[iIndex].Temperature.ToString("N1"));
-					MQTT.SendMessage(string.Format("actronque{0}/zone{1}/position", unit.Serial, iIndex), (unit.Zones[iIndex].Position * 5).ToString());
+					MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.Zone, unit.Serial, iIndex), unit.Zones[iIndex].State ? "ON" : "OFF");
+					MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneTemperature, unit.Serial, iIndex), unit.Zones[iIndex].Temperature.ToString("N1"));
+					MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZonePosition, unit.Serial, iIndex), (unit.Zones[iIndex].Position * 5).ToString());
 
 					if (_bPerZoneControls)
 					{
 						if (!unit.Data.On)
 						{
-							MQTT.SendMessage(string.Format("actronque{0}/zone{1}/mode", unit.Serial, iIndex), "off");
-							MQTT.SendMessage(string.Format("actronque{0}/zone{1}/settemperature", unit.Serial, iIndex), GetSetTemperature(unit.Zones[iIndex].SetTemperatureHeating, unit.Zones[iIndex].SetTemperatureCooling).ToString("N1"));
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneMode, unit.Serial, iIndex), "off");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSetTemperature, unit.Serial, iIndex), GetSetTemperature(unit.Zones[iIndex].SetTemperatureHeating, unit.Zones[iIndex].SetTemperatureCooling).ToString("N1"));
 						}
 						else
 						{
 							switch (unit.Data.Mode)
 							{
 								case "AUTO":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/mode", unit.Serial, iIndex), (unit.Zones[iIndex].State ? "auto" : "off"));
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/settemperature", unit.Serial, iIndex), GetSetTemperature(unit.Zones[iIndex].SetTemperatureHeating, unit.Zones[iIndex].SetTemperatureCooling).ToString("N1"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneMode, unit.Serial, iIndex), (unit.Zones[iIndex].State ? "auto" : "off"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSetTemperature, unit.Serial, iIndex), GetSetTemperature(unit.Zones[iIndex].SetTemperatureHeating, unit.Zones[iIndex].SetTemperatureCooling).ToString("N1"));
 									break;
 								case "COOL":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/mode", unit.Serial, iIndex), (unit.Zones[iIndex].State ? "cool" : "off"));
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/settemperature", unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureCooling.ToString("N1"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneMode, unit.Serial, iIndex), (unit.Zones[iIndex].State ? "cool" : "off"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSetTemperature, unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureCooling.ToString("N1"));
 									break;
 								case "HEAT":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/mode", unit.Serial, iIndex), (unit.Zones[iIndex].State ? "heat" : "off"));
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/settemperature", unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureHeating.ToString("N1"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneMode, unit.Serial, iIndex), (unit.Zones[iIndex].State ? "heat" : "off"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSetTemperature, unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureHeating.ToString("N1"));
 									break;
 								case "FAN":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/mode", unit.Serial, iIndex), (unit.Zones[iIndex].State ? "fan_only" : "off"));
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/settemperature", unit.Serial, iIndex), GetSetTemperature(unit.Zones[iIndex].SetTemperatureHeating, unit.Zones[iIndex].SetTemperatureCooling).ToString("N1"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneMode, unit.Serial, iIndex), (unit.Zones[iIndex].State ? "fan_only" : "off"));
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSetTemperature, unit.Serial, iIndex), GetSetTemperature(unit.Zones[iIndex].SetTemperatureHeating, unit.Zones[iIndex].SetTemperatureCooling).ToString("N1"));
 									break;
 								default:
 									Logging.WriteDebugLog("Que.MQTTUpdateData() Unexpected Mode: {0}", unit.Data.Mode);
@@ -643,24 +643,24 @@ namespace HMX.HASSActronQue
 							}
 						}
 
-						MQTT.SendMessage(string.Format("actronque{0}/zone{1}/settemperature/high", unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureCooling.ToString("N1"));
-						MQTT.SendMessage(string.Format("actronque{0}/zone{1}/settemperature/low", unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureHeating.ToString("N1"));
+						MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSetTemperatureHigh, unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureCooling.ToString("N1"));
+						MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSetTemperatureLow, unit.Serial, iIndex), unit.Zones[iIndex].SetTemperatureHeating.ToString("N1"));
 
 						if (unit.Data.CompressorCapacity > 0 && unit.Zones[iIndex].Position > 0)
 						{
 							switch (unit.Data.CompressorState)
 							{
 								case "HEAT":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/compressor", unit.Serial, iIndex), "heating");
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneCompressor, unit.Serial, iIndex), "heating");
 									break;
 								case "COOL":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/compressor", unit.Serial, iIndex), "cooling");
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneCompressor, unit.Serial, iIndex), "cooling");
 									break;
 								case "OFF":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/compressor", unit.Serial, iIndex), "off");
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneCompressor, unit.Serial, iIndex), "off");
 									break;
 								case "IDLE":
-									MQTT.SendMessage(string.Format("actronque{0}/zone{1}/compressor", unit.Serial, iIndex), unit.Data.On ? "idle" : "off");
+									MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneCompressor, unit.Serial, iIndex), unit.Data.On ? "idle" : "off");
 									break;
 								default:
 									Logging.WriteDebugLog("Que.MQTTUpdateData() Unexpected Compressor State: {0}", unit.Data.CompressorState);
@@ -669,14 +669,14 @@ namespace HMX.HASSActronQue
 						}
 						else
 						{
-							MQTT.SendMessage(string.Format("actronque{0}/zone{1}/compressor", unit.Serial, iIndex), unit.Zones[iIndex].State ? "idle" : "off");
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneCompressor, unit.Serial, iIndex), unit.Zones[iIndex].State ? "idle" : "off");
 						}
 					}
 
 					// Per Zone Sensors
 					foreach (AirConditionerSensor sensor in unit.Zones[iIndex].Sensors.Values)
 					{
-						MQTT.SendMessage(string.Format("actronque{0}/zone{1}sensor{2}/temperature", unit.Serial, iIndex, sensor.Serial), sensor.Temperature.ToString("N1"));
+						MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSensorTemperature, unit.Serial, iIndex, sensor.Serial), sensor.Temperature.ToString("N1"));
 					}
 
 					// Per Zone Sensors/Controls
@@ -684,7 +684,7 @@ namespace HMX.HASSActronQue
 					{
 						foreach (AirConditionerSensor sensor in unit.Zones[iIndex].Sensors.Values)
 						{
-							MQTT.SendMessage(string.Format("actronque{0}/zone{1}sensor{2}/battery", unit.Serial, iIndex, sensor.Serial), sensor.Battery.ToString("N1"));
+							MQTT.SendMessage(GetCachedTopic(MqttTopicTemplates.ZoneSensorBattery, unit.Serial, iIndex, sensor.Serial), sensor.Battery.ToString("N1"));
 						}
 					}
 				}
