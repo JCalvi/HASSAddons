@@ -43,7 +43,7 @@ namespace HMX.HASSActronQue
 						}
 						else if (_queToken == null)
 							await GenerateBearerToken().ConfigureAwait(false);
-						else if (_queToken != null && _queToken.TokenExpires <= DateTime.UtcNow.Add(TimeSpan.FromMinutes(5))) // use UTC for comparison
+						else if (_queToken != null && _queToken.TokenExpires <= DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds))
 						{
 							Logging.WriteDebugLog("Que.TokenMonitor() Refreshing expiring bearer token");
 							await GenerateBearerToken().ConfigureAwait(false);
@@ -58,7 +58,7 @@ namespace HMX.HASSActronQue
 						}
 						else if (_queToken == null)
 							await GenerateBearerToken().ConfigureAwait(false);
-						else if (_queToken != null && _queToken.TokenExpires <= DateTime.UtcNow.Add(TimeSpan.FromMinutes(5))) // use UTC for comparison
+						else if (_queToken != null && _queToken.TokenExpires <= DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds))
 						{
 							Logging.WriteDebugLog("Que.TokenMonitor() Refreshing expiring bearer token");
 							await GenerateBearerToken().ConfigureAwait(false);

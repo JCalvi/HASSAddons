@@ -1,6 +1,18 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.2.2] - 2026-02-08
+
+### Added
+- 
+
+### Removed
+- 
+
+## Changed
+- Fixed Token refresh, including refresh constant added.
+
+
 ## [v2026.2.1] - 2026-02-02
 
 ### Added

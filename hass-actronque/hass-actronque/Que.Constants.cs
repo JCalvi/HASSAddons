@@ -127,6 +127,7 @@ namespace HMX.HASSActronQue
 		private static int _iQueueInterval = 4; // Seconds
 		private static int _iCommandExpiry = 12; // Seconds
 		private static int _iPostCommandSleepTimerNeoNoEventsMode = 10; // Seconds
+		private static int _iTokenRefreshBufferSeconds = 300; // 5 minutes - refresh tokens this many seconds before expiry
 
 		// State & sync
 		private static int _iZoneCount = 0;

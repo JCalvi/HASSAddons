@@ -13,6 +13,7 @@ namespace HMX.HASSActronQue
 	{
 		private readonly IHttpClientFactory _httpClientFactory;
 		private readonly string _tokenFilePath;
+		private readonly int _tokenRefreshBufferSeconds;		
 		private readonly Func<string> _getPairingToken;
 		private QueToken _currentToken;
 		private readonly SemaphoreSlim _refreshLock = new SemaphoreSlim(1, 1);
@@ -25,11 +26,12 @@ namespace HMX.HASSActronQue
 			Formatting = Formatting.None
 		};
 
-		public TokenProvider(IHttpClientFactory httpClientFactory, string tokenFilePath, Func<string> getPairingToken)
+		public TokenProvider(IHttpClientFactory httpClientFactory, string tokenFilePath, Func<string> getPairingToken, int tokenRefreshBufferSeconds = 300)
 		{
 			_httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
 			_tokenFilePath = tokenFilePath ?? throw new ArgumentNullException(nameof(tokenFilePath));
 			_getPairingToken = getPairingToken ?? throw new ArgumentNullException(nameof(getPairingToken));
+			_tokenRefreshBufferSeconds = tokenRefreshBufferSeconds;
 			LoadTokenFromFile();
 		}
 
@@ -59,7 +61,7 @@ namespace HMX.HASSActronQue
 		// Returns QueToken (cached or newly fetched). Throws on HTTP failure.
 		public async Task<QueToken> GetTokenAsync(CancellationToken ct = default)
 		{
-			if (_currentToken != null && _currentToken.TokenExpires > DateTime.UtcNow.AddSeconds(30))
+			if (_currentToken != null && _currentToken.TokenExpires > DateTime.UtcNow.AddMinutes(5))
 				return _currentToken;
 
 			await _refreshLock.WaitAsync(ct).ConfigureAwait(false);
