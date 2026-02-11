@@ -46,18 +46,35 @@ namespace HMX.HASSActronQue
 
 			Configuration.GetOptionalConfiguration(configuration, "MQTTUser", out strMQTTUser);
 			Configuration.GetPrivateOptionalConfiguration(configuration, "MQTTPassword", out strMQTTPassword);
+
+			// Better error messages for required config
 			if (!Configuration.GetConfiguration(configuration, "MQTTBroker", out strMQTTBroker))
+			{
+				Logging.WriteDebugLogError("Service.Start()", "REQUIRED configuration missing: MQTTBroker. Please add this to your config file.");
 				return;
+			}
+
 			Configuration.GetOptionalConfiguration(configuration, "MQTTLogs", out bMQTTLogging, true);
 			Configuration.GetOptionalConfiguration(configuration, "MQTTTLS", out bMQTTTLS);
 
 			if (!Configuration.GetConfiguration(configuration, "PerZoneControls", out bPerZoneControls))
+			{
+				Logging.WriteDebugLogError("Service.Start()", "REQUIRED configuration missing: PerZoneControls (true/false). Please add this to your config file.");
 				return;
+			}
 
 			if (!Configuration.GetConfiguration(configuration, "QueUser", out strQueUser))
+			{
+				Logging.WriteDebugLogError("Service.Start()", "REQUIRED configuration missing: QueUser. Please add your Actron Que username to the config file.");
 				return;
+			}
+
 			if (!Configuration.GetPrivateConfiguration(configuration, "QuePassword", out strQuePassword))
+			{
+				Logging.WriteDebugLogError("Service.Start()", "REQUIRED configuration missing: QuePassword. Please add your Actron Que password to the config file.");
 				return;
+			}
+
 			Configuration.GetOptionalConfiguration(configuration, "QueLogs", out bQueLogging, true);
 			Configuration.GetOptionalConfiguration(configuration, "QueSerial", out strQueSerial);
 
@@ -72,12 +89,12 @@ namespace HMX.HASSActronQue
 			else
 			{
 				strDeviceName = strDeviceName.Trim();
-			}	
+			}
 			try
 			{
 				webHost = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
 				{
-					webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration); 			
+					webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration); 
 				}).Build();
 			}
 			catch (Exception eException)
@@ -106,27 +123,27 @@ namespace HMX.HASSActronQue
 
 			MQTT.StopMQTT();
 		}
-		
+
 		private static bool ParseBoolPayload(string value)
 		{
 			if (string.IsNullOrWhiteSpace(value))
 				return false;
-			
+
 			value = value.Trim();
-			
+
 			// Handle ON/OFF and variants (case-insensitive)
 			if (string.Equals(value, "ON", StringComparison.OrdinalIgnoreCase) ||
 				string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
 				string.Equals(value, "1", StringComparison.OrdinalIgnoreCase))
 				return true;
-			
+
 			if (string.Equals(value, "OFF", StringComparison. OrdinalIgnoreCase) ||
 				string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
 				string.Equals(value, "0", StringComparison.OrdinalIgnoreCase))
 				return false;
-			
+
 			return false;
-		}		
+		}
 
 		private static void MQTTProcessor(string strTopic, string strPayload)
 		{
@@ -214,7 +231,7 @@ namespace HMX.HASSActronQue
 				iZone = int.Parse(strTopic.Substring(strUnitHeader.Length + 5, 1));
 
 				Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, ParseBoolPayload(strPayload));
-				
+
 			}
 			// Master
 			else if (strTopic.StartsWith(strUnitHeader + "/mode/set"))
@@ -266,7 +283,7 @@ namespace HMX.HASSActronQue
 			else if (strTopic.StartsWith(strUnitHeader + "/constantfanmode/set"))
 			{
 				Que.ConstantFanMode(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
-			}			
+			}
 			// Fan Speed
 			else if (strTopic.StartsWith(strUnitHeader + "/fan/set"))
 			{

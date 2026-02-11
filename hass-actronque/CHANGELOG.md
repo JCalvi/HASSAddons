@@ -1,6 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.2.4] - 2026-02-11
+
+### Added
+- MQTT.cs - Added exception logging, health tracking
+- HealthController.cs new /health endpoint for monitoring
+- Service.cs Detailed error messages for missing config
+
+### Removed
+-
+
+## Changed
+- Logging.cs now assigns result
+- Que.cs Fixed Token race condition with local copy
+- QueHttpHelpers.cs	Fixed - Always sets timeout with fallback, added cleanup error logging
+- TokenProvider.cs Fixed - Logs exceptions instead of silent catch
+
+
 ## [v2026.2.3] - 2026-02-11
 
 ### Added

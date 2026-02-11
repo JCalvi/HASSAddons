@@ -55,7 +55,9 @@ namespace HMX.HASSActronQue
 
 			if (strLogData.EndsWith(Environment.NewLine))
 				strLogData = strLogData.Substring(0, strLogData.Length - Environment.NewLine.Length);
-			strLogData.Replace(Environment.NewLine, " ");
+
+			// String.Replace() returns a new string - must assign result
+			strLogData = strLogData.Replace(Environment.NewLine, " ");
 
 			Console.WriteLine(strLogData);
 		}

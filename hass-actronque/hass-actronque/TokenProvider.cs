@@ -52,9 +52,10 @@ namespace HMX.HASSActronQue
 					}
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
-				// ignore - will request new token when needed
+				// Log exception instead of silent catch
+				Logging.WriteDebugLogError("TokenProvider.LoadTokenFromFile()", ex, "Failed to load token from file, will request new token");
 			}
 		}
 
@@ -111,9 +112,10 @@ namespace HMX.HASSActronQue
 				{
 					await File.WriteAllTextAsync(_tokenFilePath, JsonConvert.SerializeObject(_currentToken, _jsonSettings)).ConfigureAwait(false);
 				}
-				catch
+				catch (Exception ex)
 				{
-					// non-fatal
+					// Log exception instead of silent catch
+					Logging.WriteDebugLogError("TokenProvider.GetTokenAsync()", ex, "Failed to save token to file (non-fatal)");
 				}
 
 				Logging.WriteDebugLog("TokenProvider: refreshed token, expires {0:dd/MM/yyyy HH:mm:ss} (local time)", _currentToken.TokenExpires.ToLocalTime());

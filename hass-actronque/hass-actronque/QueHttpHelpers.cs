@@ -12,6 +12,7 @@ namespace HMX.HASSActronQue
     {
         // Tunables
         private static readonly TimeSpan DefaultPerRequestTimeout = TimeSpan.FromSeconds(30);
+        private static readonly int DefaultTimeoutSeconds = 30; // Fallback default
 
         // Lock used when creating clients historically; kept for compatibility but we use IHttpClientFactory now
         private static readonly object _httpClientLock = new object();
@@ -55,7 +56,11 @@ namespace HMX.HASSActronQue
             {
                 // Log transient error for diagnostics; the configured HttpClient Polly policies will also log retries.
                 Logging.WriteDebugLog("SendWithRetriesAsync() transient exception: {0}", ex.Message);
-                try { request?.Dispose(); } catch { }
+                try { request?.Dispose(); } catch (Exception disposeEx)
+                {
+                    // Log dispose errors
+                    Logging.WriteDebugLogError("SendWithRetriesAsync()", disposeEx, "Error disposing request");
+                }
                 throw;
             }
         }
@@ -73,10 +78,15 @@ namespace HMX.HASSActronQue
 			{
 				cts = new CancellationTokenSource();
 
+				// Always set a timeout - use fallback if both parameters are invalid
+				int effectiveTimeout = DefaultTimeoutSeconds;
+
 				if (timeoutSeconds > 0)
-					cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+					effectiveTimeout = timeoutSeconds;
 				else if (_iCancellationTime > 0)
-					cts.CancelAfter(TimeSpan.FromSeconds(_iCancellationTime));
+					effectiveTimeout = _iCancellationTime;
+
+				cts.CancelAfter(TimeSpan.FromSeconds(effectiveTimeout));
 
 				// Use SendWithRetriesAsync (single attempt) and rely on Polly attached to the HttpClient for retry/circuit-breaker.
 				httpResponse = await SendWithRetriesAsync(requestFactory, client, cts.Token).ConfigureAwait(false);
@@ -101,8 +111,16 @@ namespace HMX.HASSActronQue
 			}
 			finally
 			{
-				try { cts?.Dispose(); } catch { }
-				try { httpResponse?.Dispose(); } catch { }
+				try
+				{
+					httpResponse?.Dispose();
+					cts?.Dispose();
+				}
+				catch (Exception disposeEx)
+				{
+					// Log cleanup errors
+					Logging.WriteDebugLogError("Que.ExecuteRequestAsync()", disposeEx, "Error during cleanup");
+				}
 			}
 		}
     }
