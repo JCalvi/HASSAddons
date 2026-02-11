@@ -14,6 +14,25 @@ namespace HMX.HASSActronQue
             string strPageURL = "api/v0/client/ac-systems/cmds/send?serial=";
             bool bRetVal = true;
 
+			//added token expiry logging.
+			if (_queToken == null)
+			{
+				Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Cannot send command - no token available.");
+				return false;
+			}
+			if (_queToken.TokenExpires <= DateTime.UtcNow)
+			{
+				Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Cannot send command - token expired at {0}, current time is {1}", 
+				_queToken.TokenExpires, DateTime.UtcNow);
+				_eventAuthenticationFailure.Set(); // Trigger token refresh
+				return false;
+			}
+			if (_queToken.TokenExpires <= DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds))
+			{
+				Logging.WriteDebugLog("Que.SendCommand() Warning: token expires soon at {0}, current time is {1}", 
+				_queToken.TokenExpires, DateTime.UtcNow);
+			}
+
             if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Original Request ID: 0x{0}", command.OriginalRequestId.ToString("X8"));
             if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Sending to serial {0}", command.Unit.Serial);
 

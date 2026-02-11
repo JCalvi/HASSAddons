@@ -23,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.2.2.0)");
+			Logging.WriteDebugLog("Que.Que(v2026.2.2.1)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -126,7 +126,7 @@ namespace HMX.HASSActronQue
 
 		private static bool IsTokenValid()
 		{
-			return _queToken != null && _queToken.TokenExpires > DateTime.Now;
+			return _queToken != null && _queToken.TokenExpires > DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds);
 		}
 
 		private async static Task<bool> GetAirConditionerSerial()

@@ -67,7 +67,7 @@ namespace HMX.HASSActronQue
 			await _refreshLock.WaitAsync(ct).ConfigureAwait(false);
 			try
 			{
-				if (_currentToken != null && _currentToken.TokenExpires > DateTime.UtcNow.AddSeconds(30))
+				if (_currentToken != null && _currentToken.TokenExpires > DateTime.UtcNow.AddSeconds(_tokenRefreshBufferSeconds))
 					return _currentToken;
 
 				var pairingRefresh = _getPairingToken?.Invoke() ?? "";
