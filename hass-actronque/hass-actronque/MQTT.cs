@@ -159,7 +159,7 @@ namespace HMX.HASSActronQue
 		{
 			foreach (AirConditionerUnit unit in Que.Units.Values)
 			{
-				if (DateTime.Now >= unit.Data.LastUpdated.AddMinutes(_iLastUpdateThreshold))
+				if (DateTime.UtcNow >= unit.Data.LastUpdated.AddMinutes(_iLastUpdateThreshold))
 					SendMessage(string.Format("{0}{1}/status", _strClientId.ToLower(), unit.Serial), "offline");
 				else
 					SendMessage(string.Format("{0}{1}/status", _strClientId.ToLower(), unit.Serial), "online");

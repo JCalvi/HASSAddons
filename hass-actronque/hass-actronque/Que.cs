@@ -23,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.2.4.1)");
+			Logging.WriteDebugLog("Que.Que(v2026.2.4.3)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -138,7 +138,7 @@ namespace HMX.HASSActronQue
 			bool bRetVal = true;
 			string strSerial, strDescription, strType;
 
-			Logging.WriteDebugLog("Que.GetAirConditionerSerial()");
+			if (_bQueLogging) Logging.WriteDebugLog("Que.GetAirConditionerSerial()");
 
 			if (!IsTokenValid())
 			{
@@ -352,7 +352,7 @@ namespace HMX.HASSActronQue
 
 				lock (_oLockData)
 				{
-					unit.Data.LastUpdated = DateTime.Now;
+					unit.Data.LastUpdated = DateTime.UtcNow;
 				}
 
 				var jsonResponse = JObject.Parse(strResponse);
@@ -416,7 +416,7 @@ namespace HMX.HASSActronQue
 
 				lock (_oLockData)
 				{
-					unit.Data.LastUpdated = DateTime.Now;
+					unit.Data.LastUpdated = DateTime.UtcNow;
 				}
 
 				// Normalize event key name variation from upstream
