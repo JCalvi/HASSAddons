@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - MQTT.cs - Added exception logging, health tracking
-- HealthController.cs new /health endpoint for monitoring
 - Service.cs Detailed error messages for missing config
 
 ### Removed

@@ -20,12 +20,6 @@ namespace HMX.HASSActronQue
 		private static MessageHandler _messageHandler = null;
 		private static int _iLastUpdateThreshold = 5; // Minutes
 		private static bool _bMQTTLogging = true;
-		
-		// Health status tracking
-		private static DateTime _lastSuccessfulMessage = DateTime.MinValue;
-		private static int _messagesSent = 0;
-		private static int _messagesFailed = 0;
-		private static bool _isConnected = false;
 
 		public static async void StartMQTT(string strMQTTServer, bool bMQTTLogging, bool bMQTTTLS, string strClientId, string strUser, string strPassword, MessageHandler messageHandler)
 		{
@@ -138,21 +132,18 @@ namespace HMX.HASSActronQue
 			else
 				Logging.WriteDebugLog(strMessage, "unspecified error");
 
-			_isConnected = false;
 			return Task.CompletedTask;
 		}
 
 		private static Task ConnectedProcessor(MqttClientConnectedEventArgs e)
 		{
 			Logging.WriteDebugLog("MQTT.ConnectedProcessor() Connected to MQTT broker");
-			_isConnected = true;
 			return Task.CompletedTask;
 		}
 
 		private static Task DisconnectedProcessor(MqttClientDisconnectedEventArgs e)
 		{
 			Logging.WriteDebugLog("MQTT.DisconnectedProcessor() Disconnected from MQTT broker");
-			_isConnected = false;
 			return Task.CompletedTask;
 		}
 
@@ -219,22 +210,12 @@ namespace HMX.HASSActronQue
 						.Build();
 
 					await _mqtt.EnqueueAsync(message);
-
-					_messagesSent++;
-					_lastSuccessfulMessage = DateTime.UtcNow;
 				}
 				catch (Exception eException)
 				{
-					_messagesFailed++;
 					Logging.WriteDebugLogError("MQTT.SendMessage()", eException, "Unable to send MQTT message to topic {0}", strTopic);
 				}
 			}
-		}
-
-		// Health check method
-		public static (bool IsConnected, DateTime LastMessage, int Sent, int Failed) GetHealth()
-		{
-			return (_isConnected, _lastSuccessfulMessage, _messagesSent, _messagesFailed);
 		}
     }
 }
