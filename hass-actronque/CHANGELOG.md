@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [v2026.2.3] - 2026-02-11
+
+### Added
+- Token expired logging when sending commands.
+
+### Removed
+- 
+
+## Changed
+- Fixed Token refresh - hopefully for good.
+- Changed DateTime.Now - DateTime.UtcNow
+
+
 ## [v2026.2.2] - 2026-02-08
 
 ### Added

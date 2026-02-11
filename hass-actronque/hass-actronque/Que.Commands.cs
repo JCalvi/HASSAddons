@@ -103,7 +103,7 @@ namespace HMX.HASSActronQue
                         command = _queueCommands.Peek();
                         if (_bQueLogging) Logging.WriteDebugLog("Que.ProcessQueue() Attempting Command: 0x{0}", command.RequestId.ToString("X8"));
 
-                        if (command.Expires <= DateTime.Now)
+                        if (command.Expires <= DateTime.UtcNow)
                         {
                             Logging.WriteDebugLog("Que.ProcessQueue() Command Expired: 0x{0}", command.RequestId.ToString("X8"));
 

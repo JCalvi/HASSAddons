@@ -23,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.2.2.1)");
+			Logging.WriteDebugLog("Que.Que(v2026.2.3.0)");
 		}
 
 		// Changed to Task so callers can observe failures
@@ -550,7 +550,7 @@ namespace HMX.HASSActronQue
 
 		public static void ChangeZone(long lRequestId, AirConditionerUnit unit, int iZone, bool bState)
 		{
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 
 			Logging.WriteDebugLog("Que.ChangeZone() Unit: {0}, Zone {1}: {2}", unit.Serial, iZone, bState ? "On" : "Off");
 
@@ -562,7 +562,7 @@ namespace HMX.HASSActronQue
 
 		public static void ChangeControlAllZones(long lRequestId, AirConditionerUnit unit, bool bState)
 		{
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 
 			Logging.WriteDebugLog("Que.ChangeControlAllZones() Unit: {0}, Control All Zones: {1}", unit.Serial, bState ? "On" : "Off");
 
@@ -574,7 +574,7 @@ namespace HMX.HASSActronQue
 
 		public static void AwayMode(long lRequestId, AirConditionerUnit unit, bool bState)
 		{
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 			Logging.WriteDebugLog("Que.AwayMode() Unit: {0}, Away mode: {1}", unit.Serial, bState ? "On" : "Off");
 			command.Data.command.Add("type", "set-settings");
 			command.Data.command.Add("UserAirconSettings.AwayMode", bState);
@@ -583,7 +583,7 @@ namespace HMX.HASSActronQue
 
 		public static void QuietMode(long lRequestId, AirConditionerUnit unit, bool bState)
 		{
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 			Logging.WriteDebugLog("Que.QuietMode() Unit: {0}, Quiet mode: {1}", unit.Serial, bState ? "On" : "Off");
 			command.Data.command.Add("type", "set-settings");
 			command.Data.command.Add("UserAirconSettings.QuietMode", bState);
@@ -592,7 +592,7 @@ namespace HMX.HASSActronQue
 
 		public static void ConstantFanMode(long lRequestId, AirConditionerUnit unit, bool bState)
 		{
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 			Logging.WriteDebugLog("Que.ConstantFanMode() Unit: {0}, Constant Fan mode: {1}", unit.Serial, bState ? "On" : "Off");
 
 			// Preserve base fan mode without +CONT
@@ -610,7 +610,7 @@ namespace HMX.HASSActronQue
 
 		public static void ChangeMode(long lRequestId, AirConditionerUnit unit, AirConditionerMode mode)
 		{
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 			Logging.WriteDebugLog("Que.ChangeMode() Unit: {0}, Mode: {1}", unit.Serial, mode.ToString());
 
 			switch (mode)
@@ -642,7 +642,7 @@ namespace HMX.HASSActronQue
 
 		public static void ChangeFanMode(long lRequestId, AirConditionerUnit unit, FanMode fanMode)
 		{
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 			Logging.WriteDebugLog("Que.ChangeFanMode() Unit: {0}, Fan Mode: {1}", unit.Serial, fanMode.ToString());
 
 			bool hasCont = (unit?.Data?.FanMode ?? "").IndexOf("+CONT", StringComparison.OrdinalIgnoreCase) >= 0;
@@ -670,7 +670,7 @@ namespace HMX.HASSActronQue
 		public static void ChangeTemperature(long lRequestId, AirConditionerUnit unit, double dblTemperature, int iZone, TemperatureSetType setType)
 		{
 			string strCommandPrefix = "";
-			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.Now.AddSeconds(_iCommandExpiry));
+			QueueCommand command = new QueueCommand(lRequestId, unit, DateTime.UtcNow.AddSeconds(_iCommandExpiry));
 
 			Logging.WriteDebugLog("Que.ChangeTemperature() Unit: {0}, Zone: {1}, Temperature: {2} ({3})", unit.Serial, iZone, dblTemperature, setType.ToString());
 

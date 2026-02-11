@@ -37,7 +37,7 @@ namespace HMX.HASSActronQue
 		// helpers for pending and suppression
 		private static void SetUnitSuppression(string unitSerial)
 		{
-			DateTime until = DateTime.Now.AddSeconds(_iPublishSuppressionSeconds);
+			DateTime until = DateTime.UtcNow.AddSeconds(_iPublishSuppressionSeconds);
 			lock (_oLockSuppress)
 			{
 				_unitSuppressUntil[unitSerial] = until;
@@ -50,7 +50,7 @@ namespace HMX.HASSActronQue
 			lock (_oLockSuppress)
 			{
 				if (_unitSuppressUntil.ContainsKey(unitSerial))
-					return _unitSuppressUntil[unitSerial] > DateTime.Now;
+					return _unitSuppressUntil[unitSerial] > DateTime.UtcNow;
 				return false;
 			}
 		}
@@ -66,7 +66,7 @@ namespace HMX.HASSActronQue
 				JObject jCmd = jo["command"] as JObject;
 				if (jCmd == null) return;
 
-				PendingCommand pc = new PendingCommand() { RequestId = command.RequestId, UnitSerial = command.Unit.Serial, Expires = DateTime.Now.AddSeconds(_iPublishSuppressionSeconds) };
+				PendingCommand pc = new PendingCommand() { RequestId = command.RequestId, UnitSerial = command.Unit.Serial, Expires = DateTime.UtcNow.AddSeconds(_iPublishSuppressionSeconds) };
 
 				foreach (var prop in jCmd.Properties())
 				{
@@ -239,7 +239,7 @@ namespace HMX.HASSActronQue
 					var pc = _pendingCommands[i];
 					if (pc.UnitSerial != unitSerial) continue;
 					// only consider unexpired
-					if (pc.Expires <= DateTime.Now)
+					if (pc.Expires <= DateTime.UtcNow)
 					{
 						_pendingCommands.RemoveAt(i);
 						continue;
@@ -269,7 +269,7 @@ namespace HMX.HASSActronQue
 			bool hasAny = false;
 			lock (_oLockPending)
 			{
-				hasAny = _pendingCommands.Any(p => p.UnitSerial == unitSerial && p.Expires > DateTime.Now);
+				hasAny = _pendingCommands.Any(p => p.UnitSerial == unitSerial && p.Expires > DateTime.UtcNow);
 			}
 			if (!hasAny)
 			{
@@ -287,7 +287,7 @@ namespace HMX.HASSActronQue
 		{
 			lock (_oLockPending)
 			{
-				return _pendingCommands.Any(p => p.UnitSerial == unitSerial && p.Expires > DateTime.Now);
+				return _pendingCommands.Any(p => p.UnitSerial == unitSerial && p.Expires > DateTime.UtcNow);
 			}
 		}
 		// end optimistic/pending/suppression additions
