@@ -48,7 +48,7 @@ namespace HMX.HASSActronQue
 					if (_currentToken != null)
 					{
 						_currentToken.TokenExpires = DateTime.SpecifyKind(_currentToken.TokenExpires, DateTimeKind.Utc);
-						Logging.WriteDebugLog("TokenProvider: loaded token from file, expires {0}", _currentToken.TokenExpires);
+						Logging.WriteDebugLog("TokenProvider: loaded token from file, expires {0:dd/MM/yyyy HH:mm:ss} (local time)", _currentToken.TokenExpires.ToLocalTime());
 					}
 				}
 			}
@@ -116,7 +116,7 @@ namespace HMX.HASSActronQue
 					// non-fatal
 				}
 
-				Logging.WriteDebugLog("TokenProvider: refreshed token, expires {0}", _currentToken.TokenExpires);
+				Logging.WriteDebugLog("TokenProvider: refreshed token, expires {0:dd/MM/yyyy HH:mm:ss} (local time)", _currentToken.TokenExpires.ToLocalTime());
 				return _currentToken;
 			}
 			finally

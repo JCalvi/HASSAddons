@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ## Changed
 - Fixed Token refresh - hopefully for good.
 - Changed DateTime.Now - DateTime.UtcNow
+- Changed expiry logs to local time for readability.
 
 
 ## [v2026.2.2] - 2026-02-08
