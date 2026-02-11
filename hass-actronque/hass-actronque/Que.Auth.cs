@@ -19,12 +19,12 @@ namespace HMX.HASSActronQue
 			string strPageURL = "api/v0/client/user-devices";
 			bool bRetVal = true;
 
-			Logging.WriteDebugLog("Que.GeneratePairingToken()");
+			if (_bQueLogging) Logging.WriteDebugLog("Que.GeneratePairingToken()");
 
 			if (string.IsNullOrEmpty(_strDeviceUniqueIdentifier))
 			{
 				_strDeviceUniqueIdentifier = GenerateDeviceId();
-				Logging.WriteDebugLog("Que.GeneratePairingToken() Device Id: {0}", _strDeviceUniqueIdentifier);
+				if (_bQueLogging) Logging.WriteDebugLog("Que.GeneratePairingToken() Device Id: {0}", _strDeviceUniqueIdentifier);
 
 				// Update Device Id File (best-effort)
 				try
@@ -109,7 +109,7 @@ namespace HMX.HASSActronQue
 			long lRequestId = RequestManager.GetRequestId();
 			bool bRetVal = true;
 
-			Logging.WriteDebugLog("Que.GenerateBearerToken()");
+			if (_bQueLogging) Logging.WriteDebugLog("Que.GenerateBearerToken()");
 
 			try
 			{
@@ -130,7 +130,7 @@ namespace HMX.HASSActronQue
 				_queToken = tokenObj;
 
 				// Do not directly mutate HttpClient.DefaultRequestHeaders here - BearerTokenHandler attaches tokens per-request.
-				Logging.WriteDebugLog("Que.GenerateBearerToken() obtained token, expires {0}", _queToken.TokenExpires);
+				if (_bQueLogging) Logging.WriteDebugLog("Que.GenerateBearerToken() obtained token, expires {0}", _queToken.TokenExpires);
 
 				return true;
 			}

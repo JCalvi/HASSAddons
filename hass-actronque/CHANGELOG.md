@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Token refresh - hopefully for good.
 - Changed DateTime.Now - DateTime.UtcNow
 - Changed expiry logs to local time for readability.
+- Reduced logs in Que.Auth with _bQueLogging.
 
 
 ## [v2026.2.2] - 2026-02-08
