@@ -1,6 +1,25 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2026.2.5] - 2026-02-17
+
+### Fixed
+- **Race Condition in Pending Commands (#11)**: Fixed thread safety issues in `IsUnitSuppressed()` and `ConfirmPendingForUnit()` by using `TryGetValue()` pattern instead of `ContainsKey()` + indexer
+- **Command Timeout Issues**: Increased `_iCancellationTime` from 15s to 30s and `_iCommandExpiry` from 12s to 60s to prevent premature timeout failures with cloud API
+
+### Added
+- **CancellationToken Support (#9)**: Added cancellation token support to all monitor methods (`TokenMonitor`, `AirConditionerMonitor`, `QueueMonitor`) and auth methods (`GeneratePairingToken`, `GenerateBearerToken`) for graceful shutdown
+- **Enhanced Command Logging**: Added timeout values, command expiry countdowns, and request ID correlation to all command processing logs for better diagnostics
+
+### Changed
+- **Improved Error Handling**: Failed commands now properly dequeued and marked as failed instead of remaining stuck in queue
+- **Simplified Token Validation**: Refactored `SendCommand()` to use `IsTokenValid()` helper instead of manual token checks
+
+### Technical Details
+**Files Modified:** `Que.Pending.cs`, `Que.Monitors.cs`, `Que.Auth.cs`, `Que.Commands.cs`, `QueHttpHelpers.cs`, `Que.Constants.cs`
+**Timeout Changes:** New values (30s/60s) align with industry
+
+
 ## [v2026.2.4] - 2026-02-11
 
 ### Added

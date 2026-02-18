@@ -45,13 +45,13 @@ namespace HMX.HASSActronQue
 			if (_bQueLogging) Logging.WriteDebugLog("Que.SetUnitSuppression() Unit: {0} suppressed until {1}", unitSerial, until);
 		}
 
+		// ✅ FIXED: Use TryGetValue instead of ContainsKey + indexer
 		private static bool IsUnitSuppressed(string unitSerial)
 		{
 			lock (_oLockSuppress)
 			{
-				if (_unitSuppressUntil.ContainsKey(unitSerial))
-					return _unitSuppressUntil[unitSerial] > DateTime.UtcNow;
-				return false;
+				return _unitSuppressUntil.TryGetValue(unitSerial, out DateTime until) 
+				       && until > DateTime.UtcNow;
 			}
 		}
 
@@ -273,10 +273,10 @@ namespace HMX.HASSActronQue
 			}
 			if (!hasAny)
 			{
+				// ✅ FIXED: Remove() is safe even if key doesn't exist
 				lock (_oLockSuppress)
 				{
-					if (_unitSuppressUntil.ContainsKey(unitSerial))
-						_unitSuppressUntil.Remove(unitSerial);
+					_unitSuppressUntil.Remove(unitSerial);
 				}
 				if (_bQueLogging) Logging.WriteDebugLog("Que.ConfirmPendingForUnit() Unit: {0} cleared suppression (no pending expectations).", unitSerial);
 			}

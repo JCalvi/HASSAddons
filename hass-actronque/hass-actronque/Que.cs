@@ -23,7 +23,7 @@ namespace HMX.HASSActronQue
 			RecreateHttpClients();
 
 			// updated version marker for this build
-			Logging.WriteDebugLog("Que.Que(v2026.2.4.3)");
+			Logging.WriteDebugLog("Que.Que(v2026.2.5.0)");
 		}
 
 		// Changed to Task so callers can observe failures

@@ -9,7 +9,8 @@ namespace HMX.HASSActronQue
 {
 	public static partial class Que
 	{
-		private static async Task TokenMonitor()
+		// ADDED: CancellationToken parameter
+		private static async Task TokenMonitor(CancellationToken cancellationToken = default)
 		{
 			WaitHandle[] waitHandles = new WaitHandle[] { _eventStop, _eventAuthenticationFailure };
 			int iWaitHandle = 0;
@@ -17,16 +18,26 @@ namespace HMX.HASSActronQue
 
 			Logging.WriteDebugLog("Que.TokenMonitor()");
 
+			// ADDED: Check for cancellation before starting
+			cancellationToken.ThrowIfCancellationRequested();
+
 			if (_pairingToken == null)
 			{
-				if (await GeneratePairingToken().ConfigureAwait(false))
-					await GenerateBearerToken().ConfigureAwait(false);
+				if (await GeneratePairingToken(cancellationToken).ConfigureAwait(false))
+					await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 			}
 			else
-				await GenerateBearerToken().ConfigureAwait(false);
+				await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 
 			while (!bExit)
 			{
+				// ADDED: Check for cancellation at start of each iteration
+				if (cancellationToken.IsCancellationRequested)
+				{
+					Logging.WriteDebugLog("Que.TokenMonitor() Cancellation requested");
+					break;
+				}
+
 				iWaitHandle = WaitHandle.WaitAny(waitHandles, TimeSpan.FromSeconds(_iAuthenticationInterval));
 
 				switch (iWaitHandle)
@@ -38,30 +49,30 @@ namespace HMX.HASSActronQue
 					case 1: // Authentication Failure
 						if (_pairingToken == null)
 						{
-							if (await GeneratePairingToken().ConfigureAwait(false))
-								await GenerateBearerToken().ConfigureAwait(false);
+							if (await GeneratePairingToken(cancellationToken).ConfigureAwait(false))
+								await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 						}
 						else if (_queToken == null)
-							await GenerateBearerToken().ConfigureAwait(false);
+							await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 						else if (_queToken != null && _queToken.TokenExpires <= DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds))
 						{
 							Logging.WriteDebugLog("Que.TokenMonitor() Refreshing expiring bearer token");
-							await GenerateBearerToken().ConfigureAwait(false);
+							await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 						}
 						break;
 
 					case WaitHandle.WaitTimeout: // Wait Timeout
 						if (_pairingToken == null)
 						{
-							if (await GeneratePairingToken().ConfigureAwait(false))
-								await GenerateBearerToken().ConfigureAwait(false);
+							if (await GeneratePairingToken(cancellationToken).ConfigureAwait(false))
+								await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 						}
 						else if (_queToken == null)
-							await GenerateBearerToken().ConfigureAwait(false);
+							await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 						else if (_queToken != null && _queToken.TokenExpires <= DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds))
 						{
 							Logging.WriteDebugLog("Que.TokenMonitor() Refreshing expiring bearer token");
-							await GenerateBearerToken().ConfigureAwait(false);
+							await GenerateBearerToken(cancellationToken).ConfigureAwait(false);
 						}
 						break;
 				}
@@ -70,7 +81,8 @@ namespace HMX.HASSActronQue
 			Logging.WriteDebugLog("Que.TokenMonitor() Complete");
 		}
 
-		private static async Task AirConditionerMonitor()
+		// ADDED: CancellationToken parameter
+		private static async Task AirConditionerMonitor(CancellationToken cancellationToken = default)
 		{
 			WaitHandle[] waitHandles = new WaitHandle[] { _eventStop, _eventUpdate };
 			int iWaitHandle = 0, iWaitInterval = 5;
@@ -79,8 +91,18 @@ namespace HMX.HASSActronQue
 
 			Logging.WriteDebugLog("Que.AirConditionerMonitor()");
 
+			// ADDED: Check for cancellation before starting
+			cancellationToken.ThrowIfCancellationRequested();
+
 			while (!bExit)
 			{
+				// ADDED: Check for cancellation at start of each iteration
+				if (cancellationToken.IsCancellationRequested)
+				{
+					Logging.WriteDebugLog("Que.AirConditionerMonitor() Cancellation requested");
+					break;
+				}
+
 				updateItems = UpdateItems.None;
 
 				iWaitHandle = WaitHandle.WaitAny(waitHandles, TimeSpan.FromSeconds(iWaitInterval));
@@ -94,7 +116,7 @@ namespace HMX.HASSActronQue
 					case 1: // Pull Update
 						Logging.WriteDebugLog("Que.AirConditionerMonitor() Quick Update");
 
-						await Task.Delay(_iPostCommandSleepTimerNeoNoEventsMode * 1000).ConfigureAwait(false);
+						await Task.Delay(_iPostCommandSleepTimerNeoNoEventsMode * 1000, cancellationToken).ConfigureAwait(false);
 
 						foreach (AirConditionerUnit unit in _airConditionerUnits.Values)
 						{
@@ -139,7 +161,8 @@ namespace HMX.HASSActronQue
 			Logging.WriteDebugLog("Que.AirConditionerMonitor() Complete");
 		}
 
-		private static async Task QueueMonitor()
+		// ADDED: CancellationToken parameter
+		private static async Task QueueMonitor(CancellationToken cancellationToken = default)
 		{
 			WaitHandle[] waitHandles = new WaitHandle[] { _eventStop, _eventQueue };
 			int iWaitHandle = 0;
@@ -147,8 +170,18 @@ namespace HMX.HASSActronQue
 
 			Logging.WriteDebugLog("Que.QueueMonitor()");
 
+			// ADDED: Check for cancellation before starting
+			cancellationToken.ThrowIfCancellationRequested();
+
 			while (!bExit)
 			{
+				// ADDED: Check for cancellation at start of each iteration
+				if (cancellationToken.IsCancellationRequested)
+				{
+					Logging.WriteDebugLog("Que.QueueMonitor() Cancellation requested");
+					break;
+				}
+
 				iWaitHandle = WaitHandle.WaitAny(waitHandles, TimeSpan.FromSeconds(_iQueueInterval));
 
 				switch (iWaitHandle)

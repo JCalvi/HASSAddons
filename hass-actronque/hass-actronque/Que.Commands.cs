@@ -14,27 +14,35 @@ namespace HMX.HASSActronQue
             string strPageURL = "api/v0/client/ac-systems/cmds/send?serial=";
             bool bRetVal = true;
 
-			//added token expiry logging.
-			if (_queToken == null)
-			{
-				Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Cannot send command - no token available.");
-				return false;
-			}
-			if (_queToken.TokenExpires <= DateTime.UtcNow)
-			{
-				Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Cannot send command - token expired at {0}, current time is {1}", 
-				_queToken.TokenExpires, DateTime.UtcNow);
-				_eventAuthenticationFailure.Set(); // Trigger token refresh
-				return false;
-			}
-			if (_queToken.TokenExpires <= DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds))
-			{
-				Logging.WriteDebugLog("Que.SendCommand() Warning: token expires soon at {0}, current time is {1}", 
-				_queToken.TokenExpires, DateTime.UtcNow);
-			}
+            // IMPROVED: Use IsTokenValid() helper instead of manual checks
+            if (!IsTokenValid())
+            {
+                Logging.WriteDebugLogError("Que.SendCommand()", lRequestId, "Cannot send command - token invalid or expired.");
+                _eventAuthenticationFailure.Set(); // Trigger token refresh
+                return false;
+            }
 
-            if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Original Request ID: 0x{0}", command.OriginalRequestId.ToString("X8"));
-            if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Sending to serial {0}", command.Unit.Serial);
+            // IMPROVED: Add detailed logging with command expiry time
+            if (_bQueLogging)
+            {
+                var timeToExpiry = (command.Expires - DateTime.UtcNow).TotalSeconds;
+                Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Unit: {1}, Command expires in {2:F1}s", 
+                    lRequestId.ToString("X8"), 
+                    command.Unit.Serial,
+                    timeToExpiry);
+                
+                Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Original Request ID: 0x{1}", 
+                    lRequestId.ToString("X8"),
+                    command.OriginalRequestId.ToString("X8"));
+            }
+
+            // ADDED: Warn if token expires soon (but still valid)
+            if (_queToken != null && _queToken.TokenExpires <= DateTime.UtcNow.AddSeconds(_iTokenRefreshBufferSeconds))
+            {
+                Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Warning: token expires in {1:F0}s", 
+                    lRequestId.ToString("X8"),
+                    (_queToken.TokenExpires - DateTime.UtcNow).TotalSeconds);
+            }
 
             var json = JsonConvert.SerializeObject(command.Data, _jsonSettings);
             var result = await ExecuteRequestAsync(() =>
@@ -62,7 +70,7 @@ namespace HMX.HASSActronQue
             }
             else
             {
-                if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() Response OK");
+                if (_bQueLogging) Logging.WriteDebugLog("Que.SendCommand() [0x{0}] Response OK", lRequestId.ToString("X8"));
             }
 
             return bRetVal;
@@ -105,7 +113,11 @@ namespace HMX.HASSActronQue
 
                         if (command.Expires <= DateTime.UtcNow)
                         {
-                            Logging.WriteDebugLog("Que.ProcessQueue() Command Expired: 0x{0}", command.RequestId.ToString("X8"));
+                            // IMPROVED: Log how long ago command expired
+                            var expiredBy = (DateTime.UtcNow - command.Expires).TotalSeconds;
+                            Logging.WriteDebugLog("Que.ProcessQueue() Command Expired: 0x{0} (expired {1:F1}s ago)", 
+                                command.RequestId.ToString("X8"),
+                                expiredBy);
 
                             SendMQTTFailedCommandAlert(command);
 
@@ -129,6 +141,16 @@ namespace HMX.HASSActronQue
                         _queueCommands.Dequeue();
 
                         bRetVal = true;
+                    }
+                }
+                else
+                {
+                    // ADDED: If SendCommand fails, dequeue and mark failed
+                    lock (_oLockQueue)
+                    {
+                        Logging.WriteDebugLog("Que.ProcessQueue() Command Failed: 0x{0}", command.RequestId.ToString("X8"));
+                        SendMQTTFailedCommandAlert(command);
+                        _queueCommands.Dequeue();
                     }
                 }
             }

@@ -88,6 +88,12 @@ namespace HMX.HASSActronQue
 
 				cts.CancelAfter(TimeSpan.FromSeconds(effectiveTimeout));
 
+				// ADDED: Log effective timeout for debugging
+				if (_bQueLogging)
+				{
+					Logging.WriteDebugLog("Que.ExecuteRequestAsync() [0x{0}] Using timeout: {1}s", requestId.ToString("X8"), effectiveTimeout);
+				}
+
 				// Use SendWithRetriesAsync (single attempt) and rely on Polly attached to the HttpClient for retry/circuit-breaker.
 				httpResponse = await SendWithRetriesAsync(requestFactory, client, cts.Token).ConfigureAwait(false);
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -13,13 +14,17 @@ namespace HMX.HASSActronQue
 		// NOTE: ExecuteRequestAsync is provided centrally in QueHttpHelpers.cs.
 		// This file contains the pairing / bearer token logic and relies on that helper.
 
-		private static async Task<bool> GeneratePairingToken()
+		// ADDED: CancellationToken parameter
+		private static async Task<bool> GeneratePairingToken(CancellationToken cancellationToken = default)
 		{
 			long lRequestId = RequestManager.GetRequestId();
 			string strPageURL = "api/v0/client/user-devices";
 			bool bRetVal = true;
 
 			if (_bQueLogging) Logging.WriteDebugLog("Que.GeneratePairingToken()");
+
+			// ADDED: Check for cancellation
+			cancellationToken.ThrowIfCancellationRequested();
 
 			if (string.IsNullOrEmpty(_strDeviceUniqueIdentifier))
 			{
@@ -29,7 +34,7 @@ namespace HMX.HASSActronQue
 				// Update Device Id File (best-effort)
 				try
 				{
-					await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier, _jsonSettings)).ConfigureAwait(false);
+					await File.WriteAllTextAsync(_strDeviceIdFile, JsonConvert.SerializeObject(_strQueUser + "," + _strDeviceUniqueIdentifier, _jsonSettings), cancellationToken).ConfigureAwait(false);
 				}
 				catch (Exception eException)
 				{
@@ -74,7 +79,7 @@ namespace HMX.HASSActronQue
 					// Update Token File
 					try
 					{
-						await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken, _jsonSettings)).ConfigureAwait(false);
+						await File.WriteAllTextAsync(_strPairingTokenFile, JsonConvert.SerializeObject(_pairingToken, _jsonSettings), cancellationToken).ConfigureAwait(false);
 					}
 					catch (Exception eException)
 					{
@@ -104,12 +109,16 @@ namespace HMX.HASSActronQue
 			return bRetVal;
 		}
 
-		private static async Task<bool> GenerateBearerToken()
+		// ADDED: CancellationToken parameter
+		private static async Task<bool> GenerateBearerToken(CancellationToken cancellationToken = default)
 		{
 			long lRequestId = RequestManager.GetRequestId();
 			bool bRetVal = true;
 
 			if (_bQueLogging) Logging.WriteDebugLog("Que.GenerateBearerToken()");
+
+			// ADDED: Check for cancellation
+			cancellationToken.ThrowIfCancellationRequested();
 
 			try
 			{
@@ -120,7 +129,7 @@ namespace HMX.HASSActronQue
 					return false;
 				}
 
-				var tokenObj = await _tokenProvider.GetTokenAsync().ConfigureAwait(false);
+				var tokenObj = await _tokenProvider.GetTokenAsync(cancellationToken).ConfigureAwait(false);
 				if (tokenObj == null || string.IsNullOrEmpty(tokenObj.BearerToken))
 				{
 					Logging.WriteDebugLogError("Que.GenerateBearerToken()", lRequestId, "TokenProvider did not return a token.");
