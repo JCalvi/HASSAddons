@@ -109,10 +109,29 @@ namespace HMX.HASSActronQue
 			}
 
 			// Start monitors as background Tasks to integrate with async/await better.
+			// Create a CancellationTokenSource that monitors can use for graceful shutdown
+			var monitorCts = new CancellationTokenSource();
+
+			// Task to signal cancellation when _eventStop is set
+			_ = Task.Run(() =>
+			{
+				_eventStop.WaitOne();
+				try
+				{
+					monitorCts.Cancel();
+					Logging.WriteDebugLog("Que.Initialise() Monitor cancellation requested");
+				}
+				catch (Exception ex)
+				{
+					Logging.WriteDebugLogError("Que.Initialise()", ex, "Error cancelling monitor tasks");
+				}
+			});
+
+			// Start monitors with cancellation support
 			// Explicitly discard the returned Task to indicate intentional fire-and-forget and avoid CS4014.
-			_ = Task.Run(TokenMonitor);
-			_ = Task.Run(AirConditionerMonitor);
-			_ = Task.Run(QueueMonitor);
+			_ = Task.Run(() => TokenMonitor(monitorCts.Token), monitorCts.Token);
+			_ = Task.Run(() => AirConditionerMonitor(monitorCts.Token), monitorCts.Token);
+			_ = Task.Run(() => QueueMonitor(monitorCts.Token), monitorCts.Token);
 		}
 
 		// NOTE: The following methods were intentionally moved to focused partial files:
