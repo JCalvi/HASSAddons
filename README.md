@@ -2,4 +2,7 @@
 Home Assistant Add-on Repository
 John Calvi - 2024
 
-Forked from: https://blog.mikejmcguire.com/
+Currently Contains:
+
+HASS-Actronque, Forked from: https://blog.mikejmcguire.com/
+HASS-Rekognition - Written by J.Calvi.
