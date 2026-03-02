@@ -9,8 +9,8 @@
 # ── Person detected (all snapshot types) ────────────────────────────────────
 template:
   - sensor:
-      - name: "Person at Door"
-        unique_id: rekognition_person_at_door
+      - name: "Rekognition - Person"
+        unique_id: rekognition_person
         state: >
           {% set status = states('input_text.rekognition_person_status') %}
           {% if status == 'searching' %} Identifying...

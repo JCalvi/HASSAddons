@@ -5,13 +5,12 @@
 #   2. Doorbell button pressed
 #
 # Prerequisites:
-#   - Add-on is running and reachable at homeassistant.local:8080
-#   - Helpers defined in helpers.yaml are created
-#   - rest_command entries from rest_commands.yaml are configured
-#   - Template sensors from template_sensors.yaml are configured
+#   - Add-on is running and reachable by your rest_command
+#   - Helpers defined in helpers.yaml are created (if referenced)
+#   - rest_command entries from rest_commands.yaml are configured (rest_command.rekognition_match_person)
+#   - Template sensors from template_sensors.yaml are optional (this file uses direct response handling)
 #
-# Adjust entity IDs, snapshot paths, and notification targets to match
-# your own setup.
+# Adjust entity IDs, snapshot paths, notify targets, and thresholds to match your setup.
 
 # ── 1. Person Detected ───────────────────────────────────────────────────────
 automation:
@@ -19,7 +18,7 @@ automation:
     alias: "Rekognition – Person Detected at Front Door"
     description: >
       When a person is detected by the front-door camera, take a snapshot,
-      send it to the Rekognition Bridge, and notify based on the result.
+      send it to the Rekognition Bridge (synchronous response) and notify.
     trigger:
       - platform: state
         entity_id: binary_sensor.front_door_person  # replace with your sensor
@@ -32,24 +31,41 @@ automation:
         data:
           filename: /media/MediaUSB/snapshots/person_detected_latest.jpg
 
-      # Step 2: send snapshot to Rekognition Bridge
+      # Step 2: send snapshot to Rekognition Bridge and capture response
       - service: rest_command.rekognition_match_person
         data:
           snapshot_path: /media/MediaUSB/snapshots/person_detected_latest.jpg
           threshold: 95
         response_variable: rekognition_result
 
-      # Step 3: branch on status
+      # Step 3: branch on status & similarity from the response (no race here,
+      # response_variable contains the bridge result)
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ rekognition_result['content']['status'] == 'matched' }}"
+                value_template: >
+                  {{ rekognition_result['content']['status'] == 'matched' and
+                     (rekognition_result['content']['similarity'] | float(0)) >= 95 }}
             sequence:
               - service: notify.mobile_app_your_phone  # replace with your notify target
                 data:
                   title: "Known person at the door"
                   message: >
-                    {{ rekognition_result['content']['name'] | replace('_', ' ') }}
+                    {{ (rekognition_result['content']['name'] | replace('_',' ')) }}
+                    ({{ rekognition_result['content']['similarity'] }}% match)
+
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ rekognition_result['content']['status'] == 'matched' and
+                     (rekognition_result['content']['similarity'] | float(0)) < 95 }}
+            sequence:
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "Possible match at the door"
+                  message: >
+                    {{ (rekognition_result['content']['name'] | replace('_',' ')) }}
+                    detected but below similarity threshold
                     ({{ rekognition_result['content']['similarity'] }}% match)
 
           - conditions:
@@ -74,7 +90,7 @@ automation:
           - service: system_log.write
             data:
               message: >
-                Rekognition error: {{ rekognition_result['content']['error_message'] }}
+                Rekognition error: {{ rekognition_result['content'].get('error_message','(no message)') }}
               level: error
 
 # ── 2. Doorbell Pressed ──────────────────────────────────────────────────────
@@ -82,47 +98,77 @@ automation:
     alias: "Rekognition – Doorbell Pressed"
     description: >
       When the doorbell is pressed, take a snapshot, send it to the
-      Rekognition Bridge, and announce the visitor.
+      Rekognition Bridge, and announce the visitor. Uses synchronous response
+      (response_variable) to avoid race conditions with state-based waits.
     trigger:
       - platform: state
         entity_id: binary_sensor.front_doorbell  # replace with your doorbell sensor
         to: "on"
     action:
+      - variables:
+          # Customize allowed_people - examples only, replace with your own list
+          allowed_people:
+            - Alice_Example
+            - Bob_Example
+          snapshot_file: /media/MediaUSB/snapshots/doorbell_latest.jpg
+          similarity_threshold: 90  # numeric threshold for announcements/unlock
+
       # Step 1: capture a snapshot
       - service: camera.snapshot
         target:
           entity_id: camera.front_door_doorbell  # replace with your camera
         data:
-          filename: /media/MediaUSB/snapshots/doorbell_latest.jpg
+          filename: "{{ snapshot_file }}"
 
-      # Step 2: call Rekognition Bridge
+      # Step 2: call Rekognition Bridge and capture response synchronously
       - service: rest_command.rekognition_match_person
         data:
-          snapshot_path: /media/MediaUSB/snapshots/doorbell_latest.jpg
-          threshold: 90
+          snapshot_path: "{{ snapshot_file }}"
+          threshold: "{{ similarity_threshold }}"
         response_variable: doorbell_result
 
-      # Step 3: announce visitor
+      # Step 3: act on the response (check status, allowed list, and similarity)
       - choose:
           - conditions:
               - condition: template
-                value_template: "{{ doorbell_result['content']['status'] == 'matched' }}"
+                value_template: >
+                  {{ doorbell_result['content']['status'] == 'matched'
+                     and (doorbell_result['content']['name'] in allowed_people)
+                     and ((doorbell_result['content']['similarity'] | float(0)) >= similarity_threshold) }}
             sequence:
-              - service: tts.speak  # or media_player.play_media
+              # Example actions for a known allowed visitor:
+              - service: tts.google_translate_say  # or your TTS / play_media integration
                 target:
                   entity_id: media_player.living_room_speaker
                 data:
                   message: >
-                    {{ doorbell_result['content']['name'] | replace('_', ' ') }}
+                    {{ (doorbell_result['content']['name'] | replace('_',' ')) }}
                     is at the door.
 
               - service: notify.mobile_app_your_phone
                 data:
                   title: "Doorbell"
                   message: >
-                    {{ doorbell_result['content']['name'] | replace('_', ' ') }}
-                    rang the doorbell
-                    ({{ doorbell_result['content']['similarity'] }}% confident).
+                    {{ (doorbell_result['content']['name'] | replace('_',' ')) }}
+                    rang the doorbell ({{ doorbell_result['content']['similarity'] }}% confident).
+
+              # Optional: unlock (uncomment & replace lock entity if you want)
+              # - service: lock.unlock
+              #   target:
+              #     entity_id: lock.front_door_lock
+
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{ doorbell_result['content']['status'] == 'matched' }}
+            sequence:
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "Doorbell - Possible Match"
+                  message: >
+                    {{ (doorbell_result['content']['name'] | replace('_',' ')) }}
+                    rang the bell but did not meet the configured similarity threshold
+                    ({{ doorbell_result['content']['similarity'] }}% match).
 
           - conditions:
               - condition: template
@@ -147,5 +193,5 @@ automation:
             data:
               message: >
                 Rekognition doorbell error:
-                {{ doorbell_result['content']['error_message'] }}
+                {{ doorbell_result['content'].get('error_message','(no message)') }}
               level: error
