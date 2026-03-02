@@ -26,10 +26,7 @@
     "ha_token": "",
     "helper_person_name": "",
     "helper_person_similarity": "",
-    "helper_person_status": "",
-    "helper_doorbell_name": "",
-    "helper_doorbell_similarity": "",
-    "helper_doorbell_status": ""
+    "helper_person_status": ""
   },
   "schema": {
     "aws_access_key_id": "str",
@@ -44,9 +41,6 @@
     "ha_token": "str",
     "helper_person_name": "str",
     "helper_person_similarity": "str",
-    "helper_person_status": "str",
-    "helper_doorbell_name": "str",
-    "helper_doorbell_similarity": "str",
-    "helper_doorbell_status": "str"
+    "helper_person_status": "str"
   }
 }
