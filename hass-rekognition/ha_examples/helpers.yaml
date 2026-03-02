@@ -4,7 +4,7 @@
 # the respective domains, or create them via the UI under
 # Settings → Devices & Services → Helpers.
 #
-# Person-detected helpers
+# Person-detected helpers (all snapshot types are routed here)
 input_text:
   rekognition_person_name:
     name: "Rekognition – Person Name"
@@ -16,27 +16,9 @@ input_text:
     initial: "no_face"
     max: 32
 
-  rekognition_doorbell_name:
-    name: "Rekognition – Doorbell Name"
-    initial: "unknown"
-    max: 64
-
-  rekognition_doorbell_status:
-    name: "Rekognition – Doorbell Status"
-    initial: "no_face"
-    max: 32
-
 input_number:
   rekognition_person_similarity:
     name: "Rekognition – Person Similarity"
-    initial: 0
-    min: 0
-    max: 100
-    step: 0.01
-    unit_of_measurement: "%"
-
-  rekognition_doorbell_similarity:
-    name: "Rekognition – Doorbell Similarity"
     initial: 0
     min: 0
     max: 100

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.3.2] - 2026-03-02
+### Changed
+- Simplified Home Assistant helper routing: all snapshot results (doorbell or person) are now routed to the single person helper set (`helper_person_*`).
+- Removed unused doorbell-specific configuration options (`helper_doorbell_name`, `helper_doorbell_similarity`, `helper_doorbell_status`) from `config.json` and `run.sh`.
+- Fixed `NameError` caused by a reference to the undefined `_infer_snapshot_type` function in `main.py`.
+
+### Migration
+Before upgrading from 2026.3.1, copy any values you had in `helper_doorbell_name`, `helper_doorbell_similarity`, and `helper_doorbell_status` into `helper_person_name`, `helper_person_similarity`, and `helper_person_status` respectively.
+
 ## [2026.3.1] - 2026-03-02
 ### Added
 - Added support for installing the add-on directly from the GitHub add-on repository (no manual copying into `/addons` required).
