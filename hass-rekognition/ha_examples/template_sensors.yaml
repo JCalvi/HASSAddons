@@ -8,29 +8,23 @@
 #
 # ── Person detected (all snapshot types) ────────────────────────────────────
 template:
-    - sensor:
-        - name: "Person at Door"
-          unique_id: rekognition_person_at_door
-          state: >
+  - sensor:
+      - name: "Person at Door"
+        unique_id: rekognition_person_at_door
+        state: >
+          {% set status = states('input_text.rekognition_person_status') %}
+          {% if status == 'searching' %} Identifying...
+          {% elif status == 'matched' %} {{ states('input_text.rekognition_person_name') }}
+          {% elif status == 'no_match' %} Unknown Person
+          {% elif status == 'no_face' %} No Face Detected
+          {% else %} Waiting {% endif %}
+        attributes:
+          status: "{{ states('input_text.rekognition_person_status') }}"
+          name: "{{ states('input_text.rekognition_person_name') }}"
+          similarity: "{{ states('input_number.rekognition_person_similarity') | float(0) }}"
+          icon: >
             {% set status = states('input_text.rekognition_person_status') %}
-            {% if status == 'matched' %}
-              {{ states('input_text.rekognition_person_name') }}
-            {% elif status == 'no_match' %}
-              Unknown Person
-            {% elif status == 'no_face' %}
-              No Face Detected
-            {% else %}
-              Error
-            {% endif %}
-          attributes:
-            status: "{{ states('input_text.rekognition_person_status') }}"
-            name: "{{ states('input_text.rekognition_person_name') }}"
-            similarity: "{{ states('input_number.rekognition_person_similarity') | float(0) }}"
-            icon: >
-              {% if states('input_text.rekognition_person_status') == 'matched' %}
-                mdi:account-check
-              {% elif states('input_text.rekognition_person_status') == 'no_match' %}
-                mdi:account-question
-              {% else %}
-                mdi:account-off
-              {% endif %}
+            {% if status == 'searching' %} mdi:account-search
+            {% elif status == 'matched' %} mdi:account-check
+            {% elif status == 'no_match' %} mdi:account-question
+            {% else %} mdi:account-off {% endif %}
