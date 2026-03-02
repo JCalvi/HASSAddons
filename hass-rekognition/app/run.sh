@@ -19,13 +19,10 @@ export DEFAULT_THRESHOLD=$(bashio::config 'default_threshold' | tr -d '[:space:]
 export HA_URL=$(bashio::config 'ha_url' | tr -d '[:space:]')
 export HA_TOKEN=$(bashio::config 'ha_token' | tr -d '[:space:]')
 
-# 4. Map Helper Entities
+# 4. Map Helper Entities (only person helpers retained)
 export HELPER_PERSON_NAME=$(bashio::config 'helper_person_name' | tr -d '[:space:]')
 export HELPER_PERSON_SIMILARITY=$(bashio::config 'helper_person_similarity' | tr -d '[:space:]')
 export HELPER_PERSON_STATUS=$(bashio::config 'helper_person_status' | tr -d '[:space:]')
-export HELPER_DOORBELL_NAME=$(bashio::config 'helper_doorbell_name' | tr -d '[:space:]')
-export HELPER_DOORBELL_SIMILARITY=$(bashio::config 'helper_doorbell_similarity' | tr -d '[:space:]')
-export HELPER_DOORBELL_STATUS=$(bashio::config 'helper_doorbell_status' | tr -d '[:space:]')
 
 echo "DEBUG: Credentials loaded for: ${AWS_ACCESS_KEY_ID:0:5}..."
 echo "DEBUG: S3 Bucket: $S3_BUCKET"

@@ -39,9 +39,6 @@ HA_TOKEN = os.environ.get("HA_TOKEN", "")
 HELPER_PERSON_NAME = os.environ.get("HELPER_PERSON_NAME", "")
 HELPER_PERSON_SIMILARITY = os.environ.get("HELPER_PERSON_SIMILARITY", "")
 HELPER_PERSON_STATUS = os.environ.get("HELPER_PERSON_STATUS", "")
-HELPER_DOORBELL_NAME = os.environ.get("HELPER_DOORBELL_NAME", "")
-HELPER_DOORBELL_SIMILARITY = os.environ.get("HELPER_DOORBELL_SIMILARITY", "")
-HELPER_DOORBELL_STATUS = os.environ.get("HELPER_DOORBELL_STATUS", "")
 
 # ---------------------------------------------------------------------------
 # AWS clients
@@ -110,13 +107,13 @@ def _update_ha_helper(entity_id: str, value) -> None:
         logger.error("Failed to update %s: %s", entity_id, exc)
 
 def _update_ha_helpers(snapshot_path: str, result: MatchResponse) -> None:
-    """Routes results to the correct HA helpers."""
-    snap_type = _infer_snapshot_type(snapshot_path)
+    """Routes results to the configured Home Assistant helpers.
 
-    if snap_type == "doorbell":
-        h_name, h_sim, h_stat = HELPER_DOORBELL_NAME, HELPER_DOORBELL_SIMILARITY, HELPER_DOORBELL_STATUS
-    else:
-        h_name, h_sim, h_stat = HELPER_PERSON_NAME, HELPER_PERSON_SIMILARITY, HELPER_PERSON_STATUS
+    All snapshot types are routed to the person helpers (single set).
+    """
+    h_name = HELPER_PERSON_NAME
+    h_sim = HELPER_PERSON_SIMILARITY
+    h_stat = HELPER_PERSON_STATUS
 
     _update_ha_helper(h_stat, result.status)
     _update_ha_helper(h_name, result.name or "unknown")

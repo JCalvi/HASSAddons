@@ -96,7 +96,7 @@ automation:
           filename: /media/MediaUSB/snapshots/doorbell_latest.jpg
 
       # Step 2: call Rekognition Bridge
-      - service: rest_command.rekognition_match_doorbell
+      - service: rest_command.rekognition_match_person
         data:
           snapshot_path: /media/MediaUSB/snapshots/doorbell_latest.jpg
           threshold: 90

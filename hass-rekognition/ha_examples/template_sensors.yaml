@@ -6,7 +6,7 @@
 # Example configuration.yaml snippet:
 #   template: !include template_sensors.yaml
 #
-# ── Person detected ──────────────────────────────────────────────────────────
+# ── Person detected (all snapshot types) ────────────────────────────────────
 template:
     - sensor:
         - name: "Person at Door"
@@ -33,30 +33,4 @@ template:
                 mdi:account-question
               {% else %}
                 mdi:account-off
-              {% endif %}
-
-    # ── Doorbell pressed ─────────────────────────────────────────────────────────
-    - sensor:
-        - name: "Doorbell Visitor"
-          unique_id: rekognition_doorbell_visitor
-          state: >
-            {% set status = states('input_text.rekognition_doorbell_status') %}
-            {% if status == 'matched' %}
-              {{ states('input_text.rekognition_doorbell_name') }}
-            {% elif status == 'no_match' %}
-              Unknown Visitor
-            {% elif status == 'no_face' %}
-              No Face Detected
-            {% else %}
-              Error
-            {% endif %}
-          attributes:
-            status: "{{ states('input_text.rekognition_doorbell_status') }}"
-            name: "{{ states('input_text.rekognition_doorbell_name') }}"
-            similarity: "{{ states('input_number.rekognition_doorbell_similarity') | float(0) }}"
-            icon: >
-              {% if states('input_text.rekognition_doorbell_status') == 'matched' %}
-                mdi:doorbell-video
-              {% else %}
-                mdi:doorbell
               {% endif %}

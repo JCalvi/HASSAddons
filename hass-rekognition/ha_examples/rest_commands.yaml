@@ -21,16 +21,3 @@ rest_command:
         "max_faces": {{ max_faces | default(1) }}
       }
     content_type: "application/json"
-
-  rekognition_match_doorbell:
-    url: "http://homeassistant.local:8080/match"
-    method: POST
-    headers:
-      Content-Type: "application/json"
-    payload: >
-      {
-        "snapshot_path": "{{ snapshot_path }}",
-        "threshold": {{ threshold | default(95) }},
-        "max_faces": {{ max_faces | default(1) }}
-      }
-    content_type: "application/json"
