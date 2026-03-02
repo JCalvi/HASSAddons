@@ -1,0 +1,44 @@
+# Home Assistant Helpers for Rekognition Bridge
+#
+# Add these to your configuration.yaml (or a separate included file) under
+# the respective domains, or create them via the UI under
+# Settings → Devices & Services → Helpers.
+#
+# Person-detected helpers
+input_text:
+  rekognition_person_name:
+    name: "Rekognition – Person Name"
+    initial: "unknown"
+    max: 64
+
+  rekognition_person_status:
+    name: "Rekognition – Person Status"
+    initial: "no_face"
+    max: 32
+
+  rekognition_doorbell_name:
+    name: "Rekognition – Doorbell Name"
+    initial: "unknown"
+    max: 64
+
+  rekognition_doorbell_status:
+    name: "Rekognition – Doorbell Status"
+    initial: "no_face"
+    max: 32
+
+input_number:
+  rekognition_person_similarity:
+    name: "Rekognition – Person Similarity"
+    initial: 0
+    min: 0
+    max: 100
+    step: 0.01
+    unit_of_measurement: "%"
+
+  rekognition_doorbell_similarity:
+    name: "Rekognition – Doorbell Similarity"
+    initial: 0
+    min: 0
+    max: 100
+    step: 0.01
+    unit_of_measurement: "%"

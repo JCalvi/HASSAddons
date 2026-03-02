@@ -1,0 +1,151 @@
+# Example Home Assistant Automations for Rekognition Bridge
+#
+# These automations show two scenarios:
+#   1. Person detected by a motion/person camera
+#   2. Doorbell button pressed
+#
+# Prerequisites:
+#   - Add-on is running and reachable at homeassistant.local:8080
+#   - Helpers defined in helpers.yaml are created
+#   - rest_command entries from rest_commands.yaml are configured
+#   - Template sensors from template_sensors.yaml are configured
+#
+# Adjust entity IDs, snapshot paths, and notification targets to match
+# your own setup.
+
+# ── 1. Person Detected ───────────────────────────────────────────────────────
+automation:
+  - id: rekognition_person_detected
+    alias: "Rekognition – Person Detected at Front Door"
+    description: >
+      When a person is detected by the front-door camera, take a snapshot,
+      send it to the Rekognition Bridge, and notify based on the result.
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_door_person  # replace with your sensor
+        to: "on"
+    action:
+      # Step 1: capture a snapshot from the camera
+      - service: camera.snapshot
+        target:
+          entity_id: camera.front_door  # replace with your camera
+        data:
+          filename: /media/MediaUSB/snapshots/person_detected_latest.jpg
+
+      # Step 2: send snapshot to Rekognition Bridge
+      - service: rest_command.rekognition_match_person
+        data:
+          snapshot_path: /media/MediaUSB/snapshots/person_detected_latest.jpg
+          threshold: 95
+        response_variable: rekognition_result
+
+      # Step 3: branch on status
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ rekognition_result['content']['status'] == 'matched' }}"
+            sequence:
+              - service: notify.mobile_app_your_phone  # replace with your notify target
+                data:
+                  title: "Known person at the door"
+                  message: >
+                    {{ rekognition_result['content']['name'] | replace('_', ' ') }}
+                    ({{ rekognition_result['content']['similarity'] }}% match)
+
+          - conditions:
+              - condition: template
+                value_template: "{{ rekognition_result['content']['status'] == 'no_match' }}"
+            sequence:
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "Unknown person at the door"
+                  message: "A person was detected but not recognised."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ rekognition_result['content']['status'] == 'no_face' }}"
+            sequence:
+              - service: system_log.write
+                data:
+                  message: "Person trigger fired but no face detected in snapshot."
+                  level: warning
+
+        default:
+          - service: system_log.write
+            data:
+              message: >
+                Rekognition error: {{ rekognition_result['content']['error_message'] }}
+              level: error
+
+# ── 2. Doorbell Pressed ──────────────────────────────────────────────────────
+  - id: rekognition_doorbell_pressed
+    alias: "Rekognition – Doorbell Pressed"
+    description: >
+      When the doorbell is pressed, take a snapshot, send it to the
+      Rekognition Bridge, and announce the visitor.
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_doorbell  # replace with your doorbell sensor
+        to: "on"
+    action:
+      # Step 1: capture a snapshot
+      - service: camera.snapshot
+        target:
+          entity_id: camera.front_door_doorbell  # replace with your camera
+        data:
+          filename: /media/MediaUSB/snapshots/doorbell_latest.jpg
+
+      # Step 2: call Rekognition Bridge
+      - service: rest_command.rekognition_match_doorbell
+        data:
+          snapshot_path: /media/MediaUSB/snapshots/doorbell_latest.jpg
+          threshold: 90
+        response_variable: doorbell_result
+
+      # Step 3: announce visitor
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ doorbell_result['content']['status'] == 'matched' }}"
+            sequence:
+              - service: tts.speak  # or media_player.play_media
+                target:
+                  entity_id: media_player.living_room_speaker
+                data:
+                  message: >
+                    {{ doorbell_result['content']['name'] | replace('_', ' ') }}
+                    is at the door.
+
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "Doorbell"
+                  message: >
+                    {{ doorbell_result['content']['name'] | replace('_', ' ') }}
+                    rang the doorbell
+                    ({{ doorbell_result['content']['similarity'] }}% confident).
+
+          - conditions:
+              - condition: template
+                value_template: "{{ doorbell_result['content']['status'] == 'no_match' }}"
+            sequence:
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "Doorbell"
+                  message: "Someone unknown rang the doorbell."
+
+          - conditions:
+              - condition: template
+                value_template: "{{ doorbell_result['content']['status'] == 'no_face' }}"
+            sequence:
+              - service: notify.mobile_app_your_phone
+                data:
+                  title: "Doorbell"
+                  message: "Doorbell rang but no face detected in snapshot."
+
+        default:
+          - service: system_log.write
+            data:
+              message: >
+                Rekognition doorbell error:
+                {{ doorbell_result['content']['error_message'] }}
+              level: error

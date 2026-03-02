@@ -1,0 +1,62 @@
+# Template Sensors derived from the Rekognition Bridge helpers
+#
+# Add these inside a `template:` block in your configuration.yaml,
+# or in a dedicated template sensor file included via the `template:` key.
+#
+# Example configuration.yaml snippet:
+#   template: !include template_sensors.yaml
+#
+# ── Person detected ──────────────────────────────────────────────────────────
+template:
+    - sensor:
+        - name: "Person at Door"
+          unique_id: rekognition_person_at_door
+          state: >
+            {% set status = states('input_text.rekognition_person_status') %}
+            {% if status == 'matched' %}
+              {{ states('input_text.rekognition_person_name') }}
+            {% elif status == 'no_match' %}
+              Unknown Person
+            {% elif status == 'no_face' %}
+              No Face Detected
+            {% else %}
+              Error
+            {% endif %}
+          attributes:
+            status: "{{ states('input_text.rekognition_person_status') }}"
+            name: "{{ states('input_text.rekognition_person_name') }}"
+            similarity: "{{ states('input_number.rekognition_person_similarity') | float(0) }}"
+            icon: >
+              {% if states('input_text.rekognition_person_status') == 'matched' %}
+                mdi:account-check
+              {% elif states('input_text.rekognition_person_status') == 'no_match' %}
+                mdi:account-question
+              {% else %}
+                mdi:account-off
+              {% endif %}
+
+    # ── Doorbell pressed ─────────────────────────────────────────────────────────
+    - sensor:
+        - name: "Doorbell Visitor"
+          unique_id: rekognition_doorbell_visitor
+          state: >
+            {% set status = states('input_text.rekognition_doorbell_status') %}
+            {% if status == 'matched' %}
+              {{ states('input_text.rekognition_doorbell_name') }}
+            {% elif status == 'no_match' %}
+              Unknown Visitor
+            {% elif status == 'no_face' %}
+              No Face Detected
+            {% else %}
+              Error
+            {% endif %}
+          attributes:
+            status: "{{ states('input_text.rekognition_doorbell_status') }}"
+            name: "{{ states('input_text.rekognition_doorbell_name') }}"
+            similarity: "{{ states('input_number.rekognition_doorbell_similarity') | float(0) }}"
+            icon: >
+              {% if states('input_text.rekognition_doorbell_status') == 'matched' %}
+                mdi:doorbell-video
+              {% else %}
+                mdi:doorbell
+              {% endif %}
