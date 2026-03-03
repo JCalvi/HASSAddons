@@ -1,6 +1,6 @@
 # HASSAddons
 Home Assistant Add-on Repository
-John Calvi - 2024
+John Calvi - 2024-2026
 
 Currently Contains:
 
