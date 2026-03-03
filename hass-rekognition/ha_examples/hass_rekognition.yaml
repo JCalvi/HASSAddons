@@ -1,0 +1,69 @@
+rekognition_bridge:
+  # Home Assistant yaml items for Rekognition Bridge
+  #
+  # Add this file as a package from your configuration.yaml, e.g.:
+  # packages: !include hass_rekognition.yaml
+  #
+  # Home Assistant Helpers for Rekognition Bridge
+  # Person-detected helpers (all snapshot types are routed here)
+  input_text:
+    rekognition_person_name:
+      name: "Rekognition - Person Name"
+      initial: "unknown"
+      max: 64
+
+    rekognition_person_status:
+      name: "Rekognition - Person Status"
+      initial: "no_face"
+      max: 32
+
+  input_number:
+    rekognition_person_similarity:
+      name: "Rekognition - Person Similarity"
+      initial: 0
+      min: 0
+      max: 100
+      step: 0.1
+      unit_of_measurement: "%"
+      mode: box
+
+  # Rest_command entries for the Rekognition Bridge add-on
+  # Replace <ADDON_IP> with the IP/hostname where the add-on is running
+  rest_command:
+    rekognition_match_person:
+      url: "http://homeassistant.local:8080/match"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+      payload: >
+        {
+          "snapshot_path": "{{ snapshot_path }}",
+          "threshold": {{ threshold | default(95) }},
+          "max_faces": {{ max_faces | default(1) }}
+        }
+      content_type: "application/json"
+
+  # Template Sensors derived from the Rekognition Bridge helpers
+  template:
+    - sensor:
+        - name: "Rekognition - Person"
+          unique_id: rekognition_person
+          state: >
+            {% set status = states('input_text.rekognition_person_status') %}
+            {% if status == 'searching' %} Identifying...
+            {% elif status == 'matched' %} {{ states('input_text.rekognition_person_name') }}
+            {% elif status == 'no_match' %} Unknown Person
+            {% elif status == 'no_face' %} No Face Detected
+            {% else %} Waiting {% endif %}
+          attributes:
+            status: "{{ states('input_text.rekognition_person_status') }}"
+            name: "{{ states('input_text.rekognition_person_name') }}"
+            similarity: "{{ states('input_number.rekognition_person_similarity') | float(0) }}"
+            icon: >
+              {% set status = states('input_text.rekognition_person_status') %}
+              {% if status == 'searching' %} mdi:account-search
+              {% elif status == 'matched' %} mdi:account-check
+              {% elif status == 'no_match' %} mdi:account-question
+              {% else %} mdi:account-off {% endif %}
+              
+# End of Rekognition Bridge YAML Configuration items.

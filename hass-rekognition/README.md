@@ -11,6 +11,9 @@ Bridges local Home Assistant snapshots to AWS Rekognition for facial recognition
 ## Installation
 
 Add the repository `https://github.com/JCalvi/HASSAddons` to your Home Assistant add-on store, then install **Rekognition Bridge**.
+Copy the file hass_rekognition.yaml in ha_examples into your config directory and add a package line to your configuration.yaml
+eg: homeassistant:
+		packages: !include hass_rekognition.yaml
 
 ## Configuration
 
@@ -78,12 +81,3 @@ Status values: `matched`, `no_match`, `no_face`, `error`.
 ### `GET /health`
 
 Returns `{"status": "ok"}`.
-
-## Migration from 2026.3.1
-
-The `helper_doorbell_*` options have been removed in **2026.3.2**. All snapshot results are now routed to the person helpers (`helper_person_*`).
-
-Before upgrading, copy any values you had in:
-- `helper_doorbell_name` → `helper_person_name`
-- `helper_doorbell_similarity` → `helper_person_similarity`
-- `helper_doorbell_status` → `helper_person_status`
