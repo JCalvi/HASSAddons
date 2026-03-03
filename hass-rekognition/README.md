@@ -15,6 +15,8 @@ Copy the file hass_rekognition.yaml in ha_examples into your config directory an
 eg: homeassistant:
 		packages: !include hass_rekognition.yaml
 
+> **New to AWS Rekognition?** See [QUICKSTART.md](QUICKSTART.md) for a step-by-step guide to creating your S3 bucket, Rekognition collection, IAM user, and indexing your first faces.
+
 ## Configuration
 
 ```json
