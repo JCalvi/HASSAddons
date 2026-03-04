@@ -37,9 +37,11 @@ COPY app/ .
 #
 # If you ever add more AWS services (e.g., sts, iam), add them to the keep-list.
 RUN set -eux; \
-    python3 -c 'import pathlib, shutil, botocore; d=pathlib.Path(botocore.__file__).parent/"data"; keep={"s3","rekognition"}; \
-for p in d.iterdir(): \
-    (p.is_dir() and p.name not in keep) and shutil.rmtree(p)'
+    BOTODIR="$(python3 -c 'import pathlib, botocore; print(pathlib.Path(botocore.__file__).parent / "data")')"; \
+    find "$BOTODIR" -maxdepth 1 -mindepth 1 -type d \
+      ! -name 's3' \
+      ! -name 'rekognition' \
+      -exec rm -rf {} +
 
 # Remove ensurepip (pip is not shipped in the final image) and trim /usr/share
 # to reduce runtime image size. (Keep this AFTER copying /install so we don't
