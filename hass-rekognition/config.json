@@ -1,6 +1,6 @@
 {
   "name": "Rekognition Bridge",
-  "version": "2026.3.2",
+  "version": "2026.3.3",
   "slug": "hass-rekognition",
   "init": false,
   "description": "Bridges local snapshots to AWS Rekognition for facial recognition and exposes an HTTP API returning match results. NOTE (2026.3.2 migration): helper_doorbell_* options have been removed. Copy any values from helper_doorbell_name/similarity/status into helper_person_name/similarity/status before upgrading.",

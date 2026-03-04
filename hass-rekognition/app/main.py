@@ -115,9 +115,13 @@ def _update_ha_helpers(snapshot_path: str, result: MatchResponse) -> None:
     h_sim = HELPER_PERSON_SIMILARITY
     h_stat = HELPER_PERSON_STATUS
 
-    _update_ha_helper(h_stat, result.status)
+    # Ensure name and similarity are written first so status flips do not cause
+    # the template sensor/automations to see stale values.
     _update_ha_helper(h_name, result.name or "unknown")
     _update_ha_helper(h_sim, result.similarity or 0)
+
+    # Finally update status
+    _update_ha_helper(h_stat, result.status)
 
 
 # ---------------------------------------------------------------------------

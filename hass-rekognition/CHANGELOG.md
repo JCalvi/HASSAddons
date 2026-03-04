@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.3.3] - 2026-03-04
+### Fixed
+- Fixed race condition where `status` was written to the Home Assistant helper before `name` and `similarity`, causing template sensors and automations to see stale/initial values on status transitions (e.g., "matched" with name still showing "unknown"). Helpers are now updated in the order: name → similarity → status.
+
+### Improved
+- Hardened example template sensor (`hass_rekognition.yaml`) to avoid outputting the literal `unknown` state when `status == 'matched'` but the name helper has not yet settled to its final value.
+
+
 ## [2026.3.2] - 2026-03-02
 ### Changed
 - Simplified Home Assistant helper routing: all snapshot results (doorbell or person) are now routed to the single person helper set (`helper_person_*`).

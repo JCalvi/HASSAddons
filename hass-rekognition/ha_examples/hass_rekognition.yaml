@@ -50,8 +50,11 @@ rekognition_bridge:
           unique_id: rekognition_person
           state: >
             {% set status = states('input_text.rekognition_person_status') %}
+            {% set person_name = states('input_text.rekognition_person_name') %}
+            {% set invalid_names = ['unknown', '', 'unavailable', 'none'] %}
             {% if status == 'searching' %} Identifying...
-            {% elif status == 'matched' %} {{ states('input_text.rekognition_person_name') }}
+            {% elif status == 'matched' and person_name not in invalid_names %} {{ person_name }}
+            {% elif status == 'matched' %} Identifying...
             {% elif status == 'no_match' %} Unknown Person
             {% elif status == 'no_face' %} No Face Detected
             {% else %} Waiting {% endif %}
