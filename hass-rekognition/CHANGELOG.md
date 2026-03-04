@@ -12,6 +12,8 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Fixed missing `DELETE_AFTER_MATCH` export in `run.sh` (was silently defaulting to `true` regardless of add-on config).
 - Removed debug `echo` statements from `run.sh`.
 - Added `--workers 1 --limit-concurrency 4` to the uvicorn invocation for conservative resource use.
+- Removed Versions from requirements to always pull latest.
+- Added Rekognition icon.
 
 ### Tradeoff
 - Each `POST /match` call now incurs a Python interpreter cold-start (typically < 1 s on the host) to initialise boto3 and the AWS SDK. Given the add-on is called ~once per day this is acceptable. See README for details.
