@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:15.0.1
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:20.0.1
 
 # -----------------------------------------------------------------------------
 # Builder: install deps with pip, but do NOT ship pip in the final image
