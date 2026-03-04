@@ -31,6 +31,15 @@ COPY --from=builder /install/ /usr/
 # Copy all files from your app folder
 COPY app/ .
 
+# Remove ensurepip (pip is not shipped in the final image) and trim /usr/share
+# to reduce runtime image size. (Keep this AFTER copying /install so we don't
+# accidentally remove something pip might rely on during build steps.)
+#
+# This version is resilient to Python minor-version changes (e.g., 3.11 -> 3.12).
+RUN set -eux; \
+    rm -rf /usr/lib/python3.*/ensurepip; \
+    rm -rf /usr/share/man /usr/share/doc /usr/share/info /usr/share/locale
+
 # Fix permissions for the run script
 RUN chmod 755 /app/run.sh
 
