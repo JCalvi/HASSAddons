@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.3.4] - 2026-03-04
+### Changed
+- Reduced idle RAM/CPU by moving all heavy work (boto3, S3 upload, Rekognition API calls, HA helper updates, optional S3 deletion) into a short-lived `worker.py` subprocess spawned only when `POST /match` is called.
+- The long-running API server (`main.py`) no longer imports `boto3`, `requests`, or `botocore` at startup, significantly reducing idle memory footprint.
+- Added configurable `WORKER_TIMEOUT` environment variable (default: 60 s) — requests that exceed this limit return an error response instead of hanging.
+- Fixed missing `DELETE_AFTER_MATCH` export in `run.sh` (was silently defaulting to `true` regardless of add-on config).
+- Removed debug `echo` statements from `run.sh`.
+- Added `--workers 1 --limit-concurrency 4` to the uvicorn invocation for conservative resource use.
+
+### Tradeoff
+- Each `POST /match` call now incurs a Python interpreter cold-start (typically < 1 s on the host) to initialise boto3 and the AWS SDK. Given the add-on is called ~once per day this is acceptable. See README for details.
+
 ## [2026.3.3] - 2026-03-04
 ### Fixed
 - Fixed race condition where `status` was written to the Home Assistant helper before `name` and `similarity`, causing template sensors and automations to see stale/initial values on status transitions (e.g., "matched" with name still showing "unknown"). Helpers are now updated in the order: name → similarity → status.
