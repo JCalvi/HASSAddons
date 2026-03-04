@@ -52,6 +52,16 @@ eg: homeassistant:
 | `helper_person_name` | `input_text` entity to receive matched name |
 | `helper_person_similarity` | `input_number` entity to receive similarity % |
 | `helper_person_status` | `input_text` entity to receive status |
+| `worker_timeout` | *(optional)* Max seconds to wait for the worker subprocess (default: `60`) |
+
+## Architecture
+
+The add-on uses a **lightweight API server + per-request worker** design to minimise idle resource usage:
+
+- **API server (`main.py`)** — a minimal FastAPI/uvicorn process that holds no AWS connections and imports no heavy libraries. At idle it consumes very little RAM and near-zero CPU.
+- **Worker subprocess (`worker.py`)** — spawned only when `POST /match` is called. Imports `boto3`/`requests`, uploads the snapshot to S3, calls the Rekognition APIs, updates HA helpers, and exits. The subprocess lifecycle is completely contained to a single request.
+
+**Cold-start tradeoff:** Each `/match` call incurs a brief Python interpreter startup to load boto3 (~0.5–1 s on typical hardware). This is acceptable for an add-on called ~once per day; if sub-second response latency is critical, revert to the monolithic design from v2026.3.3.
 
 ## API
 
