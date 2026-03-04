@@ -1,12 +1,32 @@
 ARG BUILD_FROM=ghcr.io/hassio-addons/base:15.0.1
-FROM ${BUILD_FROM}
+
+# -----------------------------------------------------------------------------
+# Builder: install deps with pip, but do NOT ship pip in the final image
+# -----------------------------------------------------------------------------
+FROM ${BUILD_FROM} AS builder
 
 RUN apk add --no-cache python3 py3-pip
 
 WORKDIR /app
 
+# Keep your existing flow/comments, but install into a staging dir
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
+# Install wheels into /install (not into the system site-packages)
+RUN pip3 install --no-cache-dir --break-system-packages --prefix=/install -r requirements.txt
+
+# -----------------------------------------------------------------------------
+# Final: python runtime only + copied deps
+# -----------------------------------------------------------------------------
+FROM ${BUILD_FROM}
+
+# python3 runtime only (no py3-pip)
+RUN apk add --no-cache python3
+
+WORKDIR /app
+
+# Copy python deps and console scripts from builder stage
+COPY --from=builder /install/ /usr/
 
 # Copy all files from your app folder
 COPY app/ .
