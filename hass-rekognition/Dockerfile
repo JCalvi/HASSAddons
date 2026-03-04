@@ -31,6 +31,16 @@ COPY --from=builder /install/ /usr/
 # Copy all files from your app folder
 COPY app/ .
 
+# Prune botocore service models to reduce image size (keep only what we use).
+# This keeps global files (e.g., endpoints.json/partitions.json) and removes
+# unused service directories under botocore/data.
+#
+# If you ever add more AWS services (e.g., sts, iam), add them to the keep-list.
+RUN set -eux; \
+    python3 -c 'import pathlib, shutil, botocore; d=pathlib.Path(botocore.__file__).parent/"data"; keep={"s3","rekognition"}; \
+for p in d.iterdir(): \
+    (p.is_dir() and p.name not in keep) and shutil.rmtree(p)'
+
 # Remove ensurepip (pip is not shipped in the final image) and trim /usr/share
 # to reduce runtime image size. (Keep this AFTER copying /install so we don't
 # accidentally remove something pip might rely on during build steps.)
