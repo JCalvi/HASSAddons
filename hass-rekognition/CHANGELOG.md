@@ -12,6 +12,7 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Hardened example template sensor (`hass_rekognition.yaml`) to avoid outputting the literal `unknown` state when `status == 'matched'` but the name helper has not yet settled to its final value.
 - Remove pip, ensurepip and setuptools from image to save space.
 - Build from 20.0.1 base.
+- Updated requirements versions.
 
 
 ## [2026.3.2] - 2026-03-02
