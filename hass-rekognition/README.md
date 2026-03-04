@@ -53,6 +53,7 @@ eg: homeassistant:
 | `helper_person_similarity` | `input_number` entity to receive similarity % |
 | `helper_person_status` | `input_text` entity to receive status |
 | `worker_timeout` | *(optional)* Max seconds to wait for the worker subprocess (default: `60`) |
+| `log_worker_stderr` | *(optional)* Set to `true` to stream worker log lines for every request; when `false` (default) worker logs are only emitted on failure |
 
 ## Architecture
 
@@ -89,6 +90,15 @@ The add-on uses a **lightweight API server + per-request worker** design to mini
 ```
 
 Status values: `matched`, `no_match`, `no_face`, `error`.
+
+**HTTP status codes:**
+
+| Condition | HTTP status |
+|---|---|
+| Successful result (`matched`, `no_match`, `no_face`) | `200 OK` |
+| Snapshot file not found | `400 Bad Request` |
+| Worker subprocess timed out | `504 Gateway Timeout` |
+| Other worker errors | `200 OK` with `status: error` |
 
 ### `GET /health`
 

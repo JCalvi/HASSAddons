@@ -12,9 +12,11 @@ import logging
 import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -31,6 +33,9 @@ logger = logging.getLogger("rekognition_bridge")
 # ---------------------------------------------------------------------------
 DEFAULT_THRESHOLD = int(os.environ.get("DEFAULT_THRESHOLD", "95"))
 WORKER_TIMEOUT = int(os.environ.get("WORKER_TIMEOUT", "60"))
+# When true, stream worker stderr to the server log for every request.
+# When false (default), worker stderr is only emitted on failure.
+LOG_WORKER_STDERR = os.environ.get("LOG_WORKER_STDERR", "false").lower() in ("true", "1", "yes")
 
 # Resolve the worker script path relative to this file so it works whether
 # uvicorn is started from /app or from another working directory.
@@ -66,7 +71,7 @@ class MatchResponse(BaseModel):
 # API endpoints
 # ---------------------------------------------------------------------------
 @app.post("/match", response_model=MatchResponse)
-def match(req: MatchRequest) -> MatchResponse:
+def match(req: MatchRequest):
     threshold = req.threshold if req.threshold is not None else DEFAULT_THRESHOLD
     max_faces = req.max_faces if req.max_faces is not None else 1
 
@@ -76,6 +81,20 @@ def match(req: MatchRequest) -> MatchResponse:
         threshold,
         max_faces,
     )
+
+    # Pre-flight: verify the snapshot file exists before spawning a worker.
+    if not Path(req.snapshot_path).is_file():
+        logger.warning("Snapshot not found (pre-flight): %s", req.snapshot_path)
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "error",
+                "matched": False,
+                "faces_detected": 0,
+                "threshold": threshold,
+                "error_message": f"Snapshot not found: {req.snapshot_path}",
+            },
+        )
 
     payload = json.dumps(
         {
@@ -96,15 +115,23 @@ def match(req: MatchRequest) -> MatchResponse:
         )
     except subprocess.TimeoutExpired:
         logger.error("Worker timed out after %ds for snapshot=%s", WORKER_TIMEOUT, req.snapshot_path)
-        return MatchResponse(
-            status="error",
-            matched=False,
-            threshold=threshold,
-            error_message=f"Worker timed out after {WORKER_TIMEOUT}s",
+        return JSONResponse(
+            status_code=504,
+            content={
+                "status": "error",
+                "matched": False,
+                "faces_detected": 0,
+                "threshold": threshold,
+                "error_message": f"Worker timed out after {WORKER_TIMEOUT}s",
+            },
         )
 
-    if proc.stderr:
-        logger.info("Worker stderr: %s", proc.stderr.strip())
+    worker_failed = proc.returncode != 0
+    if proc.stderr and (LOG_WORKER_STDERR or worker_failed):
+        for line in proc.stderr.splitlines():
+            line = line.strip()
+            if line:
+                logger.info("worker | %s", line)
 
     stdout = proc.stdout.strip()
 
@@ -112,6 +139,10 @@ def match(req: MatchRequest) -> MatchResponse:
     if stdout:
         try:
             data = json.loads(stdout)
+            # Defense in depth: if the worker reports a missing snapshot, map to 400.
+            error_msg = data.get("error_message", "")
+            if data.get("status") == "error" and error_msg.startswith("Snapshot not found:"):
+                return JSONResponse(status_code=400, content=data)
             return MatchResponse(**data)
         except json.JSONDecodeError as exc:
             logger.error("Worker stdout is not valid JSON: %s | stdout=%r", exc, stdout)
