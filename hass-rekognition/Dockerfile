@@ -22,6 +22,11 @@ COPY requirements.txt .
 # Install wheels into /install (not into the system site-packages)
 RUN pip3 install --no-cache-dir --break-system-packages --prefix=/install -r requirements.txt
 
+# Optional: trim python bytecode caches from the staged install to save a bit of space
+RUN set -eux; \
+    find /install -type d -name '__pycache__' -prune -exec rm -rf '{}' +; \
+    find /install -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
+
 # Prune botocore service models to reduce image size (keep only what we use).
 # This runs in the builder so the deleted files never get copied into the final image.
 #
