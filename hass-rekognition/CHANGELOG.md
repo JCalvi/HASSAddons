@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.3.7] - 2026-03-05
+### Changed
+- Trim python bytecode caches from the staged install to save a bit of space
+
 ## [2026.3.6] - 2026-03-05
 ### Changed
 - Enable Uvicorn native extensions by default (`uvloop` event loop + `httptools` HTTP parser).

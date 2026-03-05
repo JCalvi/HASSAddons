@@ -1,6 +1,6 @@
 {
   "name": "Rekognition Bridge",
-  "version": "2026.3.6",
+  "version": "2026.3.7",
   "slug": "hass-rekognition",
   "init": false,
   "description": "Bridges local snapshots to AWS Rekognition for facial recognition and exposes an HTTP API returning match results.",
