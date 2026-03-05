@@ -28,7 +28,7 @@ rekognition_bridge:
       mode: box
 
   # Rest_command entries for the Rekognition Bridge add-on
-  # Replace homeassistant.local with fixed ip or your reserved name (eg.homeassistant.lan) can improve msdns reliability.
+  # Replace homeassistant.local with fixed ip or your reserved name (eg.homeassistant.lan) can improve mDNS reliability.
   #
   # If you configure `api_token` in the add-on, add this to your Home Assistant secrets.yaml:
   #
