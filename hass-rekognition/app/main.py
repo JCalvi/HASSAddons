@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -36,6 +36,10 @@ WORKER_TIMEOUT = int(os.environ.get("WORKER_TIMEOUT", "60"))
 # When true, stream worker stderr to the server log for every request.
 # When false (default), worker stderr is only emitted on failure.
 LOG_WORKER_STDERR = os.environ.get("LOG_WORKER_STDERR", "false").lower() in ("true", "1", "yes")
+
+# Optional API token; if set, requests to POST /match must include a matching header:
+#   X-Rekognition-Token: <token>
+API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 
 # Resolve the worker script path relative to this file so it works whether
 # uvicorn is started from /app or from another working directory.
@@ -71,9 +75,22 @@ class MatchResponse(BaseModel):
 # API endpoints
 # ---------------------------------------------------------------------------
 @app.post("/match", response_model=MatchResponse)
-def match(req: MatchRequest):
+def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default=None)):
     threshold = req.threshold if req.threshold is not None else DEFAULT_THRESHOLD
     max_faces = req.max_faces if req.max_faces is not None else 1
+
+    # Optional auth gate (enabled only when API_TOKEN is configured)
+    if API_TOKEN and x_rekognition_token != API_TOKEN:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "status": "error",
+                "matched": False,
+                "faces_detected": 0,
+                "threshold": threshold,
+                "error_message": "Unauthorized",
+            },
+        )
 
     logger.info(
         "POST /match  snapshot=%s  threshold=%d  max_faces=%d",
@@ -147,7 +164,12 @@ def match(req: MatchRequest):
         except json.JSONDecodeError as exc:
             logger.error("Worker stdout is not valid JSON: %s | stdout=%r", exc, stdout)
         except Exception as exc:
-            logger.error("Failed to construct MatchResponse from worker output (%s): %s | stdout=%r", type(exc).__name__, exc, stdout)
+            logger.error(
+                "Failed to construct MatchResponse from worker output (%s): %s | stdout=%r",
+                type(exc).__name__,
+                exc,
+                stdout,
+            )
 
     # Worker exited non-zero and stdout was not parseable JSON
     if proc.returncode != 0:

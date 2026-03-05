@@ -22,6 +22,14 @@ export HELPER_PERSON_NAME=$(bashio::config 'helper_person_name' | tr -d '[:space
 export HELPER_PERSON_SIMILARITY=$(bashio::config 'helper_person_similarity' | tr -d '[:space:]')
 export HELPER_PERSON_STATUS=$(bashio::config 'helper_person_status' | tr -d '[:space:]')
 
+# 4b. Optional tuning / logging
+export WORKER_TIMEOUT=$(bashio::config 'worker_timeout' | tr -d '[:space:]')
+export LOG_WORKER_STDERR=$(bashio::config 'log_worker_stderr' | tr -d '[:space:]')
+
+# 4c. Optional API security
+# If API_TOKEN is set, POST /match requires the header: X-Rekognition-Token: <token>
+export API_TOKEN=$(bashio::config 'api_token' | tr -d '[:space:]')
+
 # 5. Start the Web Server
 # Single worker + minimal concurrency to keep idle RAM/CPU low.
 # Heavy work (boto3, S3, Rekognition) is delegated to per-request worker.py subprocesses.

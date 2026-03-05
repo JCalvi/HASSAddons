@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.3.8] - 2026-03-05
+### Added
+- Add-on UI options: `worker_timeout`, `log_worker_stderr`.
+- Optional API token (`api_token`). When set, `POST /match` requires header `X-Rekognition-Token`.
+
+### Changed
+- Updated HA package example (`ha_examples/hass_rekognition.yaml`) to send the token from `secrets.yaml` via `X-Rekognition-Token`.
+
 ## [2026.3.7] - 2026-03-05
 ### Changed
 - Trim python bytecode caches from the staged install to save a bit of space
@@ -76,7 +84,7 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 ## [1.0.0] - 2026-03-01
 ### Added
 - Initial release of **Rekognition Bridge** Home Assistant add-on.
-- HTTP API for submitting snapshots and returning structured face match results.
+- HTTP API for submitting snapshots and returning structured match results.
 - AWS Rekognition + S3 staging bucket workflow.
 - Home Assistant helper entity update support (optional).
 - Multi-arch support declared in add-on config (`aarch64`, `amd64`, `armhf`, `armv7`, `i386`).

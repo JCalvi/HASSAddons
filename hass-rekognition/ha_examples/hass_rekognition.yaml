@@ -29,12 +29,19 @@ rekognition_bridge:
 
   # Rest_command entries for the Rekognition Bridge add-on
   # Replace homeassistant.local with fixed ip or your reserved name (eg.homeassistant.lan) can improve msdns reliability.
+  #
+  # If you configure `api_token` in the add-on, add this to your Home Assistant secrets.yaml:
+  #
+  #   rekognition_bridge_token: "your-long-random-token"
+  #
+  # ...and the header below will authenticate requests.
   rest_command:
     rekognition_match_person:
       url: "http://homeassistant.local:8080/match"
       method: POST
       headers:
         Content-Type: "application/json"
+        X-Rekognition-Token: !secret rekognition_bridge_token
       payload: >
         {
           "snapshot_path": "{{ snapshot_path }}",

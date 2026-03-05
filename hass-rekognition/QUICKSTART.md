@@ -13,6 +13,7 @@ This guide walks you through the minimum AWS setup required to run the **Rekogni
 - [ ] Access key generated and saved
 - [ ] At least one face enrolled in the collection
 - [ ] Add-on installed and configured in Home Assistant
+- [ ] *(Recommended)* API token configured + stored in `secrets.yaml`
 
 ---
 
@@ -212,7 +213,7 @@ aws rekognition list-faces \
 1. In Home Assistant, go to **Settings → Add-ons → Add-on Store**.
 2. Add the custom repository: `https://github.com/JCalvi/HASSAddons`
 3. Find **Rekognition Bridge** and click **Install**.
-4. Open the **Configuration** tab and fill in your values:
+4. Open the **Configuration** tab and fill in your values (plus recommended security settings):
 
 ```json
 {
@@ -228,7 +229,11 @@ aws rekognition list-faces \
   "ha_token": "<your Home Assistant long-lived token>",
   "helper_person_name": "input_text.rekognition_person_name",
   "helper_person_similarity": "input_number.rekognition_person_similarity",
-  "helper_person_status": "input_text.rekognition_person_status"
+  "helper_person_status": "input_text.rekognition_person_status",
+
+  "worker_timeout": 60,
+  "log_worker_stderr": false,
+  "api_token": "<your-long-random-token>"
 }
 ```
 
@@ -240,17 +245,26 @@ homeassistant:
   packages: !include hass_rekognition.yaml
 ```
 
-6. Restart Home Assistant to load the new helpers, then start the add-on.
+6. Add the API token to your Home Assistant `secrets.yaml`:
+
+```yaml
+rekognition_bridge_token: "<your-long-random-token>"
+```
+
+7. Restart Home Assistant to load the new helpers, then start the add-on.
 
 ---
 
 ## Step 6 – Test the Integration
 
-Send a test request from the Home Assistant terminal or from any machine on your network:
+Send a test request from the Home Assistant terminal or from any machine on your network.
+
+If `api_token` is set in the add-on, include the `X-Rekognition-Token` header:
 
 ```bash
 curl -s -X POST http://<ha-ip>:8080/match \
   -H "Content-Type: application/json" \
+  -H "X-Rekognition-Token: <your-long-random-token>" \
   -d '{"snapshot_path": "/media/snapshots/test.jpg", "threshold": 90}' \
   | python3 -m json.tool
 ```
@@ -276,6 +290,7 @@ Check the add-on log (**Settings → Add-ons → Rekognition Bridge → Log**) i
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| `401 Unauthorized` | `api_token` is set in the add-on but request header missing/wrong | Ensure `X-Rekognition-Token` matches the add-on `api_token` value; if using HA, ensure the `!secret rekognition_bridge_token` is defined |
 | `status: error` – `AccessDenied` | IAM policy missing a permission or wrong resource ARN | Re-check the policy in Step 3 and confirm the bucket/collection names match |
 | `status: no_face` | Image quality too low, face too small, or not front-facing | Use a higher-resolution image; face should be ≥ 100 px wide |
 | `status: no_match` | Face not in collection, or threshold too high | Enrol the face (Step 4) or lower `default_threshold` |
