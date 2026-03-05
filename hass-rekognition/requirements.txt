@@ -1,4 +1,6 @@
 fastapi
 uvicorn
+uvloop
+httptools
 boto3
 requests

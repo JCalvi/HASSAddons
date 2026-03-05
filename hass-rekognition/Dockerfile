@@ -5,7 +5,14 @@ ARG BUILD_FROM=ghcr.io/hassio-addons/base:20.0.1
 # -----------------------------------------------------------------------------
 FROM ${BUILD_FROM} AS builder
 
-RUN apk add --no-cache python3 py3-pip
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    build-base \
+    python3-dev \
+    libffi-dev \
+    openssl-dev \
+    libuv-dev
 
 WORKDIR /app
 

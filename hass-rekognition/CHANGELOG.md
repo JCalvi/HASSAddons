@@ -4,14 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
-## [2026.3.5] - 2026-03-04
+## [2026.3.6] - 2026-03-05
+### Changed
+- Enable Uvicorn native extensions by default (`uvloop` event loop + `httptools` HTTP parser).
+- Add Alpine builder dependencies to support compiling native Python extensions on `amd64` and `aarch64`.
+
+## [2026.3.5] - 2026-03-05
 ### Added
 - Pre-flight snapshot check in `main.py`: if `snapshot_path` does not exist or is not a file, the API returns `HTTP 400` immediately (no worker subprocess is spawned), with a JSON body matching the standard response schema and `error_message: "Snapshot not found: ..."`.
 - Defense-in-depth: if the worker itself reports a `Snapshot not found:` error, that response is also mapped to `HTTP 400`.
 - Worker timeout now returns `HTTP 504` (previously returned `HTTP 200` with `status: error`).
 - New `LOG_WORKER_STDERR` environment variable (default: `false`). When `false`, worker stderr is only forwarded to the server log on failure (non-zero exit code). When `true`, each worker log line is forwarded for every request.
 
-## [2026.3.4] - 2026-03-04
+## [2026.3.4] - 2026-03-05
 ### Changed
 - Reduced idle RAM/CPU by moving all heavy work (boto3, S3 upload, Rekognition API calls, HA helper updates, optional S3 deletion) into a short-lived `worker.py` subprocess spawned only when `POST /match` is called.
 - The long-running API server (`main.py`) no longer imports `boto3`, `requests`, or `botocore` at startup, significantly reducing idle memory footprint.

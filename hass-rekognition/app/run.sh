@@ -25,4 +25,8 @@ export HELPER_PERSON_STATUS=$(bashio::config 'helper_person_status' | tr -d '[:s
 # 5. Start the Web Server
 # Single worker + minimal concurrency to keep idle RAM/CPU low.
 # Heavy work (boto3, S3, Rekognition) is delegated to per-request worker.py subprocesses.
-exec uvicorn main:app --host 0.0.0.0 --port 8080 --workers 1 --limit-concurrency 4
+exec uvicorn main:app \
+  --host 0.0.0.0 --port 8080 \
+  --workers 1 --limit-concurrency 4 \
+  --loop uvloop \
+  --http httptools
