@@ -1,0 +1,96 @@
+configuration:
+  aws_access_key_id:
+    name: AWS Access Key ID
+    description: >
+      IAM access key ID used by the add-on to call S3 and Rekognition.
+      Create a dedicated IAM user with least-privilege permissions (see QUICKSTART.md).
+
+  aws_secret_access_key:
+    name: AWS Secret Access Key
+    description: >
+      Secret access key for the IAM user. Keep this private.
+      This field is stored as a password in the add-on UI.
+
+  aws_region:
+    name: AWS Region
+    description: >
+      AWS region to use for S3 and Rekognition (example: ap-southeast-2).
+      Must match the region of your S3 bucket and Rekognition collection.
+
+  rekognition_collection:
+    name: Rekognition Collection ID
+    description: >
+      Rekognition face collection ID to search against (example: ha_known_people).
+
+  s3_bucket:
+    name: S3 Bucket
+    description: >
+      S3 bucket used as a temporary staging area for snapshots before Rekognition processing.
+      The add-on uploads snapshots here, calls Rekognition using the S3 object, then optionally deletes it.
+
+  s3_prefix:
+    name: S3 Key Prefix
+    description: >
+      Prefix (folder-like path) inside the S3 bucket where snapshots are uploaded.
+      Default is "snapshots/". Must match the IAM policy resource path.
+
+  default_threshold:
+    name: Default Similarity Threshold
+    description: >
+      Default minimum similarity percentage (1-100) required for a match.
+      Can be overridden per request via the /match payload.
+
+  delete_after_match:
+    name: Delete Snapshot from S3 After Processing
+    description: >
+      If enabled, the uploaded snapshot object is deleted from S3 after processing (best-effort).
+      Recommended to reduce S3 storage usage.
+
+  ha_url:
+    name: Home Assistant URL
+    description: >
+      Home Assistant base URL reachable from inside the add-on container.
+      Typically: http://172.30.32.1:8123
+
+  ha_token:
+    name: Home Assistant Long-Lived Access Token
+    description: >
+      Long-lived access token used to update helper entities (input_text/input_number).
+      Leave blank to disable helper updates.
+
+  helper_person_name:
+    name: Helper Entity - Person Name
+    description: >
+      input_text entity to receive the matched name (ExternalImageId) or "unknown".
+      Example: input_text.rekognition_person_name
+
+  helper_person_similarity:
+    name: Helper Entity - Person Similarity
+    description: >
+      input_number entity to receive similarity percentage (0-100).
+      Example: input_number.rekognition_person_similarity
+
+  helper_person_status:
+    name: Helper Entity - Person Status
+    description: >
+      input_text entity to receive status (matched, no_match, no_face, error).
+      Example: input_text.rekognition_person_status
+
+  worker_timeout:
+    name: Worker Timeout (seconds)
+    description: >
+      Maximum time to wait for the per-request worker subprocess before returning HTTP 504.
+      Increase this on slow hardware or for large images.
+
+  log_worker_stderr:
+    name: Log Worker STDERR
+    description: >
+      If enabled, worker stderr is forwarded to the add-on log for every request.
+      If disabled, worker stderr is only logged when the worker fails.
+
+  api_token:
+    name: API Token (optional)
+    description: >
+      If set, POST /match requires header "X-Rekognition-Token" to match this token.
+      Recommended to prevent unauthorized LAN calls / AWS costs.
+      Home Assistant tip: store the token in secrets.yaml and reference it in rest_command.
