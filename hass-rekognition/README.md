@@ -92,6 +92,7 @@ If you do **not** set `api_token` in the add-on, the header is not required.
 
 To change verbosity, set `log_level` in the add-on configuration:
 
+- `TRACE` for maximum verbosity (very noisy). Enables uvicorn trace-level logging; the app logger treats `TRACE` as `DEBUG`.
 - `DEBUG` for detailed troubleshooting
 - `INFO` for normal operation (default)
 - `WARNING` / `ERROR` / `CRITICAL` for quieter logs
