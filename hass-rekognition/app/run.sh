@@ -28,12 +28,15 @@ export LOG_WORKER_STDERR=$(bashio::config 'log_worker_stderr' | tr -d '[:space:]
 export LOG_LEVEL=$(bashio::config 'log_level' | tr -d '[:space:]')
 
 # Uvicorn expects lowercase log levels: critical|error|warning|info|debug|trace
-export UVICORN_LOG_LEVEL="$(echo "${LOG_LEVEL}" | tr '[:upper:]' '[:lower:]')"
+export UVICORN_LOG_LEVEL="$(echo -n "${LOG_LEVEL}" | tr '[:upper:]' '[:lower:]')"
 
 # 4c. Optional API security
+# If API_TOKEN is set, POST /match requires the header: X-Rekognition-Token: <token>
 export API_TOKEN=$(bashio::config 'api_token' | tr -d '[:space:]')
 
 # 5. Start the Web Server
+# Single worker + minimal concurrency to keep idle RAM/CPU low.
+# Heavy work (boto3, S3, Rekognition) is delegated to per-request worker.py subprocesses.
 exec uvicorn main:app \
   --host 0.0.0.0 --port 8080 \
   --workers 1 --limit-concurrency 4 \
