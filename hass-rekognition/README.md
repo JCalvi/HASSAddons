@@ -8,6 +8,7 @@ Bridges local Home Assistant snapshots to AWS Rekognition for facial recognition
 - Returns a structured JSON response (`status`, `matched`, `name`, `similarity`, etc.).
 - Optionally updates Home Assistant `input_text` / `input_number` helper entities with the result.
 - Optional API token to prevent unauthorized calls to `POST /match`.
+- Configurable log level for easier troubleshooting.
 
 ## Installation
 
@@ -35,10 +36,10 @@ eg: homeassistant:
   "helper_person_name": "input_text.rekognition_person_name",
   "helper_person_similarity": "input_number.rekognition_person_similarity",
   "helper_person_status": "input_text.rekognition_person_status",
-
   "worker_timeout": 60,
   "log_worker_stderr": false,
-  "api_token": ""
+  "api_token": "",
+  "log_level": "INFO"
 }
 ```
 
@@ -60,6 +61,7 @@ eg: homeassistant:
 | `worker_timeout` | *(optional)* Max seconds to wait for the worker subprocess (default: `60`) |
 | `log_worker_stderr` | *(optional)* Set to `true` to stream worker log lines for every request; when `false` (default) worker logs are only emitted on failure |
 | `api_token` | *(optional)* If set, `POST /match` requires header `X-Rekognition-Token` to match this value |
+| `log_level` | *(optional)* Logging verbosity for the add-on (DEBUG/INFO/WARNING/ERROR/CRITICAL). Default: `INFO`. |
 
 ## Security: API token (recommended)
 
@@ -86,6 +88,17 @@ headers:
 
 If you do **not** set `api_token` in the add-on, the header is not required.
 
+## Logging
+
+To change verbosity, set `log_level` in the add-on configuration:
+
+- `DEBUG` for detailed troubleshooting
+- `INFO` for normal operation (default)
+- `WARNING` / `ERROR` / `CRITICAL` for quieter logs
+
+The add-on passes this value through to uvicorn via `--log-level`, so it affects both
+uvicorn logs and the app logger.
+
 ## Architecture
 
 The add-on uses a **lightweight API server + per-request worker** design to minimise idle resource usage:
@@ -93,7 +106,7 @@ The add-on uses a **lightweight API server + per-request worker** design to mini
 - **API server (`main.py`)** — a minimal FastAPI/uvicorn process that holds no AWS connections and imports no heavy libraries. At idle it consumes very little RAM and near-zero CPU.
 - **Worker subprocess (`worker.py`)** — spawned only when `POST /match` is called. Imports `boto3`/`requests`, uploads the snapshot to S3, calls the Rekognition APIs, updates HA helpers, and exits. The subprocess lifecycle is completely contained to a single request.
 
-**Cold-start tradeoff:** Each `/match` call incurs a brief Python interpreter startup to load boto3 (~0.5–1 s on typical hardware). This is acceptable for an add-on called ~once per day; if sub-second response latency is critical, revert to the monolithic design from v2026.3.3.
+**Cold-start tradeoff:** Each `/match` call incurs a brief Python interpreter startup to load boto3 (~0.5–1 s on typical hardware). This is acceptable for an add-on called ~once per day.
 
 ## API
 
@@ -110,31 +123,6 @@ The add-on uses a **lightweight API server + per-request worker** design to mini
 **Request headers (only if `api_token` is set):**
 
 - `X-Rekognition-Token: <your token>`
-
-**Response:**
-
-```json
-{
-  "status": "matched",
-  "matched": true,
-  "name": "john",
-  "similarity": 98.72,
-  "faces_detected": 1,
-  "threshold": 95
-}
-```
-
-Status values: `matched`, `no_match`, `no_face`, `error`.
-
-**HTTP status codes:**
-
-| Condition | HTTP status |
-|---|---|
-| Successful result (`matched`, `no_match`, `no_face`) | `200 OK` |
-| Snapshot file not found | `400 Bad Request` |
-| Worker subprocess timed out | `504 Gateway Timeout` |
-| Unauthorized (token required but missing/invalid) | `401 Unauthorized` |
-| Other worker errors | `200 OK` with `status: error` |
 
 ### `GET /health`
 

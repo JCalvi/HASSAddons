@@ -1,6 +1,6 @@
 {
   "name": "Rekognition Bridge",
-  "version": "2026.3.8",
+  "version": "2026.3.9",
   "slug": "hass-rekognition",
   "init": false,
   "description": "Bridges local snapshots to AWS Rekognition for facial recognition and exposes an HTTP API returning match results.",
@@ -29,7 +29,8 @@
     "helper_person_status": "",
     "worker_timeout": 60,
     "log_worker_stderr": false,
-    "api_token": ""
+    "api_token": "",
+    "log_level": "INFO"
   },
   "schema": {
     "aws_access_key_id": "str",
@@ -47,6 +48,7 @@
     "helper_person_status": "str",
     "worker_timeout": "int(1,600)",
     "log_worker_stderr": "bool",
-    "api_token": "password"
+    "api_token": "password",
+    "log_level": "list(DEBUG|INFO|WARNING|ERROR|CRITICAL)"
   }
 }

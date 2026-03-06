@@ -94,3 +94,10 @@ configuration:
       If set, POST /match requires header "X-Rekognition-Token" to match this token.
       Recommended to prevent unauthorized LAN calls / AWS costs.
       Home Assistant tip: store the token in secrets.yaml and reference it in rest_command.
+
+  log_level:
+    name: Log level
+    description: >
+      Logging verbosity for the add-on (and uvicorn).
+      Valid values: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+      Default is INFO.

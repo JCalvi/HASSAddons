@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.3.9] - 2026-03-06
+### Added
+- New `log_level` add-on option to control logging verbosity (DEBUG/INFO/WARNING/ERROR/CRITICAL).
+
+### Changed
+- Pass `--log-level` to uvicorn so the selected `log_level` applies to uvicorn logs as well as the app logger.
+
 ## [2026.3.8] - 2026-03-05
 ### Added
 - Add-on UI options: `worker_timeout`, `log_worker_stderr`.
@@ -48,7 +55,7 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ### Improved
 - Hardened example template sensor (`hass_rekognition.yaml`) to avoid outputting the literal `unknown` state when `status == 'matched'` but the name helper has not yet settled to its final value.
-- Remove pip, ensurepip, setuptools and unneeded boto modules from image to save space.
+- Remove pip, ensurepip, setuptools and unneeded boto modules from image to save a bit of space.
 - Build from 20.0.1 base.
 - Updated requirements versions.
 
@@ -84,7 +91,7 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 ## [1.0.0] - 2026-03-01
 ### Added
 - Initial release of **Rekognition Bridge** Home Assistant add-on.
-- HTTP API for submitting snapshots and returning structured match results.
+- HTTP API for submitting snapshots and returning structured face match results.
 - AWS Rekognition + S3 staging bucket workflow.
 - Home Assistant helper entity update support (optional).
 - Multi-arch support declared in add-on config (`aarch64`, `amd64`, `armhf`, `armv7`, `i386`).

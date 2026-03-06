@@ -25,6 +25,7 @@ export HELPER_PERSON_STATUS=$(bashio::config 'helper_person_status' | tr -d '[:s
 # 4b. Optional tuning / logging
 export WORKER_TIMEOUT=$(bashio::config 'worker_timeout' | tr -d '[:space:]')
 export LOG_WORKER_STDERR=$(bashio::config 'log_worker_stderr' | tr -d '[:space:]')
+export LOG_LEVEL=$(bashio::config 'log_level' | tr -d '[:space:]')
 
 # 4c. Optional API security
 # If API_TOKEN is set, POST /match requires the header: X-Rekognition-Token: <token>
@@ -37,4 +38,5 @@ exec uvicorn main:app \
   --host 0.0.0.0 --port 8080 \
   --workers 1 --limit-concurrency 4 \
   --loop uvloop \
-  --http httptools
+  --http httptools \
+  --log-level "${LOG_LEVEL}"
