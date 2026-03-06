@@ -6,7 +6,7 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ## [2026.3.9] - 2026-03-06
 ### Added
-- New `log_level` add-on option to control logging verbosity (DEBUG/INFO/WARNING/ERROR/CRITICAL).
+- New `log_level` add-on option to control logging verbosity (TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL).
 
 ### Changed
 - Pass `--log-level` to uvicorn so the selected `log_level` applies to uvicorn logs as well as the app logger.

@@ -61,7 +61,7 @@ eg: homeassistant:
 | `worker_timeout` | *(optional)* Max seconds to wait for the worker subprocess (default: `60`) |
 | `log_worker_stderr` | *(optional)* Set to `true` to stream worker log lines for every request; when `false` (default) worker logs are only emitted on failure |
 | `api_token` | *(optional)* If set, `POST /match` requires header `X-Rekognition-Token` to match this value |
-| `log_level` | *(optional)* Logging verbosity for the add-on (DEBUG/INFO/WARNING/ERROR/CRITICAL). Default: `INFO`. |
+| `log_level` | *(optional)* Logging verbosity for the add-on (TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL). Default: `INFO`. |
 
 ## Security: API token (recommended)
 

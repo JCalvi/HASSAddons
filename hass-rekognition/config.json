@@ -49,6 +49,6 @@
     "worker_timeout": "int(1,600)",
     "log_worker_stderr": "bool",
     "api_token": "password",
-    "log_level": "list(DEBUG|INFO|WARNING|ERROR|CRITICAL)"
+	"log_level": "list(TRACE|DEBUG|INFO|WARNING|ERROR|CRITICAL)"
   }
 }
