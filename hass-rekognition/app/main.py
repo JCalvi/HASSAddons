@@ -22,8 +22,44 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
+def _coerce_log_level(value: str) -> int:
+    """
+    Accepts standard logging names (DEBUG/INFO/WARNING/ERROR/CRITICAL) or numeric
+    strings (10/20/30/40/50). Defaults to INFO if invalid.
+
+    Notes:
+    - Uvicorn supports TRACE, but Python's standard logging does not define TRACE.
+      If the add-on config sets TRACE, we map it to DEBUG on the app side so the
+      user still gets maximal verbosity from the app logger.
+    """
+    if value is None:
+        return logging.INFO
+
+    raw = str(value).strip()
+    if not raw:
+        return logging.INFO
+
+    # Numeric levels
+    if raw.isdigit():
+        try:
+            return int(raw)
+        except ValueError:
+            return logging.INFO
+
+    upper = raw.upper()
+
+    # Uvicorn supports TRACE but Python logging doesn't by default.
+    # Map TRACE -> DEBUG for the app.
+    if upper == "TRACE":
+        return logging.DEBUG
+
+    return getattr(logging, upper, logging.INFO)
+
+
+LOG_LEVEL = _coerce_log_level(os.environ.get("LOG_LEVEL", "INFO"))
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=LOG_LEVEL,
     format="%(asctime)s [%(levelname)s] %(name)s – %(message)s",
 )
 logger = logging.getLogger("rekognition_bridge")
@@ -33,6 +69,7 @@ logger = logging.getLogger("rekognition_bridge")
 # ---------------------------------------------------------------------------
 DEFAULT_THRESHOLD = int(os.environ.get("DEFAULT_THRESHOLD", "95"))
 WORKER_TIMEOUT = int(os.environ.get("WORKER_TIMEOUT", "60"))
+
 # When true, stream worker stderr to the server log for every request.
 # When false (default), worker stderr is only emitted on failure.
 LOG_WORKER_STDERR = os.environ.get("LOG_WORKER_STDERR", "false").lower() in ("true", "1", "yes")
@@ -62,7 +99,7 @@ class MatchRequest(BaseModel):
 
 
 class MatchResponse(BaseModel):
-    status: str          # matched | no_match | no_face | error
+    status: str  # matched | no_match | no_face | error
     matched: bool
     name: Optional[str] = None
     similarity: Optional[float] = None
@@ -148,6 +185,7 @@ def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default
         for line in proc.stderr.splitlines():
             line = line.strip()
             if line:
+                # Keep worker stderr lines visible, but do not change worker formatting.
                 logger.info("worker | %s", line)
 
     stdout = proc.stdout.strip()
@@ -156,10 +194,12 @@ def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default
     if stdout:
         try:
             data = json.loads(stdout)
+
             # Defense in depth: if the worker reports a missing snapshot, map to 400.
             error_msg = data.get("error_message", "")
             if data.get("status") == "error" and error_msg.startswith("Snapshot not found:"):
                 return JSONResponse(status_code=400, content=data)
+
             return MatchResponse(**data)
         except json.JSONDecodeError as exc:
             logger.error("Worker stdout is not valid JSON: %s | stdout=%r", exc, stdout)
