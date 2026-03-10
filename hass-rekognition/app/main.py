@@ -3,7 +3,7 @@ Rekognition Bridge – Home Assistant local add-on (lightweight API server)
 
 Heavy work (boto3, S3, Rekognition, HA helper updates) is delegated to a
 short-lived worker subprocess (worker.py) that is spawned only when
-POST /match is called.  When idle the server holds no AWS connections and
+POST /match is called. When idle the server holds no AWS connections and
 imports no heavy libraries, keeping RAM and CPU usage minimal.
 """
 
@@ -29,8 +29,7 @@ def _coerce_log_level(value: str) -> int:
 
     Notes:
     - Uvicorn supports TRACE, but Python's standard logging does not define TRACE.
-      If the add-on config sets TRACE, we map it to DEBUG on the app side so the
-      user still gets maximal verbosity from the app logger.
+      If the add-on config sets TRACE, we map it to DEBUG on the app side.
     """
     if value is None:
         return logging.INFO
@@ -39,7 +38,6 @@ def _coerce_log_level(value: str) -> int:
     if not raw:
         return logging.INFO
 
-    # Numeric levels
     if raw.isdigit():
         try:
             return int(raw)
@@ -47,9 +45,6 @@ def _coerce_log_level(value: str) -> int:
             return logging.INFO
 
     upper = raw.upper()
-
-    # Uvicorn supports TRACE but Python logging doesn't by default.
-    # Map TRACE -> DEBUG for the app.
     if upper == "TRACE":
         return logging.DEBUG
 
@@ -70,16 +65,9 @@ logger = logging.getLogger("rekognition_bridge")
 DEFAULT_THRESHOLD = int(os.environ.get("DEFAULT_THRESHOLD", "95"))
 WORKER_TIMEOUT = int(os.environ.get("WORKER_TIMEOUT", "60"))
 
-# When true, stream worker stderr to the server log for every request.
-# When false (default), worker stderr is only emitted on failure.
 LOG_WORKER_STDERR = os.environ.get("LOG_WORKER_STDERR", "false").lower() in ("true", "1", "yes")
-
-# Optional API token; if set, requests to POST /match must include a matching header:
-#   X-Rekognition-Token: <token>
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 
-# Resolve the worker script path relative to this file so it works whether
-# uvicorn is started from /app or from another working directory.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 WORKER_PATH = os.path.join(_HERE, "worker.py")
 
@@ -90,7 +78,7 @@ app = FastAPI(title="Rekognition Bridge", version="1.0.0")
 
 
 # ---------------------------------------------------------------------------
-# Request / Response models
+# Models
 # ---------------------------------------------------------------------------
 class MatchRequest(BaseModel):
     snapshot_path: str
@@ -108,15 +96,60 @@ class MatchResponse(BaseModel):
     error_message: Optional[str] = None
 
 
+def _log_result_summary(snapshot_path: str, result: dict) -> None:
+    """
+    Log a concise one-line summary of the worker result at INFO.
+    This keeps INFO useful without dumping full JSON every time.
+    """
+    status = result.get("status")
+    name = result.get("name")
+    similarity = result.get("similarity")
+    faces = result.get("faces_detected")
+    threshold = result.get("threshold")
+    err = result.get("error_message")
+
+    if status == "matched":
+        try:
+            sim_txt = f"{float(similarity):.1f}%"
+        except Exception:
+            sim_txt = str(similarity)
+        logger.info(
+            "Rekognition result: status=%s name=%s similarity=%s faces=%s threshold=%s snapshot=%s",
+            status,
+            name,
+            sim_txt,
+            faces,
+            threshold,
+            snapshot_path,
+        )
+    elif status in ("no_match", "no_face"):
+        logger.info(
+            "Rekognition result: status=%s faces=%s threshold=%s snapshot=%s",
+            status,
+            faces,
+            threshold,
+            snapshot_path,
+        )
+    else:
+        # error or unknown
+        logger.warning(
+            "Rekognition result: status=%s error=%s faces=%s threshold=%s snapshot=%s",
+            status,
+            err,
+            faces,
+            threshold,
+            snapshot_path,
+        )
+
+
 # ---------------------------------------------------------------------------
-# API endpoints
+# Endpoints
 # ---------------------------------------------------------------------------
 @app.post("/match", response_model=MatchResponse)
 def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default=None)):
     threshold = req.threshold if req.threshold is not None else DEFAULT_THRESHOLD
     max_faces = req.max_faces if req.max_faces is not None else 1
 
-    # Optional auth gate (enabled only when API_TOKEN is configured)
     if API_TOKEN and x_rekognition_token != API_TOKEN:
         return JSONResponse(
             status_code=401,
@@ -136,7 +169,6 @@ def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default
         max_faces,
     )
 
-    # Pre-flight: verify the snapshot file exists before spawning a worker.
     if not Path(req.snapshot_path).is_file():
         logger.warning("Snapshot not found (pre-flight): %s", req.snapshot_path)
         return JSONResponse(
@@ -151,11 +183,7 @@ def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default
         )
 
     payload = json.dumps(
-        {
-            "snapshot_path": req.snapshot_path,
-            "threshold": threshold,
-            "max_faces": max_faces,
-        }
+        {"snapshot_path": req.snapshot_path, "threshold": threshold, "max_faces": max_faces}
     )
 
     try:
@@ -185,20 +213,25 @@ def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default
         for line in proc.stderr.splitlines():
             line = line.strip()
             if line:
-                # Keep worker stderr lines visible, but do not change worker formatting.
                 logger.info("worker | %s", line)
 
     stdout = proc.stdout.strip()
 
-    # Always try to parse stdout as JSON first (worker emits JSON even on error)
     if stdout:
         try:
             data = json.loads(stdout)
 
-            # Defense in depth: if the worker reports a missing snapshot, map to 400.
+            # DEBUG: log full JSON payload
+            logger.debug("Worker JSON: %s", json.dumps(data, separators=(",", ":"), ensure_ascii=False))
+
+            # Map worker "snapshot not found" to 400
             error_msg = data.get("error_message", "")
             if data.get("status") == "error" and error_msg.startswith("Snapshot not found:"):
+                _log_result_summary(req.snapshot_path, data)
                 return JSONResponse(status_code=400, content=data)
+
+            # INFO/WARN: log a concise result summary
+            _log_result_summary(req.snapshot_path, data)
 
             return MatchResponse(**data)
         except json.JSONDecodeError as exc:
@@ -211,7 +244,6 @@ def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default
                 stdout,
             )
 
-    # Worker exited non-zero and stdout was not parseable JSON
     if proc.returncode != 0:
         logger.error("Worker exited with code %d for snapshot=%s", proc.returncode, req.snapshot_path)
         return MatchResponse(
@@ -221,7 +253,6 @@ def match(req: MatchRequest, x_rekognition_token: Optional[str] = Header(default
             error_message=f"Worker exited with code {proc.returncode}",
         )
 
-    # Unexpected: zero exit but no parseable output
     logger.error("Worker produced no output for snapshot=%s", req.snapshot_path)
     return MatchResponse(
         status="error",

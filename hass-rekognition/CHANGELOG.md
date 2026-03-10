@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.3.10] - 2026-03-10
+
+### Changed
+- App now logs a concise Rekognition result summary at `INFO` after each `/match` call (status/name/similarity/faces/threshold).
+
+
 ## [2026.3.9] - 2026-03-06
 ### Added
 - New `log_level` add-on option to control logging verbosity (TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL).
