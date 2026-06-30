@@ -2,7 +2,7 @@ rem https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md#full-tag-
 @echo off
 cd /d "%~dp0\hass-networkexplorer"
 
-set jcversion=2026.6.09
+set jcversion=2026.6.10
 
 PowerShell -Command "& {(Get-Content .\config.yaml) -replace 'version: .*', 'version: %jcversion%' | Set-Content .\config.yaml}"
 

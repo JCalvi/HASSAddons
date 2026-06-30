@@ -1,3 +1,10 @@
+## 2026.6.10
+
+- Removed legacy Pi-hole/access point/SSH user fields from the Home Assistant add-on configuration page.
+- Device management now lives solely in the Network Explorer UI.
+- Ignored stale legacy HA options so old Pi-hole/AP values cannot reappear after update.
+- Default ping worker count is now 50.
+
 ## 2026.6.09
 - Moved refresh controls into the top header beside Theme and Settings.
 - Refresh is now a combined immediate-refresh and auto-refresh control.

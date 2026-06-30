@@ -169,7 +169,18 @@ function fillFilters(){
 }
 function statusText(x){return x.status==="online"?"Online":x.status==="idle"?"Idle":"Offline";}
 function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}catch(e){return s;}}
-function detailHtml(x){return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-grid"><div>IP</div><div>${esc(x.ip)}</div><div>Host</div><div>${esc(x.host)}</div><div>MAC</div><div>${esc(x.mac)}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;}
+function detailHtml(x){
+  const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac);
+  const actions=[];
+  if(x.ip){
+    actions.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">Open http://${ip}</button>`);
+    actions.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">Open https://${ip}</button>`);
+    actions.push(`<button class="detail-action copy-value" data-label="IP" data-copy="${ip}" type="button">Copy IP</button>`);
+  }
+  if(x.host) actions.push(`<button class="detail-action copy-value" data-label="hostname" data-copy="${host}" type="button">Copy Host</button>`);
+  if(x.mac) actions.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">Copy MAC</button>`);
+  return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div><div class="detail-grid"><div>IP</div><div>${ip}</div><div>Host</div><div>${host}</div><div>MAC</div><div>${mac}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;
+}
 
 function clearFilters(){
   $("search").value="";
@@ -191,10 +202,11 @@ function render(){
     if(ap&&x.ap!==ap)return false;
     return true;
   }).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
-  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;const ipCell=x.ip?`<a href="http://${esc(x.ip)}" target="_blank" class="ip-link" data-ip="${esc(x.ip)}">${esc(x.ip)}</a>`:"";const hostCell=x.host?`<button class="link-button copy-host" data-copy="${esc(x.host)}" type="button">${esc(x.host)}</button>`:"";const macCell=x.mac?`<button class="link-button copy-mac" data-copy="${esc(x.mac)}" type="button">${esc(x.mac)}</button>`:"";return `<tr class="mainrow" data-key="${esc(key)}"><td>${ipCell}</td><td>${hostCell}</td><td>${macCell}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td><td>${esc(x.source)}</td></tr>${open?detailHtml(x):""}`;}).join("");
-  document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("a,button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
-  document.querySelectorAll(".ip-link").forEach(a=>a.addEventListener("click",e=>{if(e.ctrlKey){e.preventDefault();window.open(`https://${a.dataset.ip}`,"_blank");}}));
-  document.querySelectorAll(".copy-host,.copy-mac").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();copyText(b.dataset.copy,b.classList.contains("copy-mac")?"MAC":"hostname");}));
+  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td>${esc(x.mac)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td><td>${esc(x.source)}</td></tr>${open?detailHtml(x):""}`;}).join("");
+  document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
+  document.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`http://${b.dataset.ip}`,"_blank");}));
+  document.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`https://${b.dataset.ip}`,"_blank");}));
+  document.querySelectorAll(".copy-value").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();copyText(b.dataset.copy,b.dataset.label||"text");}));
   const online=rows.filter(x=>x.status==="online").length, idle=rows.filter(x=>x.status==="idle").length, offline=rows.filter(x=>x.status==="offline").length;
   const wifi=rows.filter(x=>x.status==="online"&&x.connection&&x.connection!=="Ethernet"&&x.connection!=="Tailscale").length;
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;

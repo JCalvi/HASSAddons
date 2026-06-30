@@ -4,11 +4,14 @@ from pathlib import Path
 RUNTIME_CONFIG = Path("/data/networkexplorer_config.json")
 
 DEFAULTS = {
-    "piholes": ["192.168.1.2", "192.168.1.3"],
-    "access_points": ["192.168.1.11", "192.168.1.12"],
+    # Devices are managed in the Network Explorer UI and persisted in
+    # /data/networkexplorer_config.json. These legacy list fields are kept
+    # internally for backwards compatibility only.
+    "piholes": [],
+    "access_points": [],
     "ssh_user": "root",
     "ssh_key_path": "/config/ssh/id_ed25519",
-    "ping_workers": 20,
+    "ping_workers": 50,
     "ping_timeout": 1,
     "tcp_probe": False,
     "tcp_ports": [22, 53, 80, 443],
@@ -17,18 +20,36 @@ DEFAULTS = {
 
 def load_config() -> dict:
     cfg = DEFAULTS.copy()
-    for path in [Path("/data/options.json"), RUNTIME_CONFIG]:
-        if path.exists():
-            try:
-                data = json.loads(path.read_text())
-                for key, value in data.items():
-                    if value is not None:
-                        cfg[key] = value
-            except Exception:
-                pass
+
+    # Home Assistant add-on options now contain runtime/performance settings only.
+    # Device lists are managed from the Network Explorer UI. Ignore legacy device
+    # options here so stale HA options cannot re-add old Pi-hole/AP lists.
+    options_path = Path("/data/options.json")
+    if options_path.exists():
+        try:
+            data = json.loads(options_path.read_text())
+            for key, value in data.items():
+                if key in {"piholes", "access_points", "ssh_user", "devices"}:
+                    continue
+                if value is not None:
+                    cfg[key] = value
+        except Exception:
+            pass
+
+    # Runtime config is owned by the Network Explorer UI and may include managed
+    # devices plus the derived Pi-hole and OpenWrt Wi-Fi polling lists.
+    if RUNTIME_CONFIG.exists():
+        try:
+            data = json.loads(RUNTIME_CONFIG.read_text())
+            for key, value in data.items():
+                if value is not None:
+                    cfg[key] = value
+        except Exception:
+            pass
+
     cfg["piholes"] = [str(x).strip() for x in cfg.get("piholes", []) if str(x).strip()]
     cfg["access_points"] = [str(x).strip() for x in cfg.get("access_points", []) if str(x).strip()]
-    cfg["ping_workers"] = max(1, int(cfg.get("ping_workers", 20)))
+    cfg["ping_workers"] = max(1, int(cfg.get("ping_workers", 50)))
     cfg["ping_timeout"] = max(1, int(cfg.get("ping_timeout", 1)))
     cfg["tcp_ports"] = [int(x) for x in cfg.get("tcp_ports", [])]
     return cfg
