@@ -1,3 +1,10 @@
+## 2026.6.09
+- Moved refresh controls into the top header beside Theme and Settings.
+- Refresh is now a combined immediate-refresh and auto-refresh control.
+- Removed the separate auto-refresh row from the filter card.
+- Summary chips are now clickable filters.
+- Wi-Fi summary chip filters all live Wi-Fi connections; Devices clears filters.
+
 # Changelog
 
 ## 2026.6.08

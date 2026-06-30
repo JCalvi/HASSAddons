@@ -35,8 +35,8 @@
 *{box-sizing:border-box}
 body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);margin:0;font-size:14px}
 .page{padding:16px;max-width:1800px;margin:0 auto}
-.page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}.header-actions{display:flex;gap:8px;align-items:center}
-h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 4px 0}.small{color:var(--muted);font-size:12px}.summary{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:8px 0 12px 0}.summary span{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px 9px}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}.header-actions{display:flex;gap:8px;align-items:center}.refresh-combo{display:inline-flex;align-items:stretch}.refresh-combo button{border-top-right-radius:0;border-bottom-right-radius:0}.refresh-combo select{border-top-left-radius:0;border-bottom-left-radius:0;border-left:0;min-width:92px}
+h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 4px 0}.small{color:var(--muted);font-size:12px}.summary{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:8px 0 12px 0}.summary span{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px 9px}.summary-chip{cursor:pointer;user-select:none}.summary-chip:hover{filter:brightness(.97);border-color:var(--blue)}:root[data-theme="dark"] .summary-chip:hover,:root[data-theme="auto"] .summary-chip:hover{filter:brightness(1.12)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0;box-shadow:var(--shadow)}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}.card-head p{margin:0;color:var(--muted);font-size:13px}.setup-card.collapsed{display:none}
 .field{display:flex;flex-direction:column;gap:5px}.field span{font-weight:600;color:var(--text)}input,select,button,textarea{background:var(--card2);color:var(--text);border:1px solid var(--border);padding:8px 10px;border-radius:8px;font:inherit;min-height:38px}input::placeholder{color:var(--muted)}input:focus,select:focus,textarea:focus{outline:2px solid rgba(3,169,217,.35);border-color:var(--blue)}button{cursor:pointer;font-weight:600;white-space:nowrap}button:hover{filter:brightness(1.05)}button:disabled{opacity:.6;cursor:wait}.primary{background:var(--blue);border-color:var(--blue2);color:#fff}.secondary{background:var(--card2);border-color:var(--border);color:var(--text)}button.danger{background:#fee2e2;color:#b91c1c;border-color:#fecaca}:root[data-theme="dark"] button.danger,:root[data-theme="auto"] button.danger{background:#3a1f1f;color:#ffb0b0;border-color:#684040}
 .setup-top{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}.key-path{min-width:320px;flex:1}.setup-actions.compact{display:flex;gap:8px;flex-wrap:wrap;margin:0}.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.controls input{min-width:280px;flex:1}.controls select{min-width:170px}
@@ -44,7 +44,7 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
 .notice{background:#eef9ff;border:1px solid #b8e7f8;color:#16445a;border-radius:8px;padding:9px 10px;margin:8px 0;font-size:13px}:root[data-theme="dark"] .notice,:root[data-theme="auto"] .notice{background:#101820;border-color:#2b4d5d;color:#cfe9f5}.setup-status{min-height:24px;margin:8px 0;color:var(--muted)}.setup-status.ok{color:var(--green)}.setup-status.bad{color:var(--red)}.ok-text{color:var(--green);font-weight:700}.diagnostics{margin-top:10px;color:var(--muted)}.diagnostics summary{cursor:pointer;font-weight:600}.key-info{color:var(--muted);font-size:12px;margin-top:8px}.key-info code{display:block;background:var(--bg);border:1px solid var(--border);padding:8px;border-radius:7px;white-space:pre-wrap;word-break:break-all;margin-top:4px;color:var(--text)}.output{display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap;color:var(--text)}.output:not(:empty){display:block}
 .chip{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis}.chip.ok{background:#dcfce7;color:#15803d}.chip.bad{background:#fee2e2;color:#b91c1c}.chip.wait{background:#fef3c7;color:#92400e}.chip.unknown{background:#e5e7eb;color:#4b5563}:root[data-theme="dark"] .chip.ok,:root[data-theme="auto"] .chip.ok{background:#193d25;color:#58d26b}:root[data-theme="dark"] .chip.bad,:root[data-theme="auto"] .chip.bad{background:#4a1f1f;color:#ff7777}:root[data-theme="dark"] .chip.wait,:root[data-theme="auto"] .chip.wait{background:#4b421c;color:#e6c84f}:root[data-theme="dark"] .chip.unknown,:root[data-theme="auto"] .chip.unknown{background:#333;color:#aaa}.link-button{background:transparent;border:0;color:var(--blue);min-height:0;padding:2px 0;margin-left:6px;font-weight:600}.ssh-status{max-width:240px}.ssh-status small{display:block;color:var(--muted);margin-top:4px;max-width:240px;white-space:normal}
 .table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;background:var(--card)}table{border-collapse:collapse;width:100%;font-size:14px;min-width:1000px}th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;white-space:nowrap}th{background:var(--head);cursor:pointer;position:sticky;top:0;z-index:2}tr:hover{background:var(--card2)}.mainrow{cursor:pointer}.detail{background:var(--card2);color:var(--text)}.detail td{white-space:normal;padding:14px 18px;line-height:1.45}.detail-grid{display:grid;grid-template-columns:160px 1fr;gap:4px 14px;max-width:900px}.status-pill{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}.status-pill.online{background:#dcfce7;color:#15803d}.status-pill.idle{background:#fef3c7;color:#92400e}.status-pill.offline{background:#e5e7eb;color:#4b5563}:root[data-theme="dark"] .status-pill.online,:root[data-theme="auto"] .status-pill.online{background:#193d25;color:#58d26b}:root[data-theme="dark"] .status-pill.idle,:root[data-theme="auto"] .status-pill.idle{background:#4b421c;color:#e6c84f}:root[data-theme="dark"] .status-pill.offline,:root[data-theme="auto"] .status-pill.offline{background:#333;color:#aaa}.online{color:var(--green);font-weight:bold}.offline{color:var(--muted)}.idle{color:var(--yellow);font-weight:bold}.rssi-good{color:var(--green)}.rssi-ok{color:var(--yellow)}.rssi-bad{color:var(--red)}
-@media(max-width:900px){.page{padding:10px}.page-header{align-items:flex-start}.header-actions{flex-direction:column;align-items:flex-end}.controls input,.controls select,.controls button{width:100%;min-width:0}h1{font-size:26px}.device-setup-table{min-width:900px}}
+@media(max-width:900px){.page{padding:10px}.page-header{align-items:flex-start}.header-actions{flex-direction:column;align-items:flex-end}.refresh-combo{width:100%}.refresh-combo button{flex:1}.controls input,.controls select,.controls button{width:100%;min-width:0}h1{font-size:26px}.device-setup-table{min-width:900px}}
 
   </style>
 </head>
@@ -61,6 +61,16 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
           <option value="light">Theme: Light</option>
           <option value="dark">Theme: Dark</option>
         </select>
+        <div class="refresh-combo" title="Refresh and auto-refresh">
+          <button id="refreshBtn" type="button" class="primary">Refresh</button>
+          <select id="autoRefreshSelect" aria-label="Auto refresh interval">
+            <option value="0">Manual</option>
+            <option value="15">15s</option>
+            <option value="30">30s</option>
+            <option value="60">1m</option>
+            <option value="300">5m</option>
+          </select>
+        </div>
         <button id="settingsBtn" type="button" class="secondary">Settings</button>
       </div>
     </header>
@@ -133,14 +143,6 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
         </select>
         <select id="connectionFilter"><option value="">All connections</option></select>
         <select id="apFilter"><option value="">All APs</option></select>
-        <button id="refreshBtn" type="button" class="primary">Refresh</button>
-        <select id="autoRefreshSelect" title="Auto refresh">
-          <option value="0">Auto-refresh: Off</option>
-          <option value="15">Auto-refresh: 15 sec</option>
-          <option value="30">Auto-refresh: 30 sec</option>
-          <option value="60">Auto-refresh: 1 min</option>
-          <option value="300">Auto-refresh: 5 min</option>
-        </select>
       </div>
     </section>
 
@@ -330,17 +332,34 @@ async function testAll(show=true){updateAllSetupDevices(); if(show)setSetupMessa
 function fillFilters(){
   const c=$("connectionFilter"), a=$("apFilter"); const cv=c.value, av=a.value;
   const conns=[...new Set(rows.map(x=>x.connection).filter(Boolean))].sort(); const aps=[...new Set(rows.map(x=>x.ap).filter(Boolean))].sort();
-  c.innerHTML='<option value="">All connections</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
+  c.innerHTML='<option value="">All connections</option><option value="__wifi__">All Wi-Fi</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
   a.innerHTML='<option value="">All APs</option>'+aps.map(x=>`<option>${esc(x)}</option>`).join("");
-  c.value=cv; a.value=av;
+  c.value=[...c.options].some(o=>o.value===cv)?cv:""; a.value=[...a.options].some(o=>o.value===av)?av:"";
 }
 function statusText(x){return x.status==="online"?"Online":x.status==="idle"?"Idle":"Offline";}
 function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}catch(e){return s;}}
 function detailHtml(x){return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-grid"><div>IP</div><div>${esc(x.ip)}</div><div>Host</div><div>${esc(x.host)}</div><div>MAC</div><div>${esc(x.mac)}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;}
+
+function clearFilters(){
+  $("search").value="";
+  $("statusFilter").value="";
+  $("connectionFilter").value="";
+  $("apFilter").value="";
+  persistView();
+  render();
+}
 function render(){
   persistView();
   let q=$("search").value.toLowerCase(), status=$("statusFilter").value, conn=$("connectionFilter").value, ap=$("apFilter").value;
-  let out=rows.filter(x=>{let blob=Object.values(x).join(" ").toLowerCase();if(q&&!blob.includes(q))return false;if(status&&x.status!==status)return false;if(conn&&x.connection!==conn)return false;if(ap&&x.ap!==ap)return false;return true;}).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
+  let out=rows.filter(x=>{
+    let blob=Object.values(x).join(" ").toLowerCase();
+    if(q&&!blob.includes(q))return false;
+    if(status&&x.status!==status)return false;
+    if(conn==="__wifi__"){if(!x.connection||x.connection==="Ethernet"||x.connection==="Tailscale")return false;}
+    else if(conn&&x.connection!==conn)return false;
+    if(ap&&x.ap!==ap)return false;
+    return true;
+  }).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
   $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;const ipCell=x.ip?`<a href="http://${esc(x.ip)}" target="_blank" class="ip-link" data-ip="${esc(x.ip)}">${esc(x.ip)}</a>`:"";const hostCell=x.host?`<button class="link-button copy-host" data-copy="${esc(x.host)}" type="button">${esc(x.host)}</button>`:"";const macCell=x.mac?`<button class="link-button copy-mac" data-copy="${esc(x.mac)}" type="button">${esc(x.mac)}</button>`:"";return `<tr class="mainrow" data-key="${esc(key)}"><td>${ipCell}</td><td>${hostCell}</td><td>${macCell}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td><td>${esc(x.source)}</td></tr>${open?detailHtml(x):""}`;}).join("");
   document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("a,button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
   document.querySelectorAll(".ip-link").forEach(a=>a.addEventListener("click",e=>{if(e.ctrlKey){e.preventDefault();window.open(`https://${a.dataset.ip}`,"_blank");}}));
@@ -350,15 +369,24 @@ function render(){
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;
   const tailscale=rows.filter(x=>x.status==="online"&&x.connection==="Tailscale").length;
   $("updated").textContent=`Updated ${new Date().toLocaleTimeString()} - ${out.length}/${rows.length} shown`;
-  $("summary").innerHTML=`<span>${rows.length} devices</span><span>${online} online</span><span>${idle} idle</span><span>${offline} offline</span><span>Wi-Fi ${wifi}</span><span>Ethernet ${wired}</span><span>Tailscale ${tailscale}</span>`;
+  $("summary").innerHTML=`<span class="summary-chip" data-filter="all">${rows.length} devices</span><span class="summary-chip" data-status="online">${online} online</span><span class="summary-chip" data-status="idle">${idle} idle</span><span class="summary-chip" data-status="offline">${offline} offline</span><span class="summary-chip" data-connection="__wifi__">Wi-Fi ${wifi}</span><span class="summary-chip" data-connection="Ethernet">Ethernet ${wired}</span><span class="summary-chip" data-connection="Tailscale">Tailscale ${tailscale}</span>`;
+  document.querySelectorAll(".summary-chip").forEach(chip=>chip.addEventListener("click",()=>{
+    if(chip.dataset.filter==="all"){clearFilters();return;}
+    if(chip.dataset.status){$("statusFilter").value=chip.dataset.status;$("connectionFilter").value="";$("apFilter").value="";}
+    if(chip.dataset.connection){$("statusFilter").value="online";$("connectionFilter").value=chip.dataset.connection;$("apFilter").value="";}
+    persistView();render();
+  }));
 }
-async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=enrichSeen(data.devices||[]); fillFilters(); restoreView(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; btn.textContent="Refresh";}
+async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=enrichSeen(data.devices||[]); fillFilters(); restoreView(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; updateRefreshButtonLabel();}
 function setSetupCollapsed(collapsed){$("setupPanel").classList.toggle("collapsed", collapsed);localStorage.setItem("networkExplorerSetupCollapsed", collapsed?"1":"0");renderSetupSummary();}
 function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem("networkExplorerTheme",theme);$("themeSelect").value=theme;}
+function refreshLabel(seconds){return seconds>0?`Refresh (${seconds>=60?seconds/60+"m":seconds+"s"})`:"Refresh";}
+function updateRefreshButtonLabel(){const seconds=parseInt($("autoRefreshSelect").value,10)||0;$("refreshBtn").textContent=refreshLabel(seconds);}
 function setupAutoRefresh(){
   if(autoRefreshTimer){clearInterval(autoRefreshTimer);autoRefreshTimer=null;}
   const seconds=parseInt($("autoRefreshSelect").value,10)||0;
   localStorage.setItem("networkExplorerAutoRefresh",String(seconds));
+  updateRefreshButtonLabel();
   if(seconds>0){autoRefreshTimer=setInterval(()=>{if(!document.hidden)load();},seconds*1000);}
 }
 

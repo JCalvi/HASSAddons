@@ -163,17 +163,34 @@ async function testAll(show=true){updateAllSetupDevices(); if(show)setSetupMessa
 function fillFilters(){
   const c=$("connectionFilter"), a=$("apFilter"); const cv=c.value, av=a.value;
   const conns=[...new Set(rows.map(x=>x.connection).filter(Boolean))].sort(); const aps=[...new Set(rows.map(x=>x.ap).filter(Boolean))].sort();
-  c.innerHTML='<option value="">All connections</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
+  c.innerHTML='<option value="">All connections</option><option value="__wifi__">All Wi-Fi</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
   a.innerHTML='<option value="">All APs</option>'+aps.map(x=>`<option>${esc(x)}</option>`).join("");
-  c.value=cv; a.value=av;
+  c.value=[...c.options].some(o=>o.value===cv)?cv:""; a.value=[...a.options].some(o=>o.value===av)?av:"";
 }
 function statusText(x){return x.status==="online"?"Online":x.status==="idle"?"Idle":"Offline";}
 function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}catch(e){return s;}}
 function detailHtml(x){return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-grid"><div>IP</div><div>${esc(x.ip)}</div><div>Host</div><div>${esc(x.host)}</div><div>MAC</div><div>${esc(x.mac)}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;}
+
+function clearFilters(){
+  $("search").value="";
+  $("statusFilter").value="";
+  $("connectionFilter").value="";
+  $("apFilter").value="";
+  persistView();
+  render();
+}
 function render(){
   persistView();
   let q=$("search").value.toLowerCase(), status=$("statusFilter").value, conn=$("connectionFilter").value, ap=$("apFilter").value;
-  let out=rows.filter(x=>{let blob=Object.values(x).join(" ").toLowerCase();if(q&&!blob.includes(q))return false;if(status&&x.status!==status)return false;if(conn&&x.connection!==conn)return false;if(ap&&x.ap!==ap)return false;return true;}).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
+  let out=rows.filter(x=>{
+    let blob=Object.values(x).join(" ").toLowerCase();
+    if(q&&!blob.includes(q))return false;
+    if(status&&x.status!==status)return false;
+    if(conn==="__wifi__"){if(!x.connection||x.connection==="Ethernet"||x.connection==="Tailscale")return false;}
+    else if(conn&&x.connection!==conn)return false;
+    if(ap&&x.ap!==ap)return false;
+    return true;
+  }).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
   $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;const ipCell=x.ip?`<a href="http://${esc(x.ip)}" target="_blank" class="ip-link" data-ip="${esc(x.ip)}">${esc(x.ip)}</a>`:"";const hostCell=x.host?`<button class="link-button copy-host" data-copy="${esc(x.host)}" type="button">${esc(x.host)}</button>`:"";const macCell=x.mac?`<button class="link-button copy-mac" data-copy="${esc(x.mac)}" type="button">${esc(x.mac)}</button>`:"";return `<tr class="mainrow" data-key="${esc(key)}"><td>${ipCell}</td><td>${hostCell}</td><td>${macCell}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td><td>${esc(x.source)}</td></tr>${open?detailHtml(x):""}`;}).join("");
   document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("a,button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
   document.querySelectorAll(".ip-link").forEach(a=>a.addEventListener("click",e=>{if(e.ctrlKey){e.preventDefault();window.open(`https://${a.dataset.ip}`,"_blank");}}));
@@ -183,15 +200,24 @@ function render(){
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;
   const tailscale=rows.filter(x=>x.status==="online"&&x.connection==="Tailscale").length;
   $("updated").textContent=`Updated ${new Date().toLocaleTimeString()} - ${out.length}/${rows.length} shown`;
-  $("summary").innerHTML=`<span>${rows.length} devices</span><span>${online} online</span><span>${idle} idle</span><span>${offline} offline</span><span>Wi-Fi ${wifi}</span><span>Ethernet ${wired}</span><span>Tailscale ${tailscale}</span>`;
+  $("summary").innerHTML=`<span class="summary-chip" data-filter="all">${rows.length} devices</span><span class="summary-chip" data-status="online">${online} online</span><span class="summary-chip" data-status="idle">${idle} idle</span><span class="summary-chip" data-status="offline">${offline} offline</span><span class="summary-chip" data-connection="__wifi__">Wi-Fi ${wifi}</span><span class="summary-chip" data-connection="Ethernet">Ethernet ${wired}</span><span class="summary-chip" data-connection="Tailscale">Tailscale ${tailscale}</span>`;
+  document.querySelectorAll(".summary-chip").forEach(chip=>chip.addEventListener("click",()=>{
+    if(chip.dataset.filter==="all"){clearFilters();return;}
+    if(chip.dataset.status){$("statusFilter").value=chip.dataset.status;$("connectionFilter").value="";$("apFilter").value="";}
+    if(chip.dataset.connection){$("statusFilter").value="online";$("connectionFilter").value=chip.dataset.connection;$("apFilter").value="";}
+    persistView();render();
+  }));
 }
-async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=enrichSeen(data.devices||[]); fillFilters(); restoreView(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; btn.textContent="Refresh";}
+async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=enrichSeen(data.devices||[]); fillFilters(); restoreView(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; updateRefreshButtonLabel();}
 function setSetupCollapsed(collapsed){$("setupPanel").classList.toggle("collapsed", collapsed);localStorage.setItem("networkExplorerSetupCollapsed", collapsed?"1":"0");renderSetupSummary();}
 function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem("networkExplorerTheme",theme);$("themeSelect").value=theme;}
+function refreshLabel(seconds){return seconds>0?`Refresh (${seconds>=60?seconds/60+"m":seconds+"s"})`:"Refresh";}
+function updateRefreshButtonLabel(){const seconds=parseInt($("autoRefreshSelect").value,10)||0;$("refreshBtn").textContent=refreshLabel(seconds);}
 function setupAutoRefresh(){
   if(autoRefreshTimer){clearInterval(autoRefreshTimer);autoRefreshTimer=null;}
   const seconds=parseInt($("autoRefreshSelect").value,10)||0;
   localStorage.setItem("networkExplorerAutoRefresh",String(seconds));
+  updateRefreshButtonLabel();
   if(seconds>0){autoRefreshTimer=setInterval(()=>{if(!document.hidden)load();},seconds*1000);}
 }
 
