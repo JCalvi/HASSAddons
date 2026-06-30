@@ -1,3 +1,10 @@
+
+## 2026.6.11
+
+- Persist managed devices under `/config/networkexplorer/devices.json` so they survive add-on removal/reinstall.
+- Migrate existing runtime device config from the older `/data/networkexplorer_config.json` location during upgrades.
+- Add Home Assistant option descriptions for SSH key path, ping workers, ping timeout, TCP probe and TCP ports.
+
 ## 2026.6.10
 
 - Removed legacy Pi-hole/access point/SSH user fields from the Home Assistant add-on configuration page.

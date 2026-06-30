@@ -1,12 +1,24 @@
 {
   "configuration": {
-    "piholes": "Pi-hole IP addresses",
-    "access_points": "OpenWrt access point IP addresses",
-    "ssh_user": "SSH username",
-    "ssh_key_path": "SSH private key path",
-    "ping_workers": "Concurrent ping workers",
-    "ping_timeout": "Ping timeout seconds",
-    "tcp_probe": "Enable TCP fallback probes",
-    "tcp_ports": "TCP probe ports"
+    "ssh_key_path": {
+      "name": "SSH key path",
+      "description": "Location of the private SSH key used by Network Explorer. The key is generated and managed by the add-on and is used to connect to managed Pi-hole, OpenWrt and Linux devices."
+    },
+    "ping_workers": {
+      "name": "ping_workers",
+      "description": "The number of concurrent pings to send at once during each refresh. Higher values complete scans faster, but briefly use more CPU and network bandwidth. Default: 50."
+    },
+    "ping_timeout": {
+      "name": "ping_timeout",
+      "description": "The time in seconds to wait for each ping response before treating that ping as failed. Default: 1."
+    },
+    "tcp_probe": {
+      "name": "tcp_probe",
+      "description": "Also checks common TCP ports when a device does not respond to ping. This can detect devices that block ICMP ping but still have services open, such as SSH, HTTP, HTTPS or DNS. It may make refreshes slightly slower."
+    },
+    "tcp_ports": {
+      "name": "tcp_ports",
+      "description": "TCP ports to test when tcp_probe is enabled. Common examples are 22 for SSH, 53 for DNS, 80 for HTTP and 443 for HTTPS."
+    }
   }
 }

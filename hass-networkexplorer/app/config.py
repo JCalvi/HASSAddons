@@ -1,11 +1,15 @@
 import json
 from pathlib import Path
 
-RUNTIME_CONFIG = Path("/data/networkexplorer_config.json")
+# Persistent user-managed device/config store.
+# /data is removed when an add-on is uninstalled; /config is Home Assistant's
+# persistent configuration directory and survives add-on removal/reinstall.
+RUNTIME_CONFIG = Path("/config/networkexplorer/devices.json")
+LEGACY_RUNTIME_CONFIG = Path("/data/networkexplorer_config.json")
 
 DEFAULTS = {
     # Devices are managed in the Network Explorer UI and persisted in
-    # /data/networkexplorer_config.json. These legacy list fields are kept
+    # /config/networkexplorer/devices.json. The legacy list fields are kept
     # internally for backwards compatibility only.
     "piholes": [],
     "access_points": [],
@@ -18,10 +22,40 @@ DEFAULTS = {
 }
 
 
+def _read_json(path: Path) -> dict:
+    try:
+        if path.exists():
+            return json.loads(path.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def _write_json(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2))
+
+
+def migrate_legacy_runtime_config() -> None:
+    """Copy old /data runtime config into /config once.
+
+    Earlier builds stored managed devices in /data, which is removed when the
+    add-on is uninstalled. New builds store this in /config so device setup
+    survives remove/reinstall. During normal upgrades, copy the old file if the
+    new persistent file does not already exist.
+    """
+    if RUNTIME_CONFIG.exists() or not LEGACY_RUNTIME_CONFIG.exists():
+        return
+    data = _read_json(LEGACY_RUNTIME_CONFIG)
+    if data:
+        _write_json(RUNTIME_CONFIG, data)
+
+
 def load_config() -> dict:
+    migrate_legacy_runtime_config()
     cfg = DEFAULTS.copy()
 
-    # Home Assistant add-on options now contain runtime/performance settings only.
+    # Home Assistant add-on options contain runtime/performance settings only.
     # Device lists are managed from the Network Explorer UI. Ignore legacy device
     # options here so stale HA options cannot re-add old Pi-hole/AP lists.
     options_path = Path("/data/options.json")
@@ -36,16 +70,12 @@ def load_config() -> dict:
         except Exception:
             pass
 
-    # Runtime config is owned by the Network Explorer UI and may include managed
-    # devices plus the derived Pi-hole and OpenWrt Wi-Fi polling lists.
-    if RUNTIME_CONFIG.exists():
-        try:
-            data = json.loads(RUNTIME_CONFIG.read_text())
-            for key, value in data.items():
-                if value is not None:
-                    cfg[key] = value
-        except Exception:
-            pass
+    # Runtime config is owned by the Network Explorer UI and includes managed
+    # devices plus derived Pi-hole/OpenWrt Wi-Fi polling lists.
+    data = _read_json(RUNTIME_CONFIG)
+    for key, value in data.items():
+        if value is not None:
+            cfg[key] = value
 
     cfg["piholes"] = [str(x).strip() for x in cfg.get("piholes", []) if str(x).strip()]
     cfg["access_points"] = [str(x).strip() for x in cfg.get("access_points", []) if str(x).strip()]
@@ -56,15 +86,10 @@ def load_config() -> dict:
 
 
 def save_runtime_config(updates: dict) -> dict:
-    cfg = {}
-    if RUNTIME_CONFIG.exists():
-        try:
-            cfg = json.loads(RUNTIME_CONFIG.read_text())
-        except Exception:
-            cfg = {}
+    migrate_legacy_runtime_config()
+    cfg = _read_json(RUNTIME_CONFIG)
     for key, value in updates.items():
         if value is not None:
             cfg[key] = value
-    RUNTIME_CONFIG.parent.mkdir(parents=True, exist_ok=True)
-    RUNTIME_CONFIG.write_text(json.dumps(cfg, indent=2))
+    _write_json(RUNTIME_CONFIG, cfg)
     return cfg
