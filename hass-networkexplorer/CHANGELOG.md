@@ -1,9 +1,11 @@
 # Changelog
 
+## 2026.6.07
+- OpenWrt-safe SSH test now uses UCI or `/proc/sys/kernel/hostname` instead of `hostname`.
+- Setup now uses a single Add Device button.
+- Device type is detected after SSH install/test: Pi-hole, OpenWrt Wi-Fi, OpenWrt, Linux.
+- OpenWrt Wi-Fi devices are used for Wi-Fi/AP polling; non-Wi-Fi OpenWrt devices are treated as normal network devices.
+
 ## 2026.6.06
 - Detect remote OS during SSH key installation.
-- Install keys to `/etc/dropbear/authorized_keys` for OpenWrt/Dropbear.
-- Install keys to `~/.ssh/authorized_keys` for normal Linux hosts.
-- Preserve the user-facing device type separately from the detected OS.
-- Add SSH diagnostic details for detected OS and installed key path.
-- Add a default Docker BUILD_FROM to silence local Buildx warnings.
+- Install OpenWrt keys to `/etc/dropbear/authorized_keys`.

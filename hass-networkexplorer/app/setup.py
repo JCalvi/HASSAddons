@@ -49,23 +49,68 @@ def password_ssh(ip, user, password, remote_cmd, timeout=25):
     return _run(cmd, timeout=timeout, env=env)
 
 
+def parse_detection(raw: str):
+    low = (raw or "").lower()
+    detected_os = "Linux"
+    profile = "linux"
+    detected_type = "Linux"
+    host = ""
+    has_wifi = False
+    is_pihole = False
+
+    for line in (raw or "").splitlines():
+        line = line.strip()
+        if line.startswith("HOST="):
+            host = line.split("=", 1)[1].strip()
+        elif line.startswith("HAS_WIFI="):
+            has_wifi = line.split("=", 1)[1].strip() == "1"
+        elif line.startswith("IS_PIHOLE="):
+            is_pihole = line.split("=", 1)[1].strip() == "1"
+
+    if "openwrt" in low:
+        detected_os = "OpenWrt"
+        profile = "openwrt"
+        detected_type = "OpenWrt Wi-Fi" if has_wifi else "OpenWrt"
+    elif is_pihole or "pihole" in low or "pi-hole" in low or "/etc/pihole" in low:
+        detected_os = "Linux"
+        profile = "linux"
+        detected_type = "Pi-hole"
+
+    return detected_os, profile, detected_type, host
+
+
 def detect_remote_os(ip, user, password):
-    probe = (
-        "if [ -f /etc/openwrt_release ]; then echo OPENWRT; cat /etc/openwrt_release; "
-        "elif [ -f /etc/os-release ]; then cat /etc/os-release; "
-        "elif [ -f /etc/debian_version ]; then echo DEBIAN; cat /etc/debian_version; "
-        "else uname -a; fi"
-    )
+    probe = r'''
+if [ -f /etc/openwrt_release ]; then
+  echo OPENWRT
+  cat /etc/openwrt_release 2>/dev/null
+  echo HOST=$(uci -q get system.@system[0].hostname 2>/dev/null || cat /proc/sys/kernel/hostname 2>/dev/null || uname -n 2>/dev/null)
+  if iw dev 2>/dev/null | grep -q "Interface"; then echo HAS_WIFI=1; else echo HAS_WIFI=0; fi
+  echo IS_PIHOLE=0
+elif [ -f /etc/os-release ]; then
+  cat /etc/os-release 2>/dev/null
+  echo HOST=$(cat /proc/sys/kernel/hostname 2>/dev/null || uname -n 2>/dev/null)
+  if [ -d /etc/pihole ] || command -v pihole >/dev/null 2>&1; then echo IS_PIHOLE=1; else echo IS_PIHOLE=0; fi
+  echo HAS_WIFI=0
+elif [ -f /etc/debian_version ]; then
+  echo DEBIAN
+  cat /etc/debian_version 2>/dev/null
+  echo HOST=$(cat /proc/sys/kernel/hostname 2>/dev/null || uname -n 2>/dev/null)
+  if [ -d /etc/pihole ] || command -v pihole >/dev/null 2>&1; then echo IS_PIHOLE=1; else echo IS_PIHOLE=0; fi
+  echo HAS_WIFI=0
+else
+  uname -a 2>/dev/null
+  echo HOST=$(cat /proc/sys/kernel/hostname 2>/dev/null || uname -n 2>/dev/null)
+  echo IS_PIHOLE=0
+  echo HAS_WIFI=0
+fi
+'''
     rc, out, err = password_ssh(ip, user, password, probe, timeout=15)
     raw = (out or err or "").strip()
-    low = raw.lower()
     if rc != 0:
-        return {"ok": False, "os": "unknown", "profile": "unknown", "raw": raw, "error": err or out or "OS detection failed"}
-    if "openwrt" in low:
-        return {"ok": True, "os": "OpenWrt", "profile": "openwrt", "raw": raw, "error": ""}
-    if "debian" in low or "raspbian" in low or "ubuntu" in low or "dietpi" in low:
-        return {"ok": True, "os": "Linux", "profile": "linux", "raw": raw, "error": ""}
-    return {"ok": True, "os": "Linux", "profile": "linux", "raw": raw, "error": ""}
+        return {"ok": False, "os": "unknown", "profile": "unknown", "type": "Unknown", "host": "", "raw": raw, "error": err or out or "OS detection failed"}
+    detected_os, profile, detected_type, host = parse_detection(raw)
+    return {"ok": True, "os": detected_os, "profile": profile, "type": detected_type, "host": host, "raw": raw, "error": ""}
 
 
 def key_paths(cfg=None):
@@ -115,7 +160,7 @@ def configured_devices(cfg=None):
             if not ip:
                 continue
             out.append({
-                "type": d.get("type") or "Host",
+                "type": d.get("type") or "Auto",
                 "ip": ip,
                 "user": d.get("user") or cfg.get("ssh_user", "root"),
                 "name": d.get("name") or "",
@@ -126,7 +171,7 @@ def configured_devices(cfg=None):
     for ip in cfg.get("piholes", []):
         out.append({"type": "Pi-hole", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": ""})
     for ip in cfg.get("access_points", []):
-        out.append({"type": "OpenWrt AP", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": ""})
+        out.append({"type": "OpenWrt Wi-Fi", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": ""})
     return out
 
 
@@ -137,7 +182,7 @@ def save_devices_from_payload(payload):
         if not ip:
             continue
         devices.append({
-            "type": d.get("type") or "Host",
+            "type": d.get("type") or "Auto",
             "ip": ip,
             "user": d.get("user") or payload.get("ssh_user") or "root",
             "name": d.get("name") or "",
@@ -149,10 +194,10 @@ def save_devices_from_payload(payload):
                 devices.append({"type": "Pi-hole", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": ""})
         for ip in payload.get("access_points", []) or []:
             if str(ip).strip():
-                devices.append({"type": "OpenWrt AP", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": ""})
+                devices.append({"type": "OpenWrt Wi-Fi", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": ""})
 
     piholes = [d["ip"] for d in devices if d.get("type") == "Pi-hole"]
-    aps = [d["ip"] for d in devices if d.get("type") == "OpenWrt AP"]
+    aps = [d["ip"] for d in devices if d.get("type") in ["OpenWrt Wi-Fi", "OpenWrt AP"]]
     updates = {
         "devices": devices,
         "piholes": piholes,
@@ -166,6 +211,21 @@ def save_devices_from_payload(payload):
 
 
 def test_host(ip, user, key_path):
+    remote = r'''
+echo OK
+if [ -f /etc/openwrt_release ]; then
+  echo OPENWRT
+  cat /etc/openwrt_release 2>/dev/null
+  echo HOST=$(uci -q get system.@system[0].hostname 2>/dev/null || cat /proc/sys/kernel/hostname 2>/dev/null || uname -n 2>/dev/null)
+  if iw dev 2>/dev/null | grep -q "Interface"; then echo HAS_WIFI=1; else echo HAS_WIFI=0; fi
+  echo IS_PIHOLE=0
+else
+  [ -f /etc/os-release ] && cat /etc/os-release 2>/dev/null
+  echo HOST=$(cat /proc/sys/kernel/hostname 2>/dev/null || uname -n 2>/dev/null)
+  if [ -d /etc/pihole ] || command -v pihole >/dev/null 2>&1; then echo IS_PIHOLE=1; else echo IS_PIHOLE=0; fi
+  echo HAS_WIFI=0
+fi
+'''
     cmd = [
         "ssh",
         "-o", "BatchMode=yes",
@@ -176,12 +236,24 @@ def test_host(ip, user, key_path):
         "-o", "IdentitiesOnly=yes",
         "-i", key_path,
         f"{user}@{ip}",
-        "echo OK && hostname",
+        remote,
     ]
     rc, out, err = _run(cmd, timeout=10)
     lines = [x.strip() for x in out.splitlines() if x.strip()]
     ok = rc == 0 and lines and lines[0] == "OK"
-    return {"ip": ip, "user": user, "ok": ok, "host": lines[1] if len(lines) > 1 else "", "error": "" if ok else (err or out or "SSH test failed")}
+    raw = "\n".join(lines[1:]) if ok else (err or out or "SSH test failed")
+    detected_os, profile, detected_type, host = parse_detection(raw)
+    return {
+        "ip": ip,
+        "user": user,
+        "ok": ok,
+        "host": host,
+        "detected_os": detected_os if ok else "unknown",
+        "profile": profile if ok else "unknown",
+        "type": detected_type if ok else "Unknown",
+        "os_detail": raw if ok else "",
+        "error": "" if ok else raw,
+    }
 
 
 def test_connections(payload=None):
@@ -247,6 +319,8 @@ def install_key_on_host(ip, user, password, public_key_text):
         "ok": ok,
         "detected_os": detected.get("os", "unknown"),
         "profile": profile,
+        "type": detected.get("type", "Unknown"),
+        "host": detected.get("host", ""),
         "install_path": install_path,
         "os_detail": detected.get("raw", ""),
         "error": "" if ok else (err or out or "Install failed"),
@@ -274,6 +348,10 @@ def install_keys(payload):
             continue
         installed = install_key_on_host(h["ip"], user, password, public_key_text)
         r.update(installed)
+        if installed.get("type") and installed.get("type") != "Unknown":
+            r["type"] = installed.get("type")
+        if installed.get("host") and not r.get("name"):
+            r["name"] = installed.get("host")
         if r["ok"]:
             t = test_host(h["ip"], user, cfg.get("ssh_key_path", ""))
             r["key_ok"] = t["ok"]
