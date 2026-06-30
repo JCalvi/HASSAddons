@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026.6.08
+- Settings button now toggles to Hide Settings when open.
+- Setup devices sort numerically by IP address.
+- Added configurable auto-refresh with Off as the default.
+- Remember search, filters, sorting, expanded row and refresh preference.
+- Click IP to open HTTP, Ctrl+Click IP to open HTTPS.
+- Click hostname or MAC to copy it.
+- Added client-side first seen / last seen details.
+
+
 ## 2026.6.07
 - OpenWrt-safe SSH test now uses UCI or `/proc/sys/kernel/hostname` instead of `hostname`.
 - Setup now uses a single Add Device button.
