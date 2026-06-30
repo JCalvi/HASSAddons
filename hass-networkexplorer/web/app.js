@@ -6,6 +6,17 @@ function ipVal(ip){return (ip||"999.999.999.999").split(".").map(x=>parseInt(x)|
 function cmp(a,b){if(sortKey==="ip"){let A=ipVal(a.ip),B=ipVal(b.ip);for(let i=0;i<4;i++)if(A[i]!==B[i])return A[i]-B[i];return 0;} if(sortKey==="rssi")return(parseInt(a.rssi)||-999)-(parseInt(b.rssi)||-999);return String(a[sortKey]||"").localeCompare(String(b[sortKey]||""));}
 function sortBy(k){asc=sortKey===k?!asc:true;sortKey=k;render();}
 function rssiClass(v){let n=parseInt(v);if(!n)return"";if(n>=-60)return"rssi-good";if(n>=-72)return"rssi-ok";return"rssi-bad";}
+function linesToArray(s){return String(s||"").split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);}
+function arrayToLines(a){return (a||[]).join("\n");}
+async function postJson(url,obj){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj||{})});const d=await r.json();if(!d.ok)throw new Error(d.error||"Request failed");return d;}
+function setSetupOutput(obj){$("setupOutput").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
+function setupPayload(){return {piholes:linesToArray($("piholesInput").value),access_points:linesToArray($("apsInput").value),ssh_user:$("sshUserInput").value.trim()||"root",ssh_key_path:$("sshKeyPathInput").value.trim()||"/config/ssh/id_ed25519"};}
+function showKeyInfo(key){if(!key){$("keyInfo").textContent="";return;}$("keyInfo").innerHTML=`SSH key: ${esc(key.exists?"created":"missing")} - ${esc(key.private_key||"")}<br>Public key:<br><code>${esc(key.public_key_text||"")}</code>`;}
+async function loadConfig(){try{const r=await fetch("/api/config?_="+Date.now(),{cache:"no-store"});const d=await r.json();if(!d.ok)throw new Error(d.error||"Config failed");const c=d.config||{};$("piholesInput").value=arrayToLines(c.piholes);$("apsInput").value=arrayToLines(c.access_points);$("sshUserInput").value=c.ssh_user||"root";$("sshKeyPathInput").value=c.ssh_key_path||"/config/ssh/id_ed25519";showKeyInfo(d.key);}catch(e){setSetupOutput("Config load failed: "+e.message);}}
+async function saveConfig(){setSetupOutput("Saving config...");const d=await postJson("/api/config",setupPayload());showKeyInfo(d.key);setSetupOutput("Config saved.");}
+async function generateKey(){setSetupOutput("Generating SSH key...");await saveConfig();const d=await postJson("/api/ssh/generate",{});showKeyInfo(d.key);setSetupOutput("SSH key ready.");}
+async function installKeys(){const pw=$("sshPasswordInput").value;if(!pw){setSetupOutput("Enter the SSH password first.");return;}setSetupOutput("Installing SSH keys...");const d=await postJson("/api/ssh/install",{...setupPayload(),password:pw});showKeyInfo(d.key);setSetupOutput(d.results);$("sshPasswordInput").value="";}
+async function testSsh(){setSetupOutput("Testing SSH...");await saveConfig();const r=await fetch("/api/ssh/test?_="+Date.now(),{cache:"no-store"});const d=await r.json();if(!d.ok)throw new Error(d.error||"Test failed");setSetupOutput(d.results);}
 
 function fillFilters(){
   const conns=[...new Set(rows.map(x=>x.connection).filter(Boolean))].sort();
@@ -40,4 +51,14 @@ async function load(){
   btn.disabled=false; btn.textContent="Refresh";
 }
 
-document.addEventListener("DOMContentLoaded",()=>{["search","statusFilter","connectionFilter","apFilter"].forEach(id=>$(id).addEventListener("input",render));document.querySelectorAll("th[data-sort]").forEach(th=>th.addEventListener("click",()=>sortBy(th.dataset.sort)));$("refreshBtn").addEventListener("click",e=>{e.preventDefault();load();});load();});
+document.addEventListener("DOMContentLoaded",()=>{
+  ["search","statusFilter","connectionFilter","apFilter"].forEach(id=>$(id).addEventListener("input",render));
+  document.querySelectorAll("th[data-sort]").forEach(th=>th.addEventListener("click",()=>sortBy(th.dataset.sort)));
+  $("refreshBtn").addEventListener("click",e=>{e.preventDefault();load();});
+  $("saveConfigBtn").addEventListener("click",e=>{e.preventDefault();saveConfig().catch(err=>setSetupOutput(err.message));});
+  $("generateKeyBtn").addEventListener("click",e=>{e.preventDefault();generateKey().catch(err=>setSetupOutput(err.message));});
+  $("installKeysBtn").addEventListener("click",e=>{e.preventDefault();installKeys().catch(err=>setSetupOutput(err.message));});
+  $("testSshBtn").addEventListener("click",e=>{e.preventDefault();testSsh().catch(err=>setSetupOutput(err.message));});
+  $("toggleSetupBtn").addEventListener("click",e=>{e.preventDefault();const p=$("setupPanel");p.classList.toggle("collapsed");$("toggleSetupBtn").textContent=p.classList.contains("collapsed")?"Show Setup":"Hide Setup";});
+  loadConfig();
+});

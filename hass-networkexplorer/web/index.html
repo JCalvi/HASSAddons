@@ -13,6 +13,29 @@
     <div id="summary" class="summary"></div>
   </header>
 
+  <section class="panel" id="setupPanel">
+    <div class="panel-head">
+      <h3>Setup</h3>
+      <button id="toggleSetupBtn" type="button">Hide Setup</button>
+    </div>
+    <div class="grid-form">
+      <label>Pi-hole IPs<br><textarea id="piholesInput" rows="2" placeholder="192.168.1.2&#10;192.168.1.3"></textarea></label>
+      <label>OpenWrt AP IPs<br><textarea id="apsInput" rows="2" placeholder="192.168.1.11&#10;192.168.1.12"></textarea></label>
+      <label>SSH user<br><input id="sshUserInput" value="root"></label>
+      <label>SSH key path<br><input id="sshKeyPathInput" value="/config/ssh/id_ed25519"></label>
+      <label>SSH password for install<br><input id="sshPasswordInput" type="password" autocomplete="off" placeholder="Used once only; not saved"></label>
+    </div>
+    <div class="setup-actions">
+      <button id="saveConfigBtn" type="button">Save Config</button>
+      <button id="generateKeyBtn" type="button">Generate SSH Key</button>
+      <button id="installKeysBtn" type="button">Install SSH Keys</button>
+      <button id="testSshBtn" type="button">Test SSH</button>
+    </div>
+    <div class="small">Private key stays inside Home Assistant config. Password is only sent to the add-on to install the public key and is not saved.</div>
+    <div id="keyInfo" class="small"></div>
+    <pre id="setupOutput" class="output"></pre>
+  </section>
+
   <section class="controls">
     <input id="search" placeholder="Search IP, host, MAC, SSID...">
     <select id="statusFilter">

@@ -5,8 +5,9 @@ import socketserver
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .config import load_config
+from .config import load_config, save_runtime_config
 from .inventory import collect_inventory
+from .setup import key_status, ensure_key, install_keys, test_connections
 
 PORT = 8090
 BASE = Path("/app/web")
@@ -23,6 +24,12 @@ CONTENT_TYPES = {
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         return
+
+    def read_json(self):
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        if length <= 0:
+            return {}
+        return json.loads(self.rfile.read(length).decode("utf-8"))
 
     def send_bytes(self, status: int, body: bytes, content_type: str):
         self.send_response(status)
@@ -46,6 +53,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "error": str(exc), "devices": []}, status=500)
             return
 
+        if path == "/api/config":
+            cfg = load_config()
+            safe = {k: v for k, v in cfg.items() if k != "password"}
+            self.send_json({"ok": True, "config": safe, "key": key_status()})
+            return
+
+        if path == "/api/ssh/test":
+            try:
+                self.send_json({"ok": True, "results": test_connections()})
+            except Exception as exc:
+                self.send_json({"ok": False, "error": str(exc), "results": []}, status=500)
+            return
+
         if path == "/" or path == "":
             path = "/index.html"
         file_path = (BASE / path.lstrip("/")).resolve()
@@ -53,6 +73,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_bytes(404, b"Not found", "text/plain")
             return
         self.send_bytes(200, file_path.read_bytes(), CONTENT_TYPES.get(file_path.suffix, "application/octet-stream"))
+
+    def do_POST(self):
+        path = urlparse(self.path).path
+        try:
+            payload = self.read_json()
+            if path == "/api/config":
+                allowed = {"piholes", "access_points", "ssh_user", "ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"}
+                save_runtime_config({k: v for k, v in payload.items() if k in allowed})
+                self.send_json({"ok": True, "config": load_config(), "key": key_status()})
+                return
+            if path == "/api/ssh/generate":
+                self.send_json({"ok": True, "key": ensure_key(load_config())})
+                return
+            if path == "/api/ssh/install":
+                self.send_json({"ok": True, "results": install_keys(payload), "key": key_status()})
+                return
+        except Exception as exc:
+            self.send_json({"ok": False, "error": str(exc)}, status=500)
+            return
+        self.send_json({"ok": False, "error": "Unknown endpoint"}, status=404)
 
 
 socketserver.TCPServer.allow_reuse_address = True

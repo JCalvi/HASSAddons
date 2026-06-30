@@ -1,22 +1,18 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:20.0.1
-FROM ${BUILD_FROM}
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
 RUN apk add --no-cache \
     python3 \
     openssh-client \
+    sshpass \
     iputils \
-    && rm -rf /usr/lib/python3.*/ensurepip \
-              /usr/share/man \
-              /usr/share/doc \
-              /usr/share/info \
-              /usr/share/locale
+    ca-certificates
 
 WORKDIR /app
-
-COPY app/ /app/
+COPY app/ /app/app/
 COPY web/ /app/web/
 COPY run.sh /app/run.sh
+RUN chmod +x /app/run.sh
 
-RUN chmod 755 /app/run.sh
-
+EXPOSE 8090
 CMD ["/app/run.sh"]
