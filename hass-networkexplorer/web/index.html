@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Network Explorer</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <main class="page">
@@ -13,7 +13,14 @@
         <h1>Network Explorer</h1>
         <div id="updated" class="small">Ready</div>
       </div>
-      <button id="settingsBtn" type="button" class="secondary">Settings</button>
+      <div class="header-actions">
+        <select id="themeSelect" title="Theme">
+          <option value="auto">Theme: Auto</option>
+          <option value="light">Theme: Light</option>
+          <option value="dark">Theme: Dark</option>
+        </select>
+        <button id="settingsBtn" type="button" class="secondary">Settings</button>
+      </div>
     </header>
 
     <div id="summary" class="summary"></div>
@@ -22,7 +29,7 @@
       <div class="card-head">
         <div>
           <h2>Setup</h2>
-          <p>Each device can use its own username and one-time password. Passwords are not saved.</p>
+          <p id="setupIntro">Configure devices once. Each device can use its own username and one-time password.</p>
         </div>
         <button id="toggleSetupBtn" type="button" class="secondary">Hide</button>
       </div>
@@ -38,7 +45,7 @@
             <button id="addApBtn" type="button" class="secondary">Add AP</button>
             <button id="saveConfigBtn" type="button" class="secondary">Save</button>
             <button id="generateKeyBtn" type="button" class="secondary">Generate SSH Key</button>
-            <button id="installAllBtn" type="button" class="primary">Install All</button>
+            <button id="installAllBtn" type="button" class="primary">Install All Keys</button>
             <button id="testSshBtn" type="button" class="secondary">Test All</button>
           </div>
         </div>
@@ -64,8 +71,13 @@
           Private key stays inside Home Assistant config. Passwords are only sent to the add-on to install the public key and are not saved.
         </div>
 
-        <div id="keyInfo" class="key-info"></div>
-        <pre id="setupOutput" class="output"></pre>
+        <div id="setupStatus" class="setup-status"></div>
+
+        <details class="diagnostics" id="diagnosticsPanel">
+          <summary>Diagnostics</summary>
+          <div id="keyInfo" class="key-info"></div>
+          <pre id="setupOutput" class="output"></pre>
+        </details>
       </div>
     </section>
 
@@ -104,6 +116,6 @@
     </section>
   </main>
 
-  <script src="app.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
