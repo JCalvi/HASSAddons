@@ -22,50 +22,46 @@
       <div class="card-head">
         <div>
           <h2>Setup</h2>
-          <p>Configure Pi-hole, OpenWrt and SSH key access.</p>
+          <p>Each device can use its own username and one-time password. Passwords are not saved.</p>
         </div>
         <button id="toggleSetupBtn" type="button" class="secondary">Hide</button>
       </div>
 
       <div class="setup-body">
-        <div class="form-grid">
-          <label class="field span-half">
-            <span>Pi-hole IPs</span>
-            <textarea id="piholesInput" rows="2" placeholder="192.168.1.2&#10;192.168.1.3"></textarea>
-            <small>One IP per line.</small>
-          </label>
-
-          <label class="field span-half">
-            <span>OpenWrt AP IPs</span>
-            <textarea id="apsInput" rows="2" placeholder="192.168.1.11&#10;192.168.1.12"></textarea>
-            <small>One AP per line.</small>
-          </label>
-
-          <label class="field">
-            <span>SSH user</span>
-            <input id="sshUserInput" value="root" autocomplete="username">
-          </label>
-
-          <label class="field">
+        <div class="setup-top">
+          <label class="field key-path">
             <span>SSH key path</span>
             <input id="sshKeyPathInput" value="/config/ssh/id_ed25519" autocomplete="off">
           </label>
-
-          <label class="field">
-            <span>SSH password for install</span>
-            <input id="sshPasswordInput" type="password" autocomplete="current-password" placeholder="Used once only; not saved">
-          </label>
+          <div class="setup-actions compact">
+            <button id="addPiholeBtn" type="button" class="secondary">Add Pi-hole</button>
+            <button id="addApBtn" type="button" class="secondary">Add AP</button>
+            <button id="saveConfigBtn" type="button" class="secondary">Save</button>
+            <button id="generateKeyBtn" type="button" class="secondary">Generate SSH Key</button>
+            <button id="installAllBtn" type="button" class="primary">Install All</button>
+            <button id="testSshBtn" type="button" class="secondary">Test All</button>
+          </div>
         </div>
 
-        <div class="setup-actions">
-          <button id="saveConfigBtn" type="button" class="secondary">Save Config</button>
-          <button id="generateKeyBtn" type="button" class="secondary">Generate SSH Key</button>
-          <button id="installKeysBtn" type="button" class="primary">Install SSH Keys</button>
-          <button id="testSshBtn" type="button" class="secondary">Test SSH</button>
+        <div class="device-setup-wrap">
+          <table class="device-setup-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>IP</th>
+                <th>User</th>
+                <th>One-time password</th>
+                <th>SSH</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="setupDevices"></tbody>
+          </table>
         </div>
 
         <div class="notice">
-          Private key stays inside Home Assistant config. Password is only sent to the add-on to install the public key and is not saved.
+          Private key stays inside Home Assistant config. Passwords are only sent to the add-on to install the public key and are not saved.
         </div>
 
         <div id="keyInfo" class="key-info"></div>

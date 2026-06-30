@@ -32,3 +32,17 @@ button{cursor:pointer;font-weight:600;white-space:nowrap}button:hover{filter:bri
 .output{display:none;background:#0b0d11;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap;color:#dce2ea}.output:not(:empty){display:block}
 .table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;background:#11151b}table{border-collapse:collapse;width:100%;font-size:14px;min-width:1000px}th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;white-space:nowrap}th{background:var(--head);cursor:pointer;position:sticky;top:0;z-index:2}tr:hover{background:#1d222b}.mainrow{cursor:pointer}.detail{background:#181d25;color:#cfd6e1}.detail td{white-space:normal;padding:14px 18px;line-height:1.45}.detail-grid{display:grid;grid-template-columns:160px 1fr;gap:4px 14px;max-width:900px}.online{color:var(--green);font-weight:bold}.offline{color:#8b93a1}.idle{color:var(--yellow);font-weight:bold}.rssi-good{color:var(--green)}.rssi-ok{color:var(--yellow)}.rssi-bad{color:var(--red)}
 @media(max-width:900px){.form-grid{grid-template-columns:1fr}.page{padding:10px}.controls input,.controls select,.controls button{width:100%;min-width:0}.page-header{align-items:flex-start}h1{font-size:26px}}
+.setup-top{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+.key-path{min-width:320px;flex:1}
+.setup-actions.compact{display:flex;gap:8px;flex-wrap:wrap;margin:0}
+.device-setup-wrap{overflow:auto;border:1px solid var(--border,#333);border-radius:10px;margin-top:8px}
+.device-setup-table{width:100%;border-collapse:collapse;font-size:14px}
+.device-setup-table th,.device-setup-table td{padding:8px;border-bottom:1px solid var(--border,#333);vertical-align:top;white-space:nowrap}
+.device-setup-table input,.device-setup-table select{width:100%;box-sizing:border-box}
+.device-setup-table .dev-type{min-width:110px}.device-setup-table .dev-ip{min-width:130px}.device-setup-table .dev-password{min-width:160px}
+.row-actions{display:flex;gap:6px;white-space:nowrap}
+.chip{display:inline-block;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}
+.chip.ok{background:#193d25;color:#58d26b}.chip.bad{background:#4a1f1f;color:#ff7777}.chip.wait{background:#4b421c;color:#e6c84f}.chip.unknown{background:#333;color:#aaa}
+.ssh-status small{display:block;color:#aaa;margin-top:4px;max-width:260px;white-space:normal}
+button.danger{background:#3a1f1f;color:#ffb0b0;border-color:#684040}
+button.danger:hover{background:#4a2929}

@@ -1,6 +1,3 @@
-import json
-import os
-import shlex
 import subprocess
 from pathlib import Path
 
@@ -62,14 +59,64 @@ def key_status():
     }
 
 
-def all_hosts(cfg=None):
+def configured_devices(cfg=None):
     cfg = cfg or load_config()
-    hosts = []
+    saved = cfg.get("devices") or []
+    if saved:
+        out = []
+        for d in saved:
+            ip = str(d.get("ip") or "").strip()
+            if not ip:
+                continue
+            out.append({
+                "type": d.get("type") or "Host",
+                "ip": ip,
+                "user": d.get("user") or cfg.get("ssh_user", "root"),
+                "name": d.get("name") or "",
+            })
+        return out
+
+    out = []
     for ip in cfg.get("piholes", []):
-        hosts.append({"type": "Pi-hole", "ip": ip})
+        out.append({"type": "Pi-hole", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": ""})
     for ip in cfg.get("access_points", []):
-        hosts.append({"type": "OpenWrt AP", "ip": ip})
-    return hosts
+        out.append({"type": "OpenWrt AP", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": ""})
+    return out
+
+
+def save_devices_from_payload(payload):
+    devices = []
+    for d in payload.get("devices") or []:
+        ip = str(d.get("ip") or "").strip()
+        if not ip:
+            continue
+        devices.append({
+            "type": d.get("type") or "Host",
+            "ip": ip,
+            "user": d.get("user") or payload.get("ssh_user") or "root",
+            "name": d.get("name") or "",
+        })
+
+    if not devices:
+        for ip in payload.get("piholes", []) or []:
+            if str(ip).strip():
+                devices.append({"type": "Pi-hole", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": ""})
+        for ip in payload.get("access_points", []) or []:
+            if str(ip).strip():
+                devices.append({"type": "OpenWrt AP", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": ""})
+
+    piholes = [d["ip"] for d in devices if d.get("type") == "Pi-hole"]
+    aps = [d["ip"] for d in devices if d.get("type") == "OpenWrt AP"]
+    updates = {
+        "devices": devices,
+        "piholes": piholes,
+        "access_points": aps,
+    }
+    for key in ["ssh_user", "ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"]:
+        if key in payload:
+            updates[key] = payload[key]
+    save_runtime_config(updates)
+    return load_config()
 
 
 def test_host(ip, user, key_path):
@@ -86,16 +133,19 @@ def test_host(ip, user, key_path):
     rc, out, err = _run(cmd, timeout=10)
     lines = [x.strip() for x in out.splitlines() if x.strip()]
     ok = rc == 0 and lines and lines[0] == "OK"
-    return {"ip": ip, "ok": ok, "host": lines[1] if len(lines) > 1 else "", "error": "" if ok else (err or out or "SSH test failed")}
+    return {"ip": ip, "user": user, "ok": ok, "host": lines[1] if len(lines) > 1 else "", "error": "" if ok else (err or out or "SSH test failed")}
 
 
-def test_connections():
+def test_connections(payload=None):
     cfg = load_config()
+    if payload and (payload.get("devices") or payload.get("piholes") or payload.get("access_points")):
+        cfg = save_devices_from_payload(payload)
     ensure_key(cfg)
     results = []
-    for h in all_hosts(cfg):
-        r = test_host(h["ip"], cfg.get("ssh_user", "root"), cfg.get("ssh_key_path", ""))
+    for h in configured_devices(cfg):
+        r = test_host(h["ip"], h.get("user") or cfg.get("ssh_user", "root"), cfg.get("ssh_key_path", ""))
         r["type"] = h["type"]
+        r["name"] = h.get("name", "")
         results.append(r)
     return results
 
@@ -118,34 +168,34 @@ def install_key_on_host(ip, user, password, public_key_text):
     ]
     rc, out, err = _run(cmd, timeout=20)
     ok = rc == 0 and "OK" in out
-    return {"ip": ip, "ok": ok, "error": "" if ok else (err or out or "Install failed")}
+    return {"ip": ip, "user": user, "ok": ok, "error": "" if ok else (err or out or "Install failed")}
 
 
 def install_keys(payload):
-    cfg = load_config()
-    # Allow the setup form to save IPs/user before installing.
-    updates = {}
-    for key in ["piholes", "access_points", "ssh_user", "ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"]:
-        if key in payload:
-            updates[key] = payload[key]
-    if updates:
-        save_runtime_config(updates)
-        cfg = load_config()
-
-    password = payload.get("password") or ""
-    user = payload.get("ssh_user") or cfg.get("ssh_user", "root")
-    if not password:
-        raise RuntimeError("Password is required to install keys")
-
+    cfg = save_devices_from_payload(payload)
     key = ensure_key(cfg)
     public_key_text = key["public_key_text"]
+    requested_ip = str(payload.get("ip") or "").strip()
+    payload_devices = payload.get("devices") or []
     results = []
-    for h in all_hosts(cfg):
-        r = install_key_on_host(h["ip"], user, password, public_key_text)
-        r["type"] = h["type"]
+
+    for h in configured_devices(cfg):
+        if requested_ip and h["ip"] != requested_ip:
+            continue
+        pdev = next((d for d in payload_devices if str(d.get("ip") or "").strip() == h["ip"]), {})
+        password = pdev.get("password") or payload.get("password") or ""
+        user = pdev.get("user") or h.get("user") or cfg.get("ssh_user", "root")
+        r = {"ip": h["ip"], "type": h["type"], "name": h.get("name", ""), "user": user}
+        if not password:
+            r.update({"ok": False, "key_ok": False, "error": "Password required for this device"})
+            results.append(r)
+            continue
+        installed = install_key_on_host(h["ip"], user, password, public_key_text)
+        r.update(installed)
         if r["ok"]:
             t = test_host(h["ip"], user, cfg.get("ssh_key_path", ""))
             r["key_ok"] = t["ok"]
+            r["host"] = t.get("host", "")
             if not t["ok"]:
                 r["error"] = t["error"]
         else:

@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from .config import load_config, save_runtime_config
 from .inventory import collect_inventory
-from .setup import key_status, ensure_key, install_keys, test_connections
+from .setup import key_status, ensure_key, install_keys, test_connections, configured_devices, save_devices_from_payload
 
 PORT = 8090
 BASE = Path("/app/web")
@@ -42,6 +42,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def send_json(self, obj, status=200):
         self.send_bytes(status, json.dumps(obj).encode(), "application/json; charset=utf-8")
 
+    def safe_config(self):
+        cfg = load_config()
+        safe = {k: v for k, v in cfg.items() if k != "password"}
+        safe["devices"] = configured_devices(cfg)
+        return safe
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path in {"/api/refresh", "/network.json"}:
@@ -54,9 +60,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
 
         if path == "/api/config":
-            cfg = load_config()
-            safe = {k: v for k, v in cfg.items() if k != "password"}
-            self.send_json({"ok": True, "config": safe, "key": key_status()})
+            self.send_json({"ok": True, "config": self.safe_config(), "key": key_status()})
             return
 
         if path == "/api/ssh/test":
@@ -79,15 +83,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
         try:
             payload = self.read_json()
             if path == "/api/config":
-                allowed = {"piholes", "access_points", "ssh_user", "ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"}
-                save_runtime_config({k: v for k, v in payload.items() if k in allowed})
-                self.send_json({"ok": True, "config": load_config(), "key": key_status()})
+                if payload.get("devices") is not None:
+                    cfg = save_devices_from_payload(payload)
+                else:
+                    allowed = {"piholes", "access_points", "ssh_user", "ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"}
+                    save_runtime_config({k: v for k, v in payload.items() if k in allowed})
+                    cfg = load_config()
+                self.send_json({"ok": True, "config": self.safe_config(), "key": key_status()})
                 return
             if path == "/api/ssh/generate":
                 self.send_json({"ok": True, "key": ensure_key(load_config())})
                 return
-            if path == "/api/ssh/install":
-                self.send_json({"ok": True, "results": install_keys(payload), "key": key_status()})
+            if path in {"/api/ssh/install", "/api/ssh/install_all", "/api/ssh/install_one"}:
+                self.send_json({"ok": True, "results": install_keys(payload), "key": key_status(), "config": self.safe_config()})
+                return
+            if path == "/api/ssh/test":
+                self.send_json({"ok": True, "results": test_connections(payload)})
                 return
         except Exception as exc:
             self.send_json({"ok": False, "error": str(exc)}, status=500)
