@@ -1,3 +1,8 @@
+## 2026.6.03
+
+- Fixed Home Assistant Ingress asset/API path handling by inlining UI assets and using ingress-relative API calls.
+- Added Network Explorer icon/logo.
+
 # Changelog
 
 ## 2026.6.02

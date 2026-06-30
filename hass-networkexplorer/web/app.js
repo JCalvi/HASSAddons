@@ -2,13 +2,20 @@ let rows=[], sortKey="ip", asc=true, expandedKey="";
 let setupDevices=[];
 let setupStatus={};
 const $ = id => document.getElementById(id);
+function addonBase(){
+  const p = window.location.pathname || "/";
+  return p.endsWith("/") ? p : p + "/";
+}
+function apiPath(path){
+  return addonBase() + String(path||"").replace(/^\//, "");
+}
 
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
 function ipVal(ip){return (ip||"999.999.999.999").split(".").map(x=>parseInt(x)||999);}
 function cmp(a,b){if(sortKey==="ip"){let A=ipVal(a.ip),B=ipVal(b.ip);for(let i=0;i<4;i++)if(A[i]!==B[i])return A[i]-B[i];return 0;} if(sortKey==="rssi")return(parseInt(a.rssi)||-999)-(parseInt(b.rssi)||-999);return String(a[sortKey]||"").localeCompare(String(b[sortKey]||""));}
 function sortBy(k){asc=sortKey===k?!asc:true;sortKey=k;render();}
 function rssiClass(v){let n=parseInt(v);if(!n)return"";if(n>=-60)return"rssi-good";if(n>=-72)return"rssi-ok";return"rssi-bad";}
-async function postJson(url,obj){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj||{})});const d=await r.json();if(!d.ok)throw new Error(d.error||"Request failed");return d;}
+async function postJson(url,obj){const r=await fetch(apiPath(url),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj||{})});const d=await r.json();if(!d.ok)throw new Error(d.error||"Request failed");return d;}
 function defaultDevice(type){return {type:type||"Host",name:"",ip:"",user:"root",password:"",ssh:"unknown",message:"",detail:""};}
 function setSetupMessage(msg, kind="info"){$("setupStatus").className=`setup-status ${kind}`;$('setupStatus').textContent=msg||"";}
 function setSetupOutput(obj){$("setupOutput").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
@@ -91,7 +98,7 @@ function mergeStatuses(results){
 }
 async function loadConfig(){
   try{
-    const r=await fetch("/api/config?_="+Date.now(),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
+    const r=await fetch(apiPath("api/config?_="+Date.now()),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
     const c=d.config||{}; $("sshKeyPathInput").value=c.ssh_key_path||"/config/ssh/id_ed25519";
     setupDevices=(c.devices&&c.devices.length?c.devices:[]).map(x=>({...defaultDevice(x.type),...x,password:"",ssh:"unknown",message:"",detail:""}));
     if(!setupDevices.length){
@@ -102,12 +109,12 @@ async function loadConfig(){
   }catch(e){setSetupMessage("Config load failed: "+e.message,"bad");}
 }
 async function saveConfig(show=true){
-  const d=await postJson("/api/config",setupPayload(false));
+  const d=await postJson("api/config",setupPayload(false));
   showKeyInfo(d.key); if(show){setSetupMessage("Configuration saved.","ok");setSetupOutput(d.config||{});} return d;
 }
 async function generateKey(){
   await saveConfig(false); setSetupMessage("Generating SSH key...","info");
-  const d=await postJson("/api/ssh/generate",{}); showKeyInfo(d.key); setSetupMessage("SSH key ready.","ok"); setSetupOutput(d.key||{}); return d;
+  const d=await postJson("api/ssh/generate",{}); showKeyInfo(d.key); setSetupMessage("SSH key ready.","ok"); setSetupOutput(d.key||{}); return d;
 }
 async function installOne(i){
   updateDeviceFromRow(i); const dev=setupDevices[i];
@@ -115,14 +122,14 @@ async function installOne(i){
   if(!dev.password){setSetupMessage(`Password required for ${dev.ip}.`,"bad");return;}
   dev.ssh="installing";dev.message="Installing key";dev.detail="";renderSetupDevices();
   const payload=setupPayload(true); payload.ip=dev.ip;
-  const d=await postJson("/api/ssh/install_one",payload); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]);
+  const d=await postJson("api/ssh/install_one",payload); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]);
   const r=(d.results||[]).find(x=>x.ip===dev.ip);
   setSetupMessage(r&&r.ok?`SSH key installed on ${dev.ip}.`:`Install failed for ${dev.ip}.`,r&&r.ok?"ok":"bad");
 }
 async function installAll(){
   updateAllSetupDevices(); setSetupMessage("Installing SSH keys...","info");
   setupDevices.forEach(d=>{if(d.ip&&d.password){d.ssh="installing";d.message="Installing key";}});renderSetupDevices();
-  const d=await postJson("/api/ssh/install_all",setupPayload(true)); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]);
+  const d=await postJson("api/ssh/install_all",setupPayload(true)); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]);
   const ok=(d.results||[]).filter(x=>x.ok&&x.key_ok!==false).length; const total=(d.results||[]).length;
   setSetupMessage(`${ok} of ${total} SSH keys installed/tested successfully.`,ok===total?"ok":"bad");
 }
@@ -131,14 +138,14 @@ async function testOne(i){
   if(!dev.ip){setSetupMessage("IP address required.","bad");return;}
   dev.ssh="testing";dev.message="Testing";dev.detail="";renderSetupDevices();
   const payload=setupPayload(false); payload.devices=[{type:dev.type,name:dev.name,ip:dev.ip,user:dev.user,password:""}];
-  const d=await postJson("/api/ssh/test",payload); mergeStatuses(d.results); setSetupOutput(d.results||[]);
+  const d=await postJson("api/ssh/test",payload); mergeStatuses(d.results); setSetupOutput(d.results||[]);
   const r=(d.results||[]).find(x=>x.ip===dev.ip);
   setSetupMessage(r&&r.ok?`${dev.ip} connected.`:`${dev.ip} failed: ${shortError(r&&r.error)}`,r&&r.ok?"ok":"bad");
 }
 async function testAll(show=true){
   updateAllSetupDevices(); if(show)setSetupMessage("Testing SSH connections...","info");
   setupDevices.forEach(d=>{if(d.ip){d.ssh="testing";d.message="Testing";}});renderSetupDevices();
-  const d=await postJson("/api/ssh/test",setupPayload(false)); mergeStatuses(d.results); setSetupOutput(d.results||[]);
+  const d=await postJson("api/ssh/test",setupPayload(false)); mergeStatuses(d.results); setSetupOutput(d.results||[]);
   const ok=(d.results||[]).filter(x=>x.ok).length; const total=(d.results||[]).length;
   if(show)setSetupMessage(`${ok} of ${total} SSH connections OK.`,ok===total?"ok":"bad");
 }
@@ -164,7 +171,7 @@ function render(){
   $("updated").textContent=`Updated ${new Date().toLocaleTimeString()} - ${out.length}/${rows.length} shown`;
   $("summary").innerHTML=`<span>${rows.length} devices</span><span>${online} online</span><span>${idle} idle</span><span>${offline} offline</span><span>Wi-Fi ${wifi}</span><span>Ethernet ${wired}</span><span>Tailscale ${tailscale}</span>`;
 }
-async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch("/api/refresh?_="+Date.now(),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=data.devices||[]; fillFilters(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; btn.textContent="Refresh";}
+async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=data.devices||[]; fillFilters(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; btn.textContent="Refresh";}
 function setSetupCollapsed(collapsed){const p=$("setupPanel");p.classList.toggle("collapsed", collapsed);$("toggleSetupBtn").textContent=collapsed?"Show":"Hide";localStorage.setItem("networkExplorerSetupCollapsed", collapsed?"1":"0");renderSetupSummary();}
 function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem("networkExplorerTheme",theme);$("themeSelect").value=theme;}
 
