@@ -177,7 +177,7 @@ function cmp(a,b){if(sortKey==="ip"){let A=ipVal(a.ip),B=ipVal(b.ip);for(let i=0
 function sortBy(k){asc=sortKey===k?!asc:true;sortKey=k;render();}
 function rssiClass(v){let n=parseInt(v);if(!n)return"";if(n>=-60)return"rssi-good";if(n>=-72)return"rssi-ok";return"rssi-bad";}
 async function postJson(url,obj){const r=await fetch(apiPath(url),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj||{})});const d=await r.json();if(!d.ok)throw new Error(d.error||"Request failed");return d;}
-function defaultDevice(type){return {type:type||"Host",name:"",ip:"",user:"root",password:"",ssh:"unknown",message:"",detail:""};}
+function defaultDevice(type){return {type:type||"Host",name:"",ip:"",user:"root",password:"",ssh:"unknown",message:"",detail:"",detected_os:"",install_path:""};}
 function setSetupMessage(msg, kind="info"){$("setupStatus").className=`setup-status ${kind}`;$('setupStatus').textContent=msg||"";}
 function setSetupOutput(obj){$("setupOutput").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
 function showKeyInfo(key){if(!key){$("keyInfo").textContent="";return;}$("keyInfo").innerHTML=`<div><b>SSH key:</b> ${esc(key.exists?"created":"missing")} - ${esc(key.private_key||"")}</div><div><b>Public key:</b></div><code>${esc(key.public_key_text||"")}</code>`;}
@@ -230,7 +230,7 @@ function renderSetupDevices(){
       <td><input class="dev-ip" value="${esc(d.ip)}" placeholder="192.168.1.x"></td>
       <td><input class="dev-user" value="${esc(d.user||"root")}" placeholder="root"></td>
       <td><input class="dev-password" type="password" value="${esc(d.password||"")}" placeholder="${installed?"installed":"not saved"}" ${installed?"disabled":""}></td>
-      <td class="ssh-status">${statusChip(d)}${d.ssh==="fail"&&detail?`<button class="link-button show-detail" type="button">Details</button>`:""}</td>
+      <td class="ssh-status">${statusChip(d)}${d.detected_os?`<small>${esc(d.detected_os)}${d.install_path?` - ${esc(d.install_path)}`:""}</small>`:""}${d.ssh==="fail"&&detail?`<button class="link-button show-detail" type="button">Details</button>`:""}</td>
       <td class="row-actions"><button class="secondary install-one" type="button">Install Key</button><button class="secondary test-one" type="button">Test</button><button class="danger remove-one" type="button">Remove</button></td>
     </tr>`;
   }).join("");
@@ -249,8 +249,16 @@ function mergeStatuses(results){
   (results||[]).forEach(r=>{
     const d=setupDevices.find(x=>x.ip===r.ip); if(!d) return;
     d.ssh=(r.ok&&(r.key_ok===undefined||r.key_ok))?"ok":"fail";
-    d.message=d.ssh==="ok"?(r.host||"Connected"):shortError(r.error||"Failed");
-    d.detail=r.error||r.host||"";
+    d.detected_os=r.detected_os||d.detected_os||"";
+    d.install_path=r.install_path||d.install_path||"";
+    const meta=[];
+    if(r.detected_os) meta.push(`Detected OS: ${r.detected_os}`);
+    if(r.profile) meta.push(`Profile: ${r.profile}`);
+    if(r.install_path) meta.push(`Key path: ${r.install_path}`);
+    if(r.os_detail) meta.push(`OS detail:\n${r.os_detail}`);
+    const raw=r.error||r.host||"";
+    d.message=d.ssh==="ok"?(r.host||r.detected_os||"Connected"):shortError(r.error||"Failed");
+    d.detail=[raw,...meta].filter(Boolean).join("\n\n");
     if(r.host && !d.name)d.name=r.host;
     if(r.type)d.type=r.type;
     d.password="";

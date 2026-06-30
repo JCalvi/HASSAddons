@@ -9,6 +9,7 @@ def ssh_cmd(host: str, user: str, key_path: str, command: str, timeout: int = 10
         "-o", "UserKnownHostsFile=/dev/null",
         "-o", "ConnectTimeout=3",
         "-o", "LogLevel=ERROR",
+        "-o", "IdentitiesOnly=yes",
     ]
     if key_path:
         cmd += ["-i", key_path]

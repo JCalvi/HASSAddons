@@ -24,6 +24,50 @@ def _run(cmd, timeout=15, input_text=None, env=None):
         return 999, "", str(exc)
 
 
+def sh_quote(value: str) -> str:
+    # POSIX-safe single-quote escaping for remote shell commands.
+    return "'" + str(value).replace("'", "'\''") + "'"
+
+
+def password_ssh(ip, user, password, remote_cmd, timeout=25):
+    env = os.environ.copy()
+    env["SSHPASS"] = password or ""
+    cmd = [
+        "sshpass", "-e",
+        "ssh",
+        "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "GlobalKnownHostsFile=/dev/null",
+        "-o", "LogLevel=ERROR",
+        "-o", "PubkeyAuthentication=no",
+        "-o", "PreferredAuthentications=password,keyboard-interactive",
+        "-o", "NumberOfPasswordPrompts=1",
+        "-o", "ConnectTimeout=5",
+        f"{user}@{ip}",
+        remote_cmd,
+    ]
+    return _run(cmd, timeout=timeout, env=env)
+
+
+def detect_remote_os(ip, user, password):
+    probe = (
+        "if [ -f /etc/openwrt_release ]; then echo OPENWRT; cat /etc/openwrt_release; "
+        "elif [ -f /etc/os-release ]; then cat /etc/os-release; "
+        "elif [ -f /etc/debian_version ]; then echo DEBIAN; cat /etc/debian_version; "
+        "else uname -a; fi"
+    )
+    rc, out, err = password_ssh(ip, user, password, probe, timeout=15)
+    raw = (out or err or "").strip()
+    low = raw.lower()
+    if rc != 0:
+        return {"ok": False, "os": "unknown", "profile": "unknown", "raw": raw, "error": err or out or "OS detection failed"}
+    if "openwrt" in low:
+        return {"ok": True, "os": "OpenWrt", "profile": "openwrt", "raw": raw, "error": ""}
+    if "debian" in low or "raspbian" in low or "ubuntu" in low or "dietpi" in low:
+        return {"ok": True, "os": "Linux", "profile": "linux", "raw": raw, "error": ""}
+    return {"ok": True, "os": "Linux", "profile": "linux", "raw": raw, "error": ""}
+
+
 def key_paths(cfg=None):
     cfg = cfg or load_config()
     private_key = Path(cfg.get("ssh_key_path") or "/config/ssh/id_ed25519")
@@ -129,6 +173,7 @@ def test_host(ip, user, key_path):
         "-o", "LogLevel=ERROR",
         "-o", f"UserKnownHostsFile={KNOWN_HOSTS}",
         "-o", "ConnectTimeout=4",
+        "-o", "IdentitiesOnly=yes",
         "-i", key_path,
         f"{user}@{ip}",
         "echo OK && hostname",
@@ -154,34 +199,58 @@ def test_connections(payload=None):
 
 
 def install_key_on_host(ip, user, password, public_key_text):
-    # Use SSHPASS environment variable rather than putting the password in
-    # the argument list. This avoids breakage with special characters and
-    # stops first-time host-key prompts from blocking the setup flow.
-    escaped_key = public_key_text.replace("'", "'\\''")
-    remote = (
-        "mkdir -p ~/.ssh && chmod 700 ~/.ssh && "
-        "touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && "
-        f"grep -qxF '{escaped_key}' ~/.ssh/authorized_keys 2>/dev/null || echo '{escaped_key}' >> ~/.ssh/authorized_keys; "
-        "chmod 600 ~/.ssh/authorized_keys && echo OK"
-    )
-    env = os.environ.copy()
-    env["SSHPASS"] = password or ""
-    cmd = [
-        "sshpass", "-e",
-        "ssh",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null",
-        "-o", "GlobalKnownHostsFile=/dev/null",
-        "-o", "LogLevel=ERROR",
-        "-o", "PubkeyAuthentication=no",
-        "-o", "PreferredAuthentications=password",
-        "-o", "ConnectTimeout=5",
-        f"{user}@{ip}",
-        remote,
-    ]
-    rc, out, err = _run(cmd, timeout=25, env=env)
-    ok = rc == 0 and "OK" in out
-    return {"ip": ip, "user": user, "ok": ok, "error": "" if ok else (err or out or "Install failed")}
+    detected = detect_remote_os(ip, user, password)
+    if not detected.get("ok"):
+        return {
+            "ip": ip,
+            "user": user,
+            "ok": False,
+            "detected_os": detected.get("os", "unknown"),
+            "profile": detected.get("profile", "unknown"),
+            "install_path": "",
+            "error": detected.get("error") or "Authentication failed",
+            "os_detail": detected.get("raw", ""),
+        }
+
+    key = sh_quote(public_key_text)
+    profile = detected.get("profile")
+
+    if profile == "openwrt":
+        install_path = "/etc/dropbear/authorized_keys"
+        remote = (
+            "umask 077; "
+            "mkdir -p /etc/dropbear /root/.ssh; "
+            "touch /etc/dropbear/authorized_keys /root/.ssh/authorized_keys; "
+            "chmod 600 /etc/dropbear/authorized_keys /root/.ssh/authorized_keys; "
+            "grep -qxF " + key + " /etc/dropbear/authorized_keys 2>/dev/null || printf '%s\n' " + key + " >> /etc/dropbear/authorized_keys; "
+            "grep -qxF " + key + " /root/.ssh/authorized_keys 2>/dev/null || printf '%s\n' " + key + " >> /root/.ssh/authorized_keys; "
+            "chmod 600 /etc/dropbear/authorized_keys /root/.ssh/authorized_keys; "
+            "echo OK_OPENWRT"
+        )
+    else:
+        install_path = "~/.ssh/authorized_keys"
+        remote = (
+            "umask 077; "
+            "mkdir -p ~/.ssh; "
+            "touch ~/.ssh/authorized_keys; "
+            "chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys; "
+            "grep -qxF " + key + " ~/.ssh/authorized_keys 2>/dev/null || printf '%s\n' " + key + " >> ~/.ssh/authorized_keys; "
+            "chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys; "
+            "echo OK_LINUX"
+        )
+
+    rc, out, err = password_ssh(ip, user, password, remote, timeout=25)
+    ok = rc == 0 and ("OK_OPENWRT" in out or "OK_LINUX" in out or "OK" in out)
+    return {
+        "ip": ip,
+        "user": user,
+        "ok": ok,
+        "detected_os": detected.get("os", "unknown"),
+        "profile": profile,
+        "install_path": install_path,
+        "os_detail": detected.get("raw", ""),
+        "error": "" if ok else (err or out or "Install failed"),
+    }
 
 
 def install_keys(payload):
