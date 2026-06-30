@@ -59,6 +59,14 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("generateKeyBtn").addEventListener("click",e=>{e.preventDefault();generateKey().catch(err=>setSetupOutput(err.message));});
   $("installKeysBtn").addEventListener("click",e=>{e.preventDefault();installKeys().catch(err=>setSetupOutput(err.message));});
   $("testSshBtn").addEventListener("click",e=>{e.preventDefault();testSsh().catch(err=>setSetupOutput(err.message));});
-  $("toggleSetupBtn").addEventListener("click",e=>{e.preventDefault();const p=$("setupPanel");p.classList.toggle("collapsed");$("toggleSetupBtn").textContent=p.classList.contains("collapsed")?"Show Setup":"Hide Setup";});
+  function setSetupCollapsed(collapsed){
+    const p=$("setupPanel");
+    p.classList.toggle("collapsed", collapsed);
+    $("toggleSetupBtn").textContent=collapsed?"Show":"Hide";
+    localStorage.setItem("networkExplorerSetupCollapsed", collapsed?"1":"0");
+  }
+  $("toggleSetupBtn").addEventListener("click",e=>{e.preventDefault();setSetupCollapsed(!$("setupPanel").classList.contains("collapsed"));});
+  $("settingsBtn").addEventListener("click",e=>{e.preventDefault();setSetupCollapsed(false);$("setupPanel").scrollIntoView({behavior:"smooth",block:"start"});});
+  setSetupCollapsed(localStorage.getItem("networkExplorerSetupCollapsed")==="1");
   loadConfig();
 });
