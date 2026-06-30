@@ -1,12 +1,13 @@
+import os
 import subprocess
 from pathlib import Path
 
 from .config import load_config, save_runtime_config
 
-KNOWN_HOSTS = "/tmp/network_explorer_known_hosts"
+KNOWN_HOSTS = "/dev/null"
 
 
-def _run(cmd, timeout=15, input_text=None):
+def _run(cmd, timeout=15, input_text=None, env=None):
     try:
         p = subprocess.run(
             cmd,
@@ -16,6 +17,7 @@ def _run(cmd, timeout=15, input_text=None):
             stderr=subprocess.PIPE,
             timeout=timeout,
             check=False,
+            env=env,
         )
         return p.returncode, p.stdout.strip(), p.stderr.strip()
     except Exception as exc:
@@ -152,23 +154,32 @@ def test_connections(payload=None):
 
 
 def install_key_on_host(ip, user, password, public_key_text):
+    # Use SSHPASS environment variable rather than putting the password in
+    # the argument list. This avoids breakage with special characters and
+    # stops first-time host-key prompts from blocking the setup flow.
     escaped_key = public_key_text.replace("'", "'\\''")
     remote = (
         "mkdir -p ~/.ssh && chmod 700 ~/.ssh && "
+        "touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && "
         f"grep -qxF '{escaped_key}' ~/.ssh/authorized_keys 2>/dev/null || echo '{escaped_key}' >> ~/.ssh/authorized_keys; "
         "chmod 600 ~/.ssh/authorized_keys && echo OK"
     )
+    env = os.environ.copy()
+    env["SSHPASS"] = password or ""
     cmd = [
-        "sshpass", "-p", password,
+        "sshpass", "-e",
         "ssh",
         "-o", "StrictHostKeyChecking=no",
+        "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "GlobalKnownHostsFile=/dev/null",
         "-o", "LogLevel=ERROR",
-        "-o", f"UserKnownHostsFile={KNOWN_HOSTS}",
+        "-o", "PubkeyAuthentication=no",
+        "-o", "PreferredAuthentications=password",
         "-o", "ConnectTimeout=5",
         f"{user}@{ip}",
         remote,
     ]
-    rc, out, err = _run(cmd, timeout=20)
+    rc, out, err = _run(cmd, timeout=25, env=env)
     ok = rc == 0 and "OK" in out
     return {"ip": ip, "user": user, "ok": ok, "error": "" if ok else (err or out or "Install failed")}
 

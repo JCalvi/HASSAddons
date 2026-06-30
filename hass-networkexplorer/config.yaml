@@ -1,5 +1,5 @@
 name: Network Explorer
-version: 2026.6.04
+version: 2026.6.05
 slug: networkexplorer
 description: Live network inventory for Pi-hole and OpenWrt networks
 url: https://github.com/JCalvi/HASSAddons
