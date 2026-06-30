@@ -5,8 +5,6 @@ set jcversion=2026.3.10
 
 Powershell -Command "& {(Get-Content .\config.json) -replace '\d{4}.\d+.\d+', '%jcversion%' | Set-Content  .\config.json}" 
 
-rem echo %date% > .\hass-actronque\Resources\BuildDate.txt
-
 docker build -t jcrfc/hass-rekognition-amd64:latest -t jcrfc/hass-rekognition-amd64:%jcversion% . --platform linux/amd64
 docker push jcrfc/hass-rekognition-amd64:latest
 docker push jcrfc/hass-rekognition-amd64:%jcversion%

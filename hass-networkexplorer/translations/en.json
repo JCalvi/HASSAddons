@@ -1,0 +1,12 @@
+{
+  "configuration": {
+    "piholes": "Pi-hole IP addresses",
+    "access_points": "OpenWrt access point IP addresses",
+    "ssh_user": "SSH username",
+    "ssh_key_path": "SSH private key path",
+    "ping_workers": "Concurrent ping workers",
+    "ping_timeout": "Ping timeout seconds",
+    "tcp_probe": "Enable TCP fallback probes",
+    "tcp_ports": "TCP probe ports"
+  }
+}

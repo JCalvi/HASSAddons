@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Network Explorer</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h2>Network Explorer</h2>
+    <div id="updated" class="small">Ready</div>
+    <div id="summary" class="summary"></div>
+  </header>
+
+  <section class="controls">
+    <input id="search" placeholder="Search IP, host, MAC, SSID...">
+    <select id="statusFilter">
+      <option value="">All devices</option>
+      <option value="online">Online only</option>
+      <option value="idle">Idle only</option>
+      <option value="offline">Offline only</option>
+    </select>
+    <select id="connectionFilter"><option value="">All connections</option></select>
+    <select id="apFilter"><option value="">All APs</option></select>
+    <button id="refreshBtn" type="button">Refresh</button>
+  </section>
+
+  <table>
+    <thead>
+      <tr>
+        <th data-sort="ip">IP</th>
+        <th data-sort="host">Host</th>
+        <th data-sort="mac">MAC</th>
+        <th data-sort="status">Status</th>
+        <th data-sort="connection">Connection</th>
+        <th data-sort="ap">AP</th>
+        <th data-sort="band">Band</th>
+        <th data-sort="rssi">RSSI</th>
+        <th data-sort="source">Source</th>
+      </tr>
+    </thead>
+    <tbody id="body"></tbody>
+  </table>
+
+  <script src="/app.js"></script>
+</body>
+</html>

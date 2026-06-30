@@ -1,0 +1,53 @@
+name: Network Explorer
+version: 2026.6.01
+slug: networkexplorer
+description: Live network inventory for Pi-hole and OpenWrt networks
+url: https://github.com/JCalvi/HASSAddons
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+startup: services
+boot: auto
+init: false
+ingress: true
+ingress_port: 8090
+panel_icon: mdi:lan
+panel_title: Network
+homeassistant_api: false
+host_network: true
+map:
+  - config:rw
+  - share:rw
+  - ssl:ro
+options:
+  piholes:
+    - 192.168.1.2
+    - 192.168.1.3
+  access_points:
+    - 192.168.1.11
+    - 192.168.1.12
+  ssh_user: root
+  ssh_key_path: /config/ssh/id_ed25519
+  ping_workers: 20
+  ping_timeout: 1
+  tcp_probe: false
+  tcp_ports:
+    - 22
+    - 53
+    - 80
+    - 443
+schema:
+  piholes:
+    - str
+  access_points:
+    - str
+  ssh_user: str
+  ssh_key_path: str
+  ping_workers: int(1,100)
+  ping_timeout: int(1,10)
+  tcp_probe: bool
+  tcp_ports:
+    - int(1,65535)
