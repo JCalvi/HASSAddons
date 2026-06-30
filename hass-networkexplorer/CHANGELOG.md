@@ -1,3 +1,7 @@
+## 2026.6.04
+
+- Hide the setup card completely when collapsed; Settings button reopens it.
+
 ## 2026.6.03
 
 - Fixed Home Assistant Ingress asset/API path handling by inlining UI assets and using ingress-relative API calls.
