@@ -71,7 +71,7 @@ function mergeStatuses(results){
 
 async function loadConfig(){
   try{
-    const r=await fetch("/api/config?_="+Date.now(),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
+    const r=await fetch("api/config?_="+Date.now(),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
     const c=d.config||{};
     $("sshKeyPathInput").value=c.ssh_key_path||"/config/ssh/id_ed25519";
     setupDevices=(c.devices||[]).map(x=>({type:x.type||"Host",name:x.name||"",ip:x.ip||"",user:x.user||c.ssh_user||"root",password:"",ssh:"unknown",message:""}));
@@ -82,12 +82,12 @@ async function loadConfig(){
     renderSetupDevices(); showKeyInfo(d.key);
   }catch(e){setSetupOutput("Config load failed: "+e.message);}
 }
-async function saveConfig(){updateAllSetupDevices();setSetupOutput("Saving config...");const d=await postJson("/api/config",setupPayload(false));showKeyInfo(d.key);setSetupOutput("Config saved.");}
-async function generateKey(){setSetupOutput("Generating SSH key...");await saveConfig();const d=await postJson("/api/ssh/generate",{});showKeyInfo(d.key);setSetupOutput("SSH key ready.");}
-async function installAll(){updateAllSetupDevices();if(!setupDevices.some(d=>d.password)){setSetupOutput("Enter at least one device password first. Each password can be different.");return;}setupDevices.forEach(d=>{if(d.password)d.ssh="installing";});renderSetupDevices();setSetupOutput("Installing SSH keys...");const d=await postJson("/api/ssh/install_all",setupPayload(true));showKeyInfo(d.key);mergeStatuses(d.results);setSetupOutput(d.results);}
-async function installOne(i){updateDeviceFromRow(i);const d=setupDevices[i];if(!d.password){setSetupOutput("Enter the password for "+deviceLabel(d));return;}d.ssh="installing";renderSetupDevices();const res=await postJson("/api/ssh/install_one",{...setupPayload(true),ip:d.ip});showKeyInfo(res.key);mergeStatuses(res.results);setSetupOutput(res.results);}
-async function testAll(){updateAllSetupDevices();setSetupOutput("Testing SSH...");await saveConfig();setupDevices.forEach(d=>d.ssh="testing");renderSetupDevices();const d=await postJson("/api/ssh/test",setupPayload(false));mergeStatuses(d.results);setSetupOutput(d.results);}
-async function testOne(i){updateDeviceFromRow(i);const d=setupDevices[i];d.ssh="testing";renderSetupDevices();await saveConfig();const res=await postJson("/api/ssh/test",{...setupPayload(false),devices:[{type:d.type,name:d.name,ip:d.ip,user:d.user}]});mergeStatuses(res.results);setSetupOutput(res.results);}
+async function saveConfig(){updateAllSetupDevices();setSetupOutput("Saving config...");const d=await postJson("api/config",setupPayload(false));showKeyInfo(d.key);setSetupOutput("Config saved.");}
+async function generateKey(){setSetupOutput("Generating SSH key...");await saveConfig();const d=await postJson("api/ssh/generate",{});showKeyInfo(d.key);setSetupOutput("SSH key ready.");}
+async function installAll(){updateAllSetupDevices();if(!setupDevices.some(d=>d.password)){setSetupOutput("Enter at least one device password first. Each password can be different.");return;}setupDevices.forEach(d=>{if(d.password)d.ssh="installing";});renderSetupDevices();setSetupOutput("Installing SSH keys...");const d=await postJson("api/ssh/install_all",setupPayload(true));showKeyInfo(d.key);mergeStatuses(d.results);setSetupOutput(d.results);}
+async function installOne(i){updateDeviceFromRow(i);const d=setupDevices[i];if(!d.password){setSetupOutput("Enter the password for "+deviceLabel(d));return;}d.ssh="installing";renderSetupDevices();const res=await postJson("api/ssh/install_one",{...setupPayload(true),ip:d.ip});showKeyInfo(res.key);mergeStatuses(res.results);setSetupOutput(res.results);}
+async function testAll(){updateAllSetupDevices();setSetupOutput("Testing SSH...");await saveConfig();setupDevices.forEach(d=>d.ssh="testing");renderSetupDevices();const d=await postJson("api/ssh/test",setupPayload(false));mergeStatuses(d.results);setSetupOutput(d.results);}
+async function testOne(i){updateDeviceFromRow(i);const d=setupDevices[i];d.ssh="testing";renderSetupDevices();await saveConfig();const res=await postJson("api/ssh/test",{...setupPayload(false),devices:[{type:d.type,name:d.name,ip:d.ip,user:d.user}]});mergeStatuses(res.results);setSetupOutput(res.results);}
 
 function fillFilters(){
   const conns=[...new Set(rows.map(x=>x.connection).filter(Boolean))].sort();
@@ -110,7 +110,7 @@ function render(){
   $("updated").textContent=`Updated ${new Date().toLocaleTimeString()} - ${out.length}/${rows.length} shown`;
   $("summary").textContent=`${rows.length} devices - ${online} online - ${idle} idle - ${offline} offline - Wi-Fi ${wifi} - Ethernet ${wired} - Tailscale ${tailscale}`;
 }
-async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch("/api/refresh?_="+Date.now(),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=data.devices||[]; fillFilters(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; btn.textContent="Refresh";}
+async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch("api/refresh?_="+Date.now(),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=data.devices||[]; fillFilters(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; btn.textContent="Refresh";}
 
 document.addEventListener("DOMContentLoaded",()=>{
   ["search","statusFilter","connectionFilter","apFilter"].forEach(id=>$(id).addEventListener("input",render));
