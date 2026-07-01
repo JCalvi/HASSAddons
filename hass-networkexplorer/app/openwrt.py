@@ -12,11 +12,11 @@ for dev in $(iw dev | awk '/Interface/ {print $2}'); do
   [ "$channel" -lt 15 ] 2>/dev/null && band="2.4 GHz"
   [ "$channel" -ge 15 ] 2>/dev/null && band="5 GHz"
   [ -z "$ssid" ] && continue
-  iw dev "$dev" station dump 2>/dev/null | awk -v ssid="$ssid" -v ap="$AP" -v band="$band" '
+  iw dev "$dev" station dump 2>/dev/null | awk -v ssid="$ssid" -v ap="$AP" -v band="$band" -v dev="$dev" '
     /^Station / {mac=$2}
     /^[[:space:]]*signal:/ {sig=$2}
-    /^$/ { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band; mac=""; sig="" }
-    END { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band }
+    /^$/ { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band "|" dev; mac=""; sig="" }
+    END { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band "|" dev }
   '
 done
 '''
@@ -45,6 +45,7 @@ def collect_wifi_live(devices: dict, cfg: dict):
             if len(parts) < 5:
                 continue
             mac, ssid, ap_name, sig, band = parts[:5]
+            iface = parts[5] if len(parts) >= 6 else ""
             mac = norm_mac(mac)
             if not mac:
                 continue
@@ -61,6 +62,8 @@ def collect_wifi_live(devices: dict, cfg: dict):
                 d["ap"] = ap_name
                 d["band"] = band
                 d["rssi"] = sig
+                d["wifi_ap_ip"] = ap_ip
+                d["wifi_interface"] = iface
                 d["wifi_last_event"] = "Connected"
                 d["wifi_last_seen"] = "Now"
                 add_source(d, "Wi-Fi Live")

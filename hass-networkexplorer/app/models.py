@@ -36,6 +36,9 @@ def new_device(ip="", host="", mac="", source="") -> dict:
         "tcp": "",
         "wifi_last_event": "",
         "wifi_last_seen": "",
+        "wifi_ap_ip": "",
+        "wifi_interface": "",
+        "preferred_ap": "Auto",
         "source": source or "",
     }
 

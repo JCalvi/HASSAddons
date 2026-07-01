@@ -19,6 +19,10 @@ DEFAULTS = {
     "ping_timeout": 1,
     "tcp_probe": False,
     "tcp_ports": [22, 53, 80, 443],
+    "steering_enabled": False,
+    "steering_interval_minutes": 10,
+    "steering_cooldown_minutes": 30,
+    "preferences": {},
 }
 
 
@@ -82,6 +86,11 @@ def load_config() -> dict:
     cfg["ping_workers"] = max(1, int(cfg.get("ping_workers", 50)))
     cfg["ping_timeout"] = max(1, int(cfg.get("ping_timeout", 1)))
     cfg["tcp_ports"] = [int(x) for x in cfg.get("tcp_ports", [])]
+    cfg["steering_enabled"] = bool(cfg.get("steering_enabled", False))
+    cfg["steering_interval_minutes"] = max(1, int(cfg.get("steering_interval_minutes", 10)))
+    cfg["steering_cooldown_minutes"] = max(1, int(cfg.get("steering_cooldown_minutes", 30)))
+    if not isinstance(cfg.get("preferences"), dict):
+        cfg["preferences"] = {}
     return cfg
 
 

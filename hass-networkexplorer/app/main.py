@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from .config import load_config, save_runtime_config
 from .inventory import collect_inventory
 from .setup import key_status, ensure_key, install_keys, test_connections, configured_devices, save_devices_from_payload
+from .steering import get_preferences, save_preferences, run_steering_once, start_steering_loop
 
 PORT = 8090
 BASE = Path("/app/web")
@@ -46,6 +47,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         cfg = load_config()
         safe = {k: v for k, v in cfg.items() if k != "password"}
         safe["devices"] = configured_devices(cfg)
+        safe["preferences"] = get_preferences(cfg)
+        safe["steering"] = {"enabled": cfg.get("steering_enabled", False), "interval_minutes": cfg.get("steering_interval_minutes", 10), "cooldown_minutes": cfg.get("steering_cooldown_minutes", 30)}
         return safe
 
     def do_GET(self):
@@ -100,11 +103,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if path == "/api/ssh/test":
                 self.send_json({"ok": True, "results": test_connections(payload)})
                 return
+            if path == "/api/preferences":
+                cfg = save_preferences(payload)
+                self.send_json({"ok": True, "config": self.safe_config()})
+                return
+            if path == "/api/steer":
+                row = payload.get("device") or {}
+                results = run_steering_once(row)
+                self.send_json({"ok": True, "results": results})
+                return
         except Exception as exc:
             self.send_json({"ok": False, "error": str(exc)}, status=500)
             return
         self.send_json({"ok": False, "error": "Unknown endpoint"}, status=404)
 
+
+start_steering_loop()
 
 socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(("", PORT), Handler) as httpd:

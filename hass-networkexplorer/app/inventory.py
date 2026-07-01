@@ -20,6 +20,14 @@ def ip_sort_key(row):
     return tuple(int(p) if p.isdigit() else 999 for p in parts)
 
 
+def apply_preferences(devices: dict, cfg: dict):
+    prefs = cfg.get("preferences") or {}
+    for d in devices.values():
+        key = d.get("mac") or d.get("ip") or d.get("host") or ""
+        pref = (prefs.get(key) or {}).get("preferred_ap") if key else None
+        d["preferred_ap"] = pref or "Auto"
+
+
 def collect_inventory(cfg: dict) -> list[dict]:
     devices = {}
 
@@ -29,6 +37,7 @@ def collect_inventory(cfg: dict) -> list[dict]:
     collect_wifi_live(devices, cfg)
     apply_active_probes(devices, cfg)
     collect_wifi_history(devices, cfg)
+    apply_preferences(devices, cfg)
     fill_missing_hosts_by_mac(devices)
 
     rows = list(devices.values())

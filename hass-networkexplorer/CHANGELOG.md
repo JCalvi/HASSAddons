@@ -1,4 +1,11 @@
 
+## 2026.6.12
+
+- Added Preferred AP Steering.
+- Preferred AP is set per Wi-Fi device from the expanded details panel.
+- Added Move now to preferred AP action.
+- Added optional scheduled steering interval and cooldown.
+
 ## 2026.6.11
 
 - Persist managed devices under `/config/networkexplorer/devices.json` so they survive add-on removal/reinstall.
