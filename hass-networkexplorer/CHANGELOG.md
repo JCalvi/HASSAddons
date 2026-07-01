@@ -1,3 +1,9 @@
+# 2026.6.13
+
+- Preferred AP steering now matches the OpenWrt LuCI Disconnect action by using `ubus call hostapd.<interface> del_client` with deauth reason 5.
+- Kept hostapd_cli and iw as fallback methods for unusual OpenWrt builds.
+- Renamed the detail action button to **Move Now**.
+
 
 ## 2026.6.12
 

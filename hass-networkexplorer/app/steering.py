@@ -78,18 +78,34 @@ def disassociate(row, reason='manual'):
     key = cfg.get('ssh_key_path', '')
     remote = """MAC='%s'
 IFACE='%s'
+OBJ="hostapd.$IFACE"
+PAYLOAD="{\\"addr\\":\\"$MAC\\",\\"deauth\\":true,\\"reason\\":5}"
+
+# Match the OpenWrt LuCI Disconnect button: call hostapd.<iface> del_client.
+if command -v ubus >/dev/null 2>&1; then
+  if ubus -S call "$OBJ" del_client "$PAYLOAD" >/tmp/network-explorer-steer.out 2>&1; then
+    echo OK_UBUS
+    cat /tmp/network-explorer-steer.out
+    rm -f /tmp/network-explorer-steer.out
+    exit 0
+  fi
+  cat /tmp/network-explorer-steer.out 2>/dev/null
+  rm -f /tmp/network-explorer-steer.out
+fi
+
+# Fallbacks for non-standard builds.
 if command -v hostapd_cli >/dev/null 2>&1; then
-  hostapd_cli -i \"$IFACE\" disassociate \"$MAC\" >/dev/null 2>&1 && echo OK_HOSTAPD && exit 0
+  hostapd_cli -i "$IFACE" disassociate "$MAC" >/dev/null 2>&1 && echo OK_HOSTAPD && exit 0
 fi
 if command -v iw >/dev/null 2>&1; then
-  iw dev \"$IFACE\" station del \"$MAC\" >/dev/null 2>&1 && echo OK_IW && exit 0
+  iw dev "$IFACE" station del "$MAC" >/dev/null 2>&1 && echo OK_IW && exit 0
 fi
 echo FAILED
 exit 1
 """ % (mac, iface)
     out = ssh_cmd(ap_ip, user, key, remote, timeout=10)
-    ok = 'OK_HOSTAPD' in out or 'OK_IW' in out
-    return {'ok': ok, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'error': '' if ok else (out or 'Disassociate failed')}
+    ok = 'OK_UBUS' in out or 'OK_HOSTAPD' in out or 'OK_IW' in out
+    return {'ok': ok, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'method': 'ubus del_client', 'error': '' if ok else (out or 'Disassociate failed')}
 
 
 def run_steering_once(manual_row=None):
