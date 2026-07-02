@@ -37,9 +37,16 @@ done
 '''
 
 
+def _user_for_ip(cfg: dict, ip: str) -> str:
+    for d in cfg.get("devices") or []:
+        if str(d.get("ip") or "").strip() == str(ip):
+            return d.get("user") or "root"
+    return "root"
+
+
 def collect_wifi_live(devices: dict, cfg: dict):
     for ap_ip in cfg.get("access_points", []):
-        out = ssh_cmd(ap_ip, cfg["ssh_user"], cfg.get("ssh_key_path", ""), AP_CLIENTS, timeout=10)
+        out = ssh_cmd(ap_ip, _user_for_ip(cfg, ap_ip), cfg.get("ssh_key_path", ""), AP_CLIENTS, timeout=10)
         for line in out.splitlines():
             parts = line.split("|")
             if len(parts) < 5:
@@ -72,7 +79,7 @@ def collect_wifi_live(devices: dict, cfg: dict):
 def collect_wifi_history(devices: dict, cfg: dict):
     history = {}
     for ap_ip in cfg.get("access_points", []):
-        out = ssh_cmd(ap_ip, cfg["ssh_user"], cfg.get("ssh_key_path", ""), AP_HISTORY, timeout=10)
+        out = ssh_cmd(ap_ip, _user_for_ip(cfg, ap_ip), cfg.get("ssh_key_path", ""), AP_HISTORY, timeout=10)
         for line in out.splitlines():
             parts = line.split("|")
             if len(parts) < 5:

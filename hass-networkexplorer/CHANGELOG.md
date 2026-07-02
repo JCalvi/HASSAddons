@@ -1,3 +1,13 @@
+# Changelog
+
+## 2026.6.14
+
+- Cleaned persistent config schema.
+- Removed duplicated `piholes` and `access_points` fields from `devices.json`; these are now derived from managed devices.
+- Steering settings are now stored under `settings.steering` and persist correctly.
+- Migrates old root-level steering settings into the new grouped settings format.
+- Keeps compatibility aliases internally so existing collectors continue to work.
+
 # 2026.6.13
 
 - Preferred AP steering now matches the OpenWrt LuCI Disconnect action by using `ubus call hostapd.<interface> del_client` with deauth reason 5.

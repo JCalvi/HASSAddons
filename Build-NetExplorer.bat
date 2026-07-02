@@ -2,7 +2,10 @@ rem https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md#full-tag-
 @echo off
 cd /d "%~dp0\hass-networkexplorer"
 
-set jcversion=2026.6.13
+set jcversion=2026.6.14
+
+mkdir "%USERPROFILE%\.docker\cli-plugins"
+copy "C:\Program Files\Docker\Docker\resources\cli-plugins\docker-buildx.exe" "%USERPROFILE%\.docker\cli-plugins\docker-buildx.exe"
 
 PowerShell -Command "& {(Get-Content .\config.yaml) -replace 'version: .*', 'version: %jcversion%' | Set-Content .\config.yaml}"
 

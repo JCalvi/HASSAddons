@@ -152,26 +152,18 @@ def key_status():
 
 def configured_devices(cfg=None):
     cfg = cfg or load_config()
-    saved = cfg.get("devices") or []
-    if saved:
-        out = []
-        for d in saved:
-            ip = str(d.get("ip") or "").strip()
-            if not ip:
-                continue
-            out.append({
-                "type": d.get("type") or "Auto",
-                "ip": ip,
-                "user": d.get("user") or cfg.get("ssh_user", "root"),
-                "name": d.get("name") or "",
-            })
-        return out
-
     out = []
-    for ip in cfg.get("piholes", []):
-        out.append({"type": "Pi-hole", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": ""})
-    for ip in cfg.get("access_points", []):
-        out.append({"type": "OpenWrt Wi-Fi", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": ""})
+    for d in cfg.get("devices") or []:
+        ip = str(d.get("ip") or "").strip()
+        if not ip:
+            continue
+        out.append({
+            "type": d.get("type") or "Auto",
+            "ip": ip,
+            "user": d.get("user") or "root",
+            "name": d.get("name") or "",
+            "capabilities": d.get("capabilities") or [],
+        })
     return out
 
 
@@ -181,29 +173,22 @@ def save_devices_from_payload(payload):
         ip = str(d.get("ip") or "").strip()
         if not ip:
             continue
-        devices.append({
-            "type": d.get("type") or "Auto",
+        dtype = d.get("type") or "Auto"
+        capabilities = d.get("capabilities") if isinstance(d.get("capabilities"), list) else []
+        if dtype in ["OpenWrt Wi-Fi", "OpenWrt AP"] and "wifi" not in capabilities:
+            capabilities.append("wifi")
+        item = {
+            "type": dtype,
             "ip": ip,
-            "user": d.get("user") or payload.get("ssh_user") or "root",
+            "user": d.get("user") or "root",
             "name": d.get("name") or "",
-        })
+        }
+        if capabilities:
+            item["capabilities"] = capabilities
+        devices.append(item)
 
-    if not devices:
-        for ip in payload.get("piholes", []) or []:
-            if str(ip).strip():
-                devices.append({"type": "Pi-hole", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": ""})
-        for ip in payload.get("access_points", []) or []:
-            if str(ip).strip():
-                devices.append({"type": "OpenWrt Wi-Fi", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": ""})
-
-    piholes = [d["ip"] for d in devices if d.get("type") == "Pi-hole"]
-    aps = [d["ip"] for d in devices if d.get("type") in ["OpenWrt Wi-Fi", "OpenWrt AP"]]
-    updates = {
-        "devices": devices,
-        "piholes": piholes,
-        "access_points": aps,
-    }
-    for key in ["ssh_user", "ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"]:
+    updates = {"devices": devices}
+    for key in ["ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"]:
         if key in payload:
             updates[key] = payload[key]
     save_runtime_config(updates)
@@ -256,6 +241,32 @@ fi
     }
 
 
+def persist_detected_results(results):
+    if not results:
+        return
+    cfg_now = load_config()
+    devices = cfg_now.get("devices") or []
+    changed = False
+    for r in results:
+        if not (r.get("ok") and r.get("ip")):
+            continue
+        for d in devices:
+            if str(d.get("ip") or "").strip() == str(r.get("ip")):
+                if r.get("type") and r.get("type") != "Unknown" and d.get("type") != r.get("type"):
+                    d["type"] = r.get("type")
+                    changed = True
+                if r.get("host") and not d.get("name"):
+                    d["name"] = r.get("host")
+                    changed = True
+                caps = d.get("capabilities") if isinstance(d.get("capabilities"), list) else []
+                if d.get("type") in ["OpenWrt Wi-Fi", "OpenWrt AP"] and "wifi" not in caps:
+                    caps.append("wifi")
+                    d["capabilities"] = caps
+                    changed = True
+    if changed:
+        save_runtime_config({"devices": devices})
+
+
 def test_connections(payload=None):
     cfg = load_config()
     if payload and (payload.get("devices") or payload.get("piholes") or payload.get("access_points")):
@@ -267,6 +278,8 @@ def test_connections(payload=None):
         r["type"] = h["type"]
         r["name"] = h.get("name", "")
         results.append(r)
+
+    persist_detected_results(results)
     return results
 
 
@@ -361,4 +374,5 @@ def install_keys(payload):
         else:
             r["key_ok"] = False
         results.append(r)
+    persist_detected_results(results)
     return results

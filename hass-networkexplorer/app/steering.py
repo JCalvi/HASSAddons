@@ -53,9 +53,13 @@ def save_preferences(payload):
     steering = payload.get('steering') or {}
     save_runtime_config({
         'preferences': prefs,
-        'steering_enabled': bool(steering.get('enabled', cfg.get('steering_enabled', False))),
-        'steering_interval_minutes': int(steering.get('interval_minutes', cfg.get('steering_interval_minutes', 10)) or 10),
-        'steering_cooldown_minutes': int(steering.get('cooldown_minutes', cfg.get('steering_cooldown_minutes', 30)) or 30),
+        'settings': {
+            'steering': {
+                'enabled': bool(steering.get('enabled', cfg.get('steering_enabled', False))),
+                'interval_minutes': int(steering.get('interval_minutes', cfg.get('steering_interval_minutes', 10)) or 10),
+                'cooldown_minutes': int(steering.get('cooldown_minutes', cfg.get('steering_cooldown_minutes', 30)) or 30),
+            }
+        },
     })
     return load_config()
 

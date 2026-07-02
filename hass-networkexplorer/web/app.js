@@ -65,9 +65,7 @@ function enrichSeen(items){
 function setupPayload(includePasswords=true){
   updateAllSetupDevices();
   return {
-    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,password:includePasswords?d.password:""})),
-    piholes: setupDevices.filter(d=>d.type==="Pi-hole"&&d.ip).map(d=>d.ip),
-    access_points: setupDevices.filter(d=>["OpenWrt Wi-Fi","OpenWrt AP"].includes(d.type)&&d.ip).map(d=>d.ip),
+    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,password:includePasswords?d.password:"",capabilities:d.capabilities||[]})),
     ssh_key_path: $("sshKeyPathInput").value.trim()||"/config/ssh/id_ed25519"
   };
 }
@@ -147,10 +145,6 @@ async function loadConfig(){
     const r=await fetch(apiPath("api/config?_="+Date.now()),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
     const c=d.config||{}; $("sshKeyPathInput").value=c.ssh_key_path||"/config/ssh/id_ed25519";
     setupDevices=(c.devices&&c.devices.length?c.devices:[]).map(x=>({...defaultDevice(x.type),...x,password:"",ssh:"unknown",message:"",detail:""}));
-    if(!setupDevices.length){
-      (c.piholes||[]).forEach(ip=>setupDevices.push({...defaultDevice("Pi-hole"),ip}));
-      (c.access_points||[]).forEach(ip=>setupDevices.push({...defaultDevice("OpenWrt Wi-Fi"),ip}));
-    }
     renderSetupDevices(); showKeyInfo(d.key); testAll(false).catch(()=>{});
   }catch(e){setSetupMessage("Config load failed: "+e.message,"bad");}
 }
