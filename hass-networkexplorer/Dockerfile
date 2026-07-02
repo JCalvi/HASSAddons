@@ -6,7 +6,8 @@ RUN apk add --no-cache \
     openssh-client \
     sshpass \
     iputils \
-    ca-certificates
+    ca-certificates \
+    mosquitto-clients
 
 WORKDIR /app
 COPY app/ /app/app/

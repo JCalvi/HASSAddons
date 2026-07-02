@@ -1,5 +1,5 @@
 name: Network Explorer
-version: 2026.6.17
+version: 2026.6.18
 slug: networkexplorer
 description: Live network inventory for Pi-hole and OpenWrt networks
 url: https://github.com/JCalvi/HASSAddons
@@ -31,9 +31,15 @@ options:
     - 53
     - 80
     - 443
-  steering_enabled: false
-  steering_interval_minutes: 10
-  steering_cooldown_minutes: 30
+  steering_enabled: true
+  steering_interval_minutes: 60
+  steering_cooldown_minutes: 180
+  mqtt_enabled: false
+  mqtt_host: ""
+  mqtt_port: 1883
+  mqtt_username: ""
+  mqtt_password: ""
+  mqtt_topic_prefix: network_explorer
 schema:
   ping_workers: int(1,200)
   ping_timeout: int(1,10)
@@ -43,3 +49,9 @@ schema:
   steering_enabled: bool
   steering_interval_minutes: int(1,1440)
   steering_cooldown_minutes: int(1,1440)
+  mqtt_enabled: bool
+  mqtt_host: str?
+  mqtt_port: int(1,65535)
+  mqtt_username: str?
+  mqtt_password: password?
+  mqtt_topic_prefix: str

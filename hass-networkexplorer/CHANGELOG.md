@@ -1,3 +1,12 @@
+## 2026.6.18
+
+- Preserve global Home Assistant add-on settings across add-on remove/reinstall by backing them up under `/config/networkexplorer/settings.json`.
+- Default automatic Preferred AP steering settings are now enabled, 60 minute interval and 180 minute cooldown.
+- Added MQTT command listener support using `mosquitto_sub`/`mosquitto_pub`.
+- Added MQTT options: broker host, port, username, password and topic prefix.
+- MQTT steering command topic: `<prefix>/command/steer` with payload such as `{"ip":"192.168.1.80"}` or `{"mac":"aa:bb:cc:dd:ee:ff"}`.
+- MQTT status replies publish to `<prefix>/status/steer`.
+
 ## 2026.6.17
 
 - Detect Tailscale/CGNAT addresses in `100.64.0.0/10` and show them as `Tailscale` instead of Ethernet.

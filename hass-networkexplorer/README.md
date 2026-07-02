@@ -30,6 +30,11 @@ Devices are managed from the Network Explorer web UI, not from the Home Assistan
 - `steering_enabled`: Enables automatic Preferred AP steering. Manual Move Now still works when off.
 - `steering_interval_minutes`: Time between automatic steering checks.
 - `steering_cooldown_minutes`: Minimum time before the same device can be automatically steered again.
+- `mqtt_enabled`: Enables the MQTT command listener.
+- `mqtt_host`: MQTT broker hostname or IP address.
+- `mqtt_port`: MQTT broker port, usually `1883`.
+- `mqtt_username` / `mqtt_password`: Optional MQTT credentials.
+- `mqtt_topic_prefix`: Topic prefix, default `network_explorer`.
 
 
 
@@ -65,3 +70,40 @@ rest_command:
     content_type: "application/json"
     payload: '{"ip":"{{ ip }}"}'
 ```
+
+
+## MQTT commands
+
+MQTT is optional. When enabled, Network Explorer subscribes to:
+
+```text
+<prefix>/command/#
+```
+
+Default prefix:
+
+```text
+network_explorer
+```
+
+Move a device to its Preferred AP using an IP address:
+
+```text
+Topic: network_explorer/command/steer
+Payload: {"ip":"192.168.1.80"}
+```
+
+Or using a MAC address:
+
+```text
+Topic: network_explorer/command/steer
+Payload: {"mac":"aa:bb:cc:dd:ee:ff"}
+```
+
+Result messages are published to:
+
+```text
+network_explorer/status/steer
+```
+
+The device must already have a Preferred AP set in Network Explorer. MQTT steering works even when automatic steering is disabled.

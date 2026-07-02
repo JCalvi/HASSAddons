@@ -9,6 +9,7 @@ from .config import load_config, save_runtime_config
 from .inventory import collect_inventory
 from .setup import key_status, ensure_key, install_keys, test_connections, configured_devices, save_devices_from_payload
 from .steering import get_preferences, save_preferences, run_steering_once, start_steering_loop
+from .mqtt import start_mqtt_loop
 
 PORT = 8090
 BASE = Path("/app/web")
@@ -150,6 +151,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 start_steering_loop()
+start_mqtt_loop()
 
 socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
