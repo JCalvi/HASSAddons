@@ -73,15 +73,20 @@ def _handle_message(cfg: dict, topic: str, message: str) -> None:
 
 
 def mqtt_loop() -> None:
+    backoff = 30
     while True:
         cfg = load_config()
         if not cfg.get("mqtt_enabled") or not cfg.get("mqtt_host"):
-            time.sleep(30)
+            # Disabled means genuinely idle. Check occasionally in case the
+            # user enables MQTT from the add-on Configuration page.
+            time.sleep(60)
             continue
+
         prefix = cfg.get("mqtt_topic_prefix", "network_explorer").strip("/")
         topic = f"{prefix}/command/#"
         _pub(cfg, "status", {"online": True}, retain=True)
         cmd = ["mosquitto_sub", *_base_cmd(cfg), "-t", topic, "-v"]
+        proc = None
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
             assert proc.stdout is not None
@@ -93,17 +98,25 @@ def mqtt_loop() -> None:
                 msg_topic = parts[0]
                 msg = parts[1] if len(parts) > 1 else ""
                 _handle_message(load_config(), msg_topic, msg)
-                # Stop and reconnect if MQTT config was disabled/changed.
                 new_cfg = load_config()
-                if not new_cfg.get("mqtt_enabled") or new_cfg.get("mqtt_host") != cfg.get("mqtt_host"):
-                    proc.terminate()
+                if (not new_cfg.get("mqtt_enabled") or
+                    new_cfg.get("mqtt_host") != cfg.get("mqtt_host") or
+                    new_cfg.get("mqtt_topic_prefix") != cfg.get("mqtt_topic_prefix")):
                     break
+            backoff = 30
+        except Exception:
+            pass
+        finally:
             try:
-                proc.terminate()
+                if proc is not None:
+                    proc.terminate()
             except Exception:
                 pass
-        except Exception:
-            time.sleep(30)
+
+        # If mosquitto_sub exits immediately because the broker is down or the
+        # credentials are wrong, do not tight-loop and burn CPU.
+        time.sleep(backoff)
+        backoff = min(backoff * 2, 300)
 
 
 def start_mqtt_loop() -> None:

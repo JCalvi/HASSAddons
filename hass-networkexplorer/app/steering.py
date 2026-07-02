@@ -127,13 +127,19 @@ def run_steering_once(manual_row=None):
 
 
 def steering_loop():
+    # Do not run an expensive Wi-Fi inventory immediately at add-on startup.
+    # The web UI refresh remains manual/visible; automatic steering wakes only
+    # after the configured interval and then sleeps again.
+    next_sleep = 60
     while True:
         try:
             cfg = load_config()
-            interval = max(1, int(cfg.get('steering_interval_minutes', 10))) * 60
+            interval = max(1, int(cfg.get('steering_interval_minutes', 60))) * 60
+            enabled = bool(cfg.get('steering_enabled'))
+            time.sleep(interval if enabled else 60)
+            cfg = load_config()
             if cfg.get('steering_enabled'):
                 run_steering_once()
-            time.sleep(interval)
         except Exception:
             time.sleep(60)
 

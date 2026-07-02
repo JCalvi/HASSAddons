@@ -1,3 +1,11 @@
+# 2026.6.19
+
+- Stability release after MQTT introduction.
+- Prevented MQTT reconnect failures from tight-looping and using high CPU.
+- Automatic steering no longer runs an immediate full scan at add-on startup; it waits for the configured interval.
+- Improved Home Assistant option display names and descriptions.
+- MQTT listener remains optional and stays idle unless enabled with a broker host.
+
 ## 2026.6.18
 
 - Preserve global Home Assistant add-on settings across add-on remove/reinstall by backing them up under `/config/networkexplorer/settings.json`.

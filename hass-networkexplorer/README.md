@@ -107,3 +107,8 @@ network_explorer/status/steer
 ```
 
 The device must already have a Preferred AP set in Network Explorer. MQTT steering works even when automatic steering is disabled.
+
+
+## 2026.6.19 Notes
+
+This release keeps MQTT optional and prevents MQTT connection failures from using CPU. Automatic Preferred AP steering waits for the configured interval rather than running a full scan immediately at add-on startup.
