@@ -40,7 +40,7 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0;box-shadow:var(--shadow)}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}.card-head p{margin:0;color:var(--muted);font-size:13px}.setup-card.collapsed{display:none}
 .field{display:flex;flex-direction:column;gap:5px}.field span{font-weight:600;color:var(--text)}input,select,button,textarea{background:var(--card2);color:var(--text);border:1px solid var(--border);padding:8px 10px;border-radius:8px;font:inherit;min-height:38px}input::placeholder{color:var(--muted)}input:focus,select:focus,textarea:focus{outline:2px solid rgba(3,169,217,.35);border-color:var(--blue)}button{cursor:pointer;font-weight:600;white-space:nowrap}button:hover{filter:brightness(1.05)}button:disabled{opacity:.6;cursor:wait}.primary{background:var(--blue);border-color:var(--blue2);color:#fff}.secondary{background:var(--card2);border-color:var(--border);color:var(--text)}button.danger{background:#fee2e2;color:#b91c1c;border-color:#fecaca}:root[data-theme="dark"] button.danger,:root[data-theme="auto"] button.danger{background:#3a1f1f;color:#ffb0b0;border-color:#684040}
 .setup-top{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}.key-path{min-width:320px;flex:1}.setup-actions.compact{display:flex;gap:8px;flex-wrap:wrap;margin:0}.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.controls input{min-width:280px;flex:1}.controls select{min-width:170px}
-.device-setup-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:8px}.device-setup-table{width:100%;border-collapse:collapse;font-size:14px}.device-setup-table th,.device-setup-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}.device-setup-table th{background:var(--head);text-align:left}.device-setup-table input,.device-setup-table select{width:100%;box-sizing:border-box}.device-setup-table .dev-type{min-width:130px}.device-setup-table .dev-ip{min-width:130px}.device-setup-table .dev-password{min-width:160px}.row-actions{display:flex;gap:6px;white-space:nowrap}.type-auto{border-left:4px solid #999}.type-pi-hole{border-left:4px solid #6cc04a}.type-openwrt-wi-fi,.type-openwrt-ap{border-left:4px solid #03a9d9}.type-openwrt{border-left:4px solid #0ea5a3}.type-linux,.type-host{border-left:4px solid #999}
+.device-setup-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:8px}.device-setup-table{width:100%;border-collapse:collapse;font-size:14px}.device-setup-table th,.device-setup-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}.device-setup-table th{background:var(--head);text-align:left}.device-setup-table input,.device-setup-table select{width:100%;box-sizing:border-box}.device-setup-table .dev-type{min-width:130px}.device-setup-table .dev-ip{min-width:130px}.device-setup-table .dev-key-path{min-width:260px}.device-setup-table .dev-password{min-width:160px}.row-actions{display:flex;gap:6px;white-space:nowrap}.type-auto{border-left:4px solid #999}.type-pi-hole{border-left:4px solid #6cc04a}.type-openwrt-wi-fi,.type-openwrt-ap{border-left:4px solid #03a9d9}.type-openwrt{border-left:4px solid #0ea5a3}.type-linux,.type-host{border-left:4px solid #999}
 .notice{background:#eef9ff;border:1px solid #b8e7f8;color:#16445a;border-radius:8px;padding:9px 10px;margin:8px 0;font-size:13px}:root[data-theme="dark"] .notice,:root[data-theme="auto"] .notice{background:#101820;border-color:#2b4d5d;color:#cfe9f5}.setup-status{min-height:24px;margin:8px 0;color:var(--muted)}.setup-status.ok{color:var(--green)}.setup-status.bad{color:var(--red)}.ok-text{color:var(--green);font-weight:700}.diagnostics{margin-top:10px;color:var(--muted)}.diagnostics summary{cursor:pointer;font-weight:600}.key-info{color:var(--muted);font-size:12px;margin-top:8px}.key-info code{display:block;background:var(--bg);border:1px solid var(--border);padding:8px;border-radius:7px;white-space:pre-wrap;word-break:break-all;margin-top:4px;color:var(--text)}.output{display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap;color:var(--text)}.output:not(:empty){display:block}
 .chip{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis}.chip.ok{background:#dcfce7;color:#15803d}.chip.bad{background:#fee2e2;color:#b91c1c}.chip.wait{background:#fef3c7;color:#92400e}.chip.unknown{background:#e5e7eb;color:#4b5563}:root[data-theme="dark"] .chip.ok,:root[data-theme="auto"] .chip.ok{background:#193d25;color:#58d26b}:root[data-theme="dark"] .chip.bad,:root[data-theme="auto"] .chip.bad{background:#4a1f1f;color:#ff7777}:root[data-theme="dark"] .chip.wait,:root[data-theme="auto"] .chip.wait{background:#4b421c;color:#e6c84f}:root[data-theme="dark"] .chip.unknown,:root[data-theme="auto"] .chip.unknown{background:#333;color:#aaa}.link-button{background:transparent;border:0;color:var(--blue);min-height:0;padding:2px 0;margin-left:6px;font-weight:600}.ssh-status{max-width:240px}.ssh-status small{display:block;color:var(--muted);margin-top:4px;max-width:240px;white-space:normal}
 .table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;background:var(--card)}table{border-collapse:collapse;width:100%;font-size:14px;min-width:1000px}th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;white-space:nowrap}th{background:var(--head);cursor:pointer;position:sticky;top:0;z-index:2}tr:hover{background:var(--card2)}.mainrow{cursor:pointer}.detail{background:var(--card2);color:var(--text)}.detail td{white-space:normal;padding:14px 18px;line-height:1.45}.detail-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px}.detail-action{min-height:32px;padding:5px 10px}.detail-grid{display:grid;grid-template-columns:160px 1fr;gap:4px 14px;max-width:900px}.status-pill{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}.status-pill.online{background:#dcfce7;color:#15803d}.status-pill.idle{background:#fef3c7;color:#92400e}.status-pill.offline{background:#e5e7eb;color:#4b5563}:root[data-theme="dark"] .status-pill.online,:root[data-theme="auto"] .status-pill.online{background:#193d25;color:#58d26b}:root[data-theme="dark"] .status-pill.idle,:root[data-theme="auto"] .status-pill.idle{background:#4b421c;color:#e6c84f}:root[data-theme="dark"] .status-pill.offline,:root[data-theme="auto"] .status-pill.offline{background:#333;color:#aaa}.online{color:var(--green);font-weight:bold}.offline{color:var(--muted)}.idle{color:var(--yellow);font-weight:bold}.rssi-good{color:var(--green)}.rssi-ok{color:var(--yellow)}.rssi-bad{color:var(--red)}
@@ -202,10 +202,10 @@ function persistView(){
 function restoreView(){
   try{
     const v=JSON.parse(localStorage.getItem("networkExplorerView")||"{}");
-    if(v.search!==undefined)$("search").value=v.search;
-    if(v.status!==undefined)$("statusFilter").value=v.status;
-    if(v.connection!==undefined)$("connectionFilter").value=v.connection;
-    if(v.ap!==undefined)$("apFilter").value=v.ap;
+    if(v.search!==undefined && $("search"))$("search").value=v.search;
+    if(v.status!==undefined && $("statusFilter"))$("statusFilter").value=v.status;
+    if(v.connection!==undefined && $("connectionFilter"))$("connectionFilter").value=v.connection;
+    if(v.ap!==undefined && $("apFilter"))$("apFilter").value=v.ap;
     if(v.sortKey)sortKey=v.sortKey;
     if(v.asc!==undefined)asc=!!v.asc;
     if(v.expandedKey)expandedKey=v.expandedKey;
@@ -240,10 +240,9 @@ function enrichSeen(items){
 function setupPayload(includePasswords=true){
   updateAllSetupDevices();
   return {
-    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,password:includePasswords?d.password:""})),
+    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,ssh_key_path:d.ssh_key_path||"/config/ssh/id_ed25519",password:includePasswords?d.password:""})),
     piholes: setupDevices.filter(d=>d.type==="Pi-hole"&&d.ip).map(d=>d.ip),
-    access_points: setupDevices.filter(d=>["OpenWrt Wi-Fi","OpenWrt AP"].includes(d.type)&&d.ip).map(d=>d.ip),
-    ssh_key_path: $("sshKeyPathInput").value.trim()||"/config/ssh/id_ed25519"
+    access_points: setupDevices.filter(d=>["OpenWrt Wi-Fi","OpenWrt AP"].includes(d.type)&&d.ip).map(d=>d.ip)
   };
 }
 function updateDeviceFromRow(i){
@@ -252,7 +251,8 @@ function updateDeviceFromRow(i){
   setupDevices[i].name=row.querySelector(".dev-name").value.trim();
   setupDevices[i].ip=row.querySelector(".dev-ip").value.trim();
   setupDevices[i].user=row.querySelector(".dev-user").value.trim()||"root";
-  setupDevices[i].password=row.querySelector(".dev-password").value;
+  setupDevices[i].ssh_key_path=(row.querySelector(".dev-key-path")?.value.trim())||"/config/ssh/id_ed25519";
+  setupDevices[i].password=row.querySelector(".dev-password")?.value||"";
 }
 function updateAllSetupDevices(){setupDevices.forEach((_,i)=>updateDeviceFromRow(i));sortSetupDevices();}
 function statusChip(d){
@@ -281,6 +281,7 @@ function renderSetupDevices(){
       <td><input class="dev-name" value="${esc(d.name)}" placeholder="auto"></td>
       <td><input class="dev-ip" value="${esc(d.ip)}" placeholder="192.168.1.x"></td>
       <td><input class="dev-user" value="${esc(d.user||"root")}" placeholder="root"></td>
+      <td><input class="dev-key-path" value="${esc(d.ssh_key_path||"/config/ssh/id_ed25519")}" placeholder="/config/ssh/id_ed25519"></td>
       <td><input class="dev-password" type="password" value="${esc(d.password||"")}" placeholder="${installed?"installed":"not saved"}" ${installed?"disabled":""}></td>
       <td class="ssh-status">${statusChip(d)}${d.detected_os?`<small>${esc(d.detected_os)}${d.install_path?` - ${esc(d.install_path)}`:""}</small>`:""}${d.ssh==="fail"&&detail?`<button class="link-button show-detail" type="button">Details</button>`:""}</td>
       <td class="row-actions"><button class="secondary install-one" type="button">Install Key</button><button class="secondary test-one" type="button">Test</button><button class="danger remove-one" type="button">Remove</button></td>
@@ -320,8 +321,8 @@ function mergeStatuses(results){
 async function loadConfig(){
   try{
     const r=await fetch(apiPath("api/config?_="+Date.now()),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
-    const c=d.config||{}; $("sshKeyPathInput").value=c.ssh_key_path||"/config/ssh/id_ed25519";
-    setupDevices=(c.devices&&c.devices.length?c.devices:[]).map(x=>({...defaultDevice(x.type),...x,password:"",ssh:"unknown",message:"",detail:""}));
+    const c=d.config||{};
+    setupDevices=(c.devices&&c.devices.length?c.devices:[]).map(x=>({...defaultDevice(x.type),...x,ssh_key_path:x.ssh_key_path||"/config/ssh/id_ed25519",password:"",ssh:"unknown",message:"",detail:""}));
     if(!setupDevices.length){
       (c.piholes||[]).forEach(ip=>setupDevices.push({...defaultDevice("Pi-hole"),ip}));
       (c.access_points||[]).forEach(ip=>setupDevices.push({...defaultDevice("OpenWrt Wi-Fi"),ip}));
@@ -330,7 +331,7 @@ async function loadConfig(){
   }catch(e){setSetupMessage("Config load failed: "+e.message,"bad");}
 }
 async function saveConfig(show=true){const d=await postJson("api/config",setupPayload(false));showKeyInfo(d.key); if(show){setSetupMessage("Configuration saved.","ok");setSetupOutput(d.config||{});} return d;}
-async function generateKey(){await saveConfig(false); setSetupMessage("Generating SSH key...","info");const d=await postJson("api/ssh/generate",{}); showKeyInfo(d.key); setSetupMessage("SSH key ready.","ok"); setSetupOutput(d.key||{}); return d;}
+async function generateKey(){await saveConfig(false); setSetupMessage("Generating SSH key...","info");const first=(setupDevices.find(x=>x.ssh_key_path)||{});const d=await postJson("api/ssh/generate",{ssh_key_path:first.ssh_key_path||"/config/ssh/id_ed25519"}); showKeyInfo(d.key); setSetupMessage("SSH key ready.","ok"); setSetupOutput(d.key||{}); return d;}
 async function installOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} if(!dev.password){setSetupMessage(`Password required for ${dev.ip}.`,"bad");return;} dev.ssh="installing";dev.message="Installing key";dev.detail="";renderSetupDevices(); const payload=setupPayload(true); payload.ip=dev.ip; const d=await postJson("api/ssh/install_one",payload); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`SSH key installed on ${dev.ip}.`:`Install failed for ${dev.ip}.`,r&&r.ok?"ok":"bad");}
 async function installAll(){updateAllSetupDevices(); setSetupMessage("Installing SSH keys...","info"); setupDevices.forEach(d=>{if(d.ip&&d.password){d.ssh="installing";d.message="Installing key";}});renderSetupDevices(); const d=await postJson("api/ssh/install_all",setupPayload(true)); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]); const ok=(d.results||[]).filter(x=>x.ok&&x.key_ok!==false).length; const total=(d.results||[]).length; setSetupMessage(`${ok} of ${total} SSH keys installed/tested successfully.`,ok===total?"ok":"bad");}
 async function testOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} dev.ssh="testing";dev.message="Testing";dev.detail="";renderSetupDevices(); const payload=setupPayload(false); payload.devices=[{type:dev.type,name:dev.name,ip:dev.ip,user:dev.user,password:""}]; const d=await postJson("api/ssh/test",payload); mergeStatuses(d.results); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`${dev.ip} connected.`:`${dev.ip} failed: ${shortError(r&&r.error)}`,r&&r.ok?"ok":"bad");}
@@ -460,20 +461,20 @@ function setupAutoRefresh(){
 document.addEventListener("DOMContentLoaded",()=>{
   applyTheme(localStorage.getItem("networkExplorerTheme")||"auto");
   restoreView();
-  $("themeSelect").addEventListener("change",e=>applyTheme(e.target.value));
-  ["search","statusFilter","connectionFilter","apFilter"].forEach(id=>$(id).addEventListener("input",()=>{persistView();render();}));
+  $("themeSelect")?.addEventListener("change",e=>applyTheme(e.target.value));
+  ["search","statusFilter","connectionFilter","apFilter"].forEach(id=>$(id)?.addEventListener("input",()=>{persistView();render();}));
   document.querySelectorAll("th[data-sort]").forEach(th=>th.addEventListener("click",()=>sortBy(th.dataset.sort)));
-  $("refreshBtn").addEventListener("click",e=>{e.preventDefault();load();});
-  $("autoRefreshSelect").value=localStorage.getItem("networkExplorerAutoRefresh")||"0";
-  $("autoRefreshSelect").addEventListener("change",setupAutoRefresh);
+  $("refreshBtn")?.addEventListener("click",e=>{e.preventDefault();load();});
+  if($("autoRefreshSelect"))$("autoRefreshSelect").value=localStorage.getItem("networkExplorerAutoRefresh")||"0";
+  $("autoRefreshSelect")?.addEventListener("change",setupAutoRefresh);
   setupAutoRefresh();
-  $("saveConfigBtn").addEventListener("click",e=>{e.preventDefault();saveConfig().catch(err=>setSetupMessage(err.message,"bad"));});
-  $("generateKeyBtn").addEventListener("click",e=>{e.preventDefault();generateKey().catch(err=>setSetupMessage(err.message,"bad"));});
-  $("installAllBtn").addEventListener("click",e=>{e.preventDefault();installAll().catch(err=>setSetupMessage(err.message,"bad"));});
-  $("testSshBtn").addEventListener("click",e=>{e.preventDefault();testAll().catch(err=>setSetupMessage(err.message,"bad"));});
-  $("addDeviceBtn").addEventListener("click",e=>{e.preventDefault();setupDevices.push(defaultDevice("Auto"));renderSetupDevices();});
-  $("toggleSetupBtn").addEventListener("click",e=>{e.preventDefault();setSetupCollapsed(true);});
-  $("settingsBtn").addEventListener("click",e=>{e.preventDefault();const hidden=$('setupPanel').classList.contains("collapsed");setSetupCollapsed(!hidden);if(hidden)$("setupPanel").scrollIntoView({behavior:"smooth",block:"start"});});
+  $("saveConfigBtn")?.addEventListener("click",e=>{e.preventDefault();saveConfig().catch(err=>setSetupMessage(err.message,"bad"));});
+  $("generateKeyBtn")?.addEventListener("click",e=>{e.preventDefault();generateKey().catch(err=>setSetupMessage(err.message,"bad"));});
+  $("installAllBtn")?.addEventListener("click",e=>{e.preventDefault();installAll().catch(err=>setSetupMessage(err.message,"bad"));});
+  $("testSshBtn")?.addEventListener("click",e=>{e.preventDefault();testAll().catch(err=>setSetupMessage(err.message,"bad"));});
+  $("addDeviceBtn")?.addEventListener("click",e=>{e.preventDefault();setupDevices.push(defaultDevice("Auto"));renderSetupDevices();});
+  $("toggleSetupBtn")?.addEventListener("click",e=>{e.preventDefault();setSetupCollapsed(true);});
+  $("settingsBtn")?.addEventListener("click",e=>{e.preventDefault();const hidden=$('setupPanel')?.classList.contains("collapsed");setSetupCollapsed(!hidden);if(hidden)$("setupPanel")?.scrollIntoView({behavior:"smooth",block:"start"});});
   setSetupCollapsed(localStorage.getItem("networkExplorerSetupCollapsed")==="1");
   loadConfig();
   load();

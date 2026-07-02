@@ -1,3 +1,7 @@
+## 2026.6.24
+
+- Fixed setup/config loading regression from 2026.6.23.
+
 # 2026.6.23
 
 - Merged LAN devices with matching Tailscale identities.

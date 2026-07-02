@@ -1,3 +1,4 @@
+
 let rows=[], sortKey="ip", asc=true, expandedKey="";
 let setupDevices=[];
 let autoRefreshTimer=null;
@@ -304,3 +305,4 @@ document.addEventListener("DOMContentLoaded",()=>{
   loadConfig();
   load();
 });
+
