@@ -37,6 +37,44 @@ def apply_tailscale_classification(devices: dict):
             add_source(d, "Tailscale")
 
 
+def merge_tailscale_identities(devices: dict):
+    """Merge Tailscale-only rows into matching LAN/managed devices by hostname.
+
+    Tailscale is treated as another address/identity for the same device when
+    the short host name matches a non-Tailscale LAN device. Remote-only
+    Tailscale nodes remain as separate rows.
+    """
+    from .models import add_source
+    lan_by_host = {}
+    for key, d in devices.items():
+        host = str(d.get('host') or '').strip().lower()
+        if host and d.get('connection') != 'Tailscale':
+            lan_by_host.setdefault(host, (key, d))
+
+    remove = []
+    for key, d in list(devices.items()):
+        if d.get('connection') != 'Tailscale':
+            continue
+        host = str(d.get('tailscale_host') or d.get('host') or '').strip().lower()
+        if not host or host not in lan_by_host:
+            continue
+        lan_key, lan = lan_by_host[host]
+        if lan is d:
+            continue
+        if d.get('tailscale_ip'):
+            lan['tailscale_ip'] = d.get('tailscale_ip')
+        elif d.get('ip'):
+            lan['tailscale_ip'] = d.get('ip')
+        if d.get('tailscale_host') or d.get('host'):
+            lan['tailscale_host'] = d.get('tailscale_host') or d.get('host')
+        if d.get('tailscale_fqdn') or d.get('fqdn'):
+            lan['tailscale_fqdn'] = d.get('tailscale_fqdn') or d.get('fqdn')
+        add_source(lan, 'Tailscale')
+        remove.append(key)
+    for key in remove:
+        devices.pop(key, None)
+
+
 def strip_internal_fields(devices: list[dict]):
     for d in devices:
         for k in list(d.keys()):
@@ -73,6 +111,7 @@ def collect_inventory(cfg: dict) -> list[dict]:
     apply_preferences(devices, cfg)
     fill_missing_hosts_by_mac(devices)
     apply_tailscale_classification(devices)
+    merge_tailscale_identities(devices)
 
     rows = list(devices.values())
     rows.sort(key=ip_sort_key)

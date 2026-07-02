@@ -1,3 +1,12 @@
+# 2026.6.23
+
+- Merged LAN devices with matching Tailscale identities.
+- Matched LAN devices now show Tailscale IP/host/FQDN in their details.
+- Remote-only Tailscale nodes remain hidden by default unless the Tailscale filter is selected.
+- Removed the verbose Source column from the main device table.
+- Reworked device details into Identity, Network, Tailscale, Wi-Fi, Discovery and History sections.
+- Discovery evidence is now shown as badges in the expanded device details.
+
 # Changelog
 
 ## 2026.6.22

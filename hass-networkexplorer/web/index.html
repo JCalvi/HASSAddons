@@ -39,14 +39,23 @@ body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--tex
 h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 4px 0}.small{color:var(--muted);font-size:12px}.summary{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:8px 0 12px 0}.summary span{background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px 9px}.summary-chip{cursor:pointer;user-select:none}.summary-chip:hover{filter:brightness(.97);border-color:var(--blue)}:root[data-theme="dark"] .summary-chip:hover,:root[data-theme="auto"] .summary-chip:hover{filter:brightness(1.12)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0;box-shadow:var(--shadow)}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}.card-head p{margin:0;color:var(--muted);font-size:13px}.setup-card.collapsed{display:none}
 .field{display:flex;flex-direction:column;gap:5px}.field span{font-weight:600;color:var(--text)}input,select,button,textarea{background:var(--card2);color:var(--text);border:1px solid var(--border);padding:8px 10px;border-radius:8px;font:inherit;min-height:38px}input::placeholder{color:var(--muted)}input:focus,select:focus,textarea:focus{outline:2px solid rgba(3,169,217,.35);border-color:var(--blue)}button{cursor:pointer;font-weight:600;white-space:nowrap}button:hover{filter:brightness(1.05)}button:disabled{opacity:.6;cursor:wait}.primary{background:var(--blue);border-color:var(--blue2);color:#fff}.secondary{background:var(--card2);border-color:var(--border);color:var(--text)}button.danger{background:#fee2e2;color:#b91c1c;border-color:#fecaca}:root[data-theme="dark"] button.danger,:root[data-theme="auto"] button.danger{background:#3a1f1f;color:#ffb0b0;border-color:#684040}
-.setup-top{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}.key-path{min-width:320px;flex:1}.setup-actions.compact{display:flex;gap:8px;flex-wrap:wrap;margin:0}.steering-options{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:10px 0}.steering-options .field{min-width:140px}.steering-options label.inline{display:flex;align-items:center;gap:8px;font-weight:600}.steering-options input[type="checkbox"]{min-height:0;width:auto}.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.controls input{min-width:280px;flex:1}.controls select{min-width:170px}
+.setup-top{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}.key-path{min-width:320px;flex:1}.setup-actions.compact{display:flex;gap:8px;flex-wrap:wrap;margin:0}.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.controls input{min-width:280px;flex:1}.controls select{min-width:170px}
 .device-setup-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px;margin-top:8px}.device-setup-table{width:100%;border-collapse:collapse;font-size:14px}.device-setup-table th,.device-setup-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}.device-setup-table th{background:var(--head);text-align:left}.device-setup-table input,.device-setup-table select{width:100%;box-sizing:border-box}.device-setup-table .dev-type{min-width:130px}.device-setup-table .dev-ip{min-width:130px}.device-setup-table .dev-password{min-width:160px}.row-actions{display:flex;gap:6px;white-space:nowrap}.type-auto{border-left:4px solid #999}.type-pi-hole{border-left:4px solid #6cc04a}.type-openwrt-wi-fi,.type-openwrt-ap{border-left:4px solid #03a9d9}.type-openwrt{border-left:4px solid #0ea5a3}.type-linux,.type-host{border-left:4px solid #999}
 .notice{background:#eef9ff;border:1px solid #b8e7f8;color:#16445a;border-radius:8px;padding:9px 10px;margin:8px 0;font-size:13px}:root[data-theme="dark"] .notice,:root[data-theme="auto"] .notice{background:#101820;border-color:#2b4d5d;color:#cfe9f5}.setup-status{min-height:24px;margin:8px 0;color:var(--muted)}.setup-status.ok{color:var(--green)}.setup-status.bad{color:var(--red)}.ok-text{color:var(--green);font-weight:700}.diagnostics{margin-top:10px;color:var(--muted)}.diagnostics summary{cursor:pointer;font-weight:600}.key-info{color:var(--muted);font-size:12px;margin-top:8px}.key-info code{display:block;background:var(--bg);border:1px solid var(--border);padding:8px;border-radius:7px;white-space:pre-wrap;word-break:break-all;margin-top:4px;color:var(--text)}.output{display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:260px;overflow:auto;white-space:pre-wrap;color:var(--text)}.output:not(:empty){display:block}
 .chip{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700;max-width:180px;overflow:hidden;text-overflow:ellipsis}.chip.ok{background:#dcfce7;color:#15803d}.chip.bad{background:#fee2e2;color:#b91c1c}.chip.wait{background:#fef3c7;color:#92400e}.chip.unknown{background:#e5e7eb;color:#4b5563}:root[data-theme="dark"] .chip.ok,:root[data-theme="auto"] .chip.ok{background:#193d25;color:#58d26b}:root[data-theme="dark"] .chip.bad,:root[data-theme="auto"] .chip.bad{background:#4a1f1f;color:#ff7777}:root[data-theme="dark"] .chip.wait,:root[data-theme="auto"] .chip.wait{background:#4b421c;color:#e6c84f}:root[data-theme="dark"] .chip.unknown,:root[data-theme="auto"] .chip.unknown{background:#333;color:#aaa}.link-button{background:transparent;border:0;color:var(--blue);min-height:0;padding:2px 0;margin-left:6px;font-weight:600}.ssh-status{max-width:240px}.ssh-status small{display:block;color:var(--muted);margin-top:4px;max-width:240px;white-space:normal}
-.table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;background:var(--card)}table{border-collapse:collapse;width:100%;font-size:14px;min-width:1000px}th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;white-space:nowrap}th{background:var(--head);cursor:pointer;position:sticky;top:0;z-index:2}tr:hover{background:var(--card2)}.mainrow{cursor:pointer}.detail{background:var(--card2);color:var(--text)}.detail td{white-space:normal;padding:14px 18px;line-height:1.45}.detail-grid{display:grid;grid-template-columns:160px 1fr;gap:4px 14px;max-width:900px}.detail-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.preferred-box{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.preferred-box select{min-width:220px}.status-pill{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}.status-pill.online{background:#dcfce7;color:#15803d}.status-pill.idle{background:#fef3c7;color:#92400e}.status-pill.offline{background:#e5e7eb;color:#4b5563}:root[data-theme="dark"] .status-pill.online,:root[data-theme="auto"] .status-pill.online{background:#193d25;color:#58d26b}:root[data-theme="dark"] .status-pill.idle,:root[data-theme="auto"] .status-pill.idle{background:#4b421c;color:#e6c84f}:root[data-theme="dark"] .status-pill.offline,:root[data-theme="auto"] .status-pill.offline{background:#333;color:#aaa}.online{color:var(--green);font-weight:bold}.offline{color:var(--muted)}.idle{color:var(--yellow);font-weight:bold}.rssi-good{color:var(--green)}.rssi-ok{color:var(--yellow)}.rssi-bad{color:var(--red)}
+.table-wrap{border:1px solid var(--border);border-radius:12px;overflow:auto;background:var(--card)}table{border-collapse:collapse;width:100%;font-size:14px;min-width:1000px}th,td{border-bottom:1px solid var(--border);padding:8px 10px;text-align:left;white-space:nowrap}th{background:var(--head);cursor:pointer;position:sticky;top:0;z-index:2}tr:hover{background:var(--card2)}.mainrow{cursor:pointer}.detail{background:var(--card2);color:var(--text)}.detail td{white-space:normal;padding:14px 18px;line-height:1.45}.detail-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px}.detail-action{min-height:32px;padding:5px 10px}.detail-grid{display:grid;grid-template-columns:160px 1fr;gap:4px 14px;max-width:900px}.status-pill{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}.status-pill.online{background:#dcfce7;color:#15803d}.status-pill.idle{background:#fef3c7;color:#92400e}.status-pill.offline{background:#e5e7eb;color:#4b5563}:root[data-theme="dark"] .status-pill.online,:root[data-theme="auto"] .status-pill.online{background:#193d25;color:#58d26b}:root[data-theme="dark"] .status-pill.idle,:root[data-theme="auto"] .status-pill.idle{background:#4b421c;color:#e6c84f}:root[data-theme="dark"] .status-pill.offline,:root[data-theme="auto"] .status-pill.offline{background:#333;color:#aaa}.online{color:var(--green);font-weight:bold}.offline{color:var(--muted)}.idle{color:var(--yellow);font-weight:bold}.rssi-good{color:var(--green)}.rssi-ok{color:var(--yellow)}.rssi-bad{color:var(--red)}
 @media(max-width:900px){.page{padding:10px}.page-header{align-items:flex-start}.header-actions{flex-direction:column;align-items:flex-end}.refresh-combo{width:100%}.refresh-combo button{flex:1}.controls input,.controls select,.controls button{width:100%;min-width:0}h1{font-size:26px}.device-setup-table{min-width:900px}}
 
-  .evidence-chip{display:inline-block;border:1px solid var(--border);background:var(--card2);border-radius:999px;padding:2px 7px;margin:2px;font-size:12px;color:var(--muted)}.evidence-row{margin-top:4px}
+.evidence-chip{display:inline-block;border:1px solid var(--border);background:var(--card2);border-radius:999px;padding:2px 7px;margin:2px;font-size:12px;color:var(--muted)}
+.evidence-row{margin-top:4px}
+
+.muted{color:var(--muted)}
+.detail-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px 26px;max-width:1200px}
+.detail-section h3{font-size:15px;margin:10px 0 6px;color:var(--text)}
+.detail-actions.grouped{gap:22px;align-items:flex-start}
+.detail-actions.grouped>div>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.evidence-chip.present{color:var(--text);border-color:rgba(88,210,107,.35)}
+
 </style>
 </head>
 <body>
@@ -156,7 +165,6 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
             <th data-sort="ap">AP</th>
             <th data-sort="band">Band</th>
             <th data-sort="rssi">RSSI</th>
-            <th data-sort="source">Source</th>
           </tr>
         </thead>
         <tbody id="body"></tbody>
@@ -167,8 +175,6 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
   <script>
 let rows=[], sortKey="ip", asc=true, expandedKey="";
 let setupDevices=[];
-let preferences={};
-let steeringConfig={enabled:false,interval_minutes:10,cooldown_minutes:30};
 let autoRefreshTimer=null;
 const $ = id => document.getElementById(id);
 
@@ -208,7 +214,7 @@ function restoreView(){
 function sortBy(k){asc=sortKey===k?!asc:true;sortKey=k;persistView();render();}
 function rssiClass(v){let n=parseInt(v);if(!n)return"";if(n>=-60)return"rssi-good";if(n>=-72)return"rssi-ok";return"rssi-bad";}
 async function postJson(url,obj){const r=await fetch(apiPath(url),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj||{})});const d=await r.json();if(!d.ok)throw new Error(d.error||"Request failed");return d;}
-function defaultDevice(type){return {type:type||"Auto",name:"",ip:"",user:"root",ssh_key_path:"/config/ssh/id_ed25519",password:"",ssh:"unknown",message:"",detail:"",detected_os:"",install_path:""};}
+function defaultDevice(type){return {type:type||"Auto",name:"",ip:"",user:"root",password:"",ssh:"unknown",message:"",detail:"",detected_os:"",install_path:""};}
 function sortSetupDevices(){setupDevices.sort((a,b)=>ipCmp(a.ip,b.ip)||String(a.name||"").localeCompare(String(b.name||"")));}
 function setSetupMessage(msg, kind="info"){$("setupStatus").className=`setup-status ${kind}`;$('setupStatus').textContent=msg||"";}
 function setSetupOutput(obj){$("setupOutput").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
@@ -234,9 +240,10 @@ function enrichSeen(items){
 function setupPayload(includePasswords=true){
   updateAllSetupDevices();
   return {
-    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,ssh_key_path:d.ssh_key_path||"/config/ssh/id_ed25519",password:includePasswords?d.password:""})),
+    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,password:includePasswords?d.password:""})),
     piholes: setupDevices.filter(d=>d.type==="Pi-hole"&&d.ip).map(d=>d.ip),
-    access_points: setupDevices.filter(d=>["OpenWrt Wi-Fi","OpenWrt AP"].includes(d.type)&&d.ip).map(d=>d.ip)
+    access_points: setupDevices.filter(d=>["OpenWrt Wi-Fi","OpenWrt AP"].includes(d.type)&&d.ip).map(d=>d.ip),
+    ssh_key_path: $("sshKeyPathInput").value.trim()||"/config/ssh/id_ed25519"
   };
 }
 function updateDeviceFromRow(i){
@@ -245,7 +252,6 @@ function updateDeviceFromRow(i){
   setupDevices[i].name=row.querySelector(".dev-name").value.trim();
   setupDevices[i].ip=row.querySelector(".dev-ip").value.trim();
   setupDevices[i].user=row.querySelector(".dev-user").value.trim()||"root";
-  setupDevices[i].ssh_key_path=row.querySelector(".dev-key-path").value.trim()||"/config/ssh/id_ed25519";
   setupDevices[i].password=row.querySelector(".dev-password").value;
 }
 function updateAllSetupDevices(){setupDevices.forEach((_,i)=>updateDeviceFromRow(i));sortSetupDevices();}
@@ -275,7 +281,6 @@ function renderSetupDevices(){
       <td><input class="dev-name" value="${esc(d.name)}" placeholder="auto"></td>
       <td><input class="dev-ip" value="${esc(d.ip)}" placeholder="192.168.1.x"></td>
       <td><input class="dev-user" value="${esc(d.user||"root")}" placeholder="root"></td>
-      <td><input class="dev-key-path" value="${esc(d.ssh_key_path||"/config/ssh/id_ed25519")}" placeholder="/config/ssh/id_ed25519"></td>
       <td><input class="dev-password" type="password" value="${esc(d.password||"")}" placeholder="${installed?"installed":"not saved"}" ${installed?"disabled":""}></td>
       <td class="ssh-status">${statusChip(d)}${d.detected_os?`<small>${esc(d.detected_os)}${d.install_path?` - ${esc(d.install_path)}`:""}</small>`:""}${d.ssh==="fail"&&detail?`<button class="link-button show-detail" type="button">Details</button>`:""}</td>
       <td class="row-actions"><button class="secondary install-one" type="button">Install Key</button><button class="secondary test-one" type="button">Test</button><button class="danger remove-one" type="button">Remove</button></td>
@@ -315,8 +320,7 @@ function mergeStatuses(results){
 async function loadConfig(){
   try{
     const r=await fetch(apiPath("api/config?_="+Date.now()),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
-    const c=d.config||{};
-    preferences=c.preferences||{}; steeringConfig=c.steering||steeringConfig;
+    const c=d.config||{}; $("sshKeyPathInput").value=c.ssh_key_path||"/config/ssh/id_ed25519";
     setupDevices=(c.devices&&c.devices.length?c.devices:[]).map(x=>({...defaultDevice(x.type),...x,password:"",ssh:"unknown",message:"",detail:""}));
     if(!setupDevices.length){
       (c.piholes||[]).forEach(ip=>setupDevices.push({...defaultDevice("Pi-hole"),ip}));
@@ -326,26 +330,10 @@ async function loadConfig(){
   }catch(e){setSetupMessage("Config load failed: "+e.message,"bad");}
 }
 async function saveConfig(show=true){const d=await postJson("api/config",setupPayload(false));showKeyInfo(d.key); if(show){setSetupMessage("Configuration saved.","ok");setSetupOutput(d.config||{});} return d;}
-async function generateKey(){
-  await saveConfig(false);
-  setSetupMessage("Generating SSH key(s)...","info");
-  updateAllSetupDevices();
-  const paths=[...new Set(setupDevices.map(d=>d.ssh_key_path||"/config/ssh/id_ed25519"))];
-  if(!paths.length) paths.push("/config/ssh/id_ed25519");
-  const results=[];
-  let last=null;
-  for(const path of paths){
-    const d=await postJson("api/ssh/generate",{ssh_key_path:path});
-    results.push(d.key); last=d.key;
-  }
-  showKeyInfo(last);
-  setSetupMessage(`${results.length} SSH key path${results.length===1?"":"s"} ready.`,"ok");
-  setSetupOutput(results);
-  return {ok:true,keys:results};
-}
+async function generateKey(){await saveConfig(false); setSetupMessage("Generating SSH key...","info");const d=await postJson("api/ssh/generate",{}); showKeyInfo(d.key); setSetupMessage("SSH key ready.","ok"); setSetupOutput(d.key||{}); return d;}
 async function installOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} if(!dev.password){setSetupMessage(`Password required for ${dev.ip}.`,"bad");return;} dev.ssh="installing";dev.message="Installing key";dev.detail="";renderSetupDevices(); const payload=setupPayload(true); payload.ip=dev.ip; const d=await postJson("api/ssh/install_one",payload); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`SSH key installed on ${dev.ip}.`:`Install failed for ${dev.ip}.`,r&&r.ok?"ok":"bad");}
 async function installAll(){updateAllSetupDevices(); setSetupMessage("Installing SSH keys...","info"); setupDevices.forEach(d=>{if(d.ip&&d.password){d.ssh="installing";d.message="Installing key";}});renderSetupDevices(); const d=await postJson("api/ssh/install_all",setupPayload(true)); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]); const ok=(d.results||[]).filter(x=>x.ok&&x.key_ok!==false).length; const total=(d.results||[]).length; setSetupMessage(`${ok} of ${total} SSH keys installed/tested successfully.`,ok===total?"ok":"bad");}
-async function testOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} dev.ssh="testing";dev.message="Testing";dev.detail="";renderSetupDevices(); const payload=setupPayload(false); payload.devices=[{type:dev.type,name:dev.name,ip:dev.ip,user:dev.user,ssh_key_path:dev.ssh_key_path||"/config/ssh/id_ed25519",password:""}]; const d=await postJson("api/ssh/test",payload); mergeStatuses(d.results); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`${dev.ip} connected.`:`${dev.ip} failed: ${shortError(r&&r.error)}`,r&&r.ok?"ok":"bad");}
+async function testOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} dev.ssh="testing";dev.message="Testing";dev.detail="";renderSetupDevices(); const payload=setupPayload(false); payload.devices=[{type:dev.type,name:dev.name,ip:dev.ip,user:dev.user,password:""}]; const d=await postJson("api/ssh/test",payload); mergeStatuses(d.results); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`${dev.ip} connected.`:`${dev.ip} failed: ${shortError(r&&r.error)}`,r&&r.ok?"ok":"bad");}
 async function testAll(show=true){updateAllSetupDevices(); if(show)setSetupMessage("Testing SSH connections...","info"); setupDevices.forEach(d=>{if(d.ip){d.ssh="testing";d.message="Testing";}});renderSetupDevices(); const d=await postJson("api/ssh/test",setupPayload(false)); mergeStatuses(d.results); setSetupOutput(d.results||[]); const ok=(d.results||[]).filter(x=>x.ok).length; const total=(d.results||[]).length; if(show)setSetupMessage(`${ok} of ${total} SSH connections OK.`,ok===total?"ok":"bad");}
 function fillFilters(){
   const c=$("connectionFilter"), a=$("apFilter"); const cv=c.value, av=a.value;
@@ -356,32 +344,64 @@ function fillFilters(){
 }
 function statusText(x){return x.status==="online"?"Online":x.status==="idle"?"Idle":"Offline";}
 function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}catch(e){return s;}}
-function rowPrefKey(x){return x.mac||x.ip||x.host||"";}
-function preferredApFor(x){const k=rowPrefKey(x);return (preferences[k]&&preferences[k].preferred_ap)||x.preferred_ap||"Auto";}
-function availableAps(){return [...new Set(rows.map(r=>r.ap).filter(Boolean))].sort();}
-async function savePreferenceFor(key,value){preferences[key]=value&&value!=="Auto"?{preferred_ap:value}:undefined;if(!preferences[key])delete preferences[key];const d=await postJson("api/preferences",{preferences:{[key]:value}});if(d.config){preferences=d.config.preferences||preferences;steeringConfig=d.config.steering||steeringConfig;}}
-async function moveNow(x){const pref=preferredApFor(x);const payload={...x,preferred_ap:pref};const d=await postJson("api/steer",{device:payload});const r=(d.results||[])[0]||{};$("updated").textContent=r.ok?(r.skipped?(r.message||"Already on preferred AP"):`Move requested for ${x.host||x.ip||x.mac}`):`Move failed: ${r.error||"unknown error"}`;setTimeout(load,2000);}
+function evidenceLabels(source){
+  const raw=String(source||"").split(" + " ).filter(Boolean);
+  const labels=[];
+  const add=(label)=>{if(!labels.includes(label)) labels.push(label);};
+  raw.forEach(x=>{
+    if(/Managed Device/i.test(x)) add("Managed Device");
+    else if(/Static DHCP/i.test(x)) add("Static DHCP");
+    else if(/DHCP Lease/i.test(x)) add("DHCP Lease");
+    else if(/Static DNS/i.test(x)) add("Static DNS");
+    else if(/Wi-Fi Live/i.test(x)) add("Live Wi-Fi");
+    else if(/OpenWrt/i.test(x)) add("OpenWrt");
+    else if(/Neighbour/i.test(x)) add("ARP / Neighbour");
+    else if(/Ping/i.test(x)) add("Ping");
+    else if(/Tailscale/i.test(x)) add("Tailscale");
+    else if(/^TCP/i.test(x)) add(x);
+    else add(x);
+  });
+  return labels;
+}
+function sourceEvidence(source){
+  const labels=evidenceLabels(source);
+  if(!labels.length) return "";
+  return labels.map(x=>`<span class="evidence-chip present">🟢 ${esc(x)}</span>`).join(" " );
+}
+function section(title, inner){return inner?`<div class="detail-section"><h3>${esc(title)}</h3>${inner}</div>`:"";}
+function row(label,value){return value?`<div>${esc(label)}</div><div>${value}</div>`:"";}
+
 function detailHtml(x){
-  const actions=[];
+  const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac), fqdn=esc(x.fqdn);
+  const tsIp=esc(x.tailscale_ip||((x.connection==="Tailscale")?x.ip:""));
+  const tsHost=esc(x.tailscale_host||((x.connection==="Tailscale")?x.host:""));
+  const tsFqdn=esc(x.tailscale_fqdn||"");
+  const openButtons=[];
+  const copyButtons=[];
   if(x.ip){
-    actions.push(`<button class="detail-action open-http" data-ip="${esc(x.ip)}" type="button">Open http://${esc(x.ip)}</button>`);
-    actions.push(`<button class="detail-action open-https" data-ip="${esc(x.ip)}" type="button">Open https://${esc(x.ip)}</button>`);
-    actions.push(`<button class="detail-action copy-value" data-label="IP" data-copy="${esc(x.ip)}" type="button">Copy IP</button>`);
+    openButtons.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">HTTP</button>`);
+    openButtons.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">HTTPS</button>`);
+    copyButtons.push(`<button class="detail-action copy-value" data-label="IPv4" data-copy="${ip}" type="button">IPv4</button>`);
   }
-  if(x.host) actions.push(`<button class="detail-action copy-value" data-label="hostname" data-copy="${esc(x.host)}" type="button">Copy Host</button>`);
-  if(x.mac) actions.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${esc(x.mac)}" type="button">Copy MAC</button>`);
-  const k=esc(rowPrefKey(x));
-  const pref=preferredApFor(x);
-  const aps=availableAps();
-  const prefOptions=['Auto',...aps].map(ap=>`<option value="${esc(ap)}" ${ap===pref?'selected':''}>${esc(ap)}</option>`).join('');
-  const steering = x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"
-    ? `<div class="preferred-box"><b>Preferred AP</b><select class="preferred-ap-select" data-key="${k}">${prefOptions}</select><button class="save-preferred" data-key="${k}" type="button">Save Preferred AP</button><button class="move-now" data-key="${k}" type="button">Move now to preferred AP</button></div>`
-    : `<div class="preferred-box"><b>Preferred AP</b><span>Not a live Wi-Fi device</span></div>`;
-  const fqdnRow = x.fqdn ? `<div>FQDN</div><div>${esc(x.fqdn)}</div>` : "";
-  const tsRows = (x.connection==="Tailscale" || x.tailscale_ip || x.tailscale_host || x.tailscale_fqdn)
-    ? `<div>Tailscale IP</div><div>${esc(x.tailscale_ip||x.ip||"")}</div><div>Tailscale Host</div><div>${esc(x.tailscale_host||"")}</div><div>Tailscale FQDN</div><div>${esc(x.tailscale_fqdn||"")}</div>`
-    : "";
-  return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div>${steering}<div class="detail-grid"><div>IP</div><div>${esc(x.ip)}</div><div>Host</div><div>${esc(x.host)}</div>${fqdnRow}${tsRows}<div>MAC</div><div>${esc(x.mac)}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Preferred AP</div><div>${esc(pref)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;
+  if(x.host) copyButtons.push(`<button class="detail-action copy-value" data-label="Host" data-copy="${host}" type="button">Host</button>`);
+  if(x.mac) copyButtons.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">MAC</button>`);
+  if(tsIp) copyButtons.push(`<button class="detail-action copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">Tailscale IP</button>`);
+
+  const actions=`<div class="detail-actions grouped"><div><b>Open</b><div>${openButtons.join("")||""}</div></div><div><b>Copy</b><div>${copyButtons.join("")||""}</div></div></div>`;
+  const identity=section("Identity", `<div class="detail-grid">${row("Host",host)}${row("FQDN",fqdn)}${row("MAC",mac)}</div>`);
+  const network=section("Network", `<div class="detail-grid">${row("IPv4",ip)}${row("Tailscale IP",tsIp)}${row("Connection",esc(x.connection))}${row("Status",esc(statusText(x)))}</div>`);
+  const tailscale=section("Tailscale", (tsHost||tsFqdn)?`<div class="detail-grid">${row("Host",tsHost)}${row("FQDN",tsFqdn)}</div>`:"");
+  let wifiInner="";
+  if(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"){
+    wifiInner=`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap||"Auto"))}${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}</div>`;
+  } else {
+    wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:""}`;
+  }
+  const wifi=section("Wi-Fi", wifiInner);
+  const discovery=section("Discovery", `<div class="evidence-row">${sourceEvidence(x.source)}</div>`);
+  const historyRows=`${row("First Seen",esc(seenText(x.first_seen)))}${row("Last Seen",esc(seenText(x.last_seen)))}${row("Neighbour State",esc(x.neighbour_state))}${row("Last Wi-Fi Event",esc(x.wifi_last_event))}${row("Last Wi-Fi Seen",esc(x.wifi_last_seen))}`;
+  const history=section("History", historyRows?`<div class="detail-grid">${historyRows}</div>`:"");
+  return `<tr class="detail"><td colspan="8"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b>${actions}<div class="detail-sections">${identity}${network}${tailscale}${wifi}${discovery}${history}</div></td></tr>`;
 }
 
 function clearFilters(){
@@ -406,13 +426,11 @@ function render(){
     if(ap&&x.ap!==ap)return false;
     return true;
   }).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
-  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td>${esc(x.mac)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td><td>${esc(x.source)}</td></tr>${open?detailHtml(x):""}`;}).join("");
+  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td>${esc(x.mac)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td></tr>${open?detailHtml(x):""}`;}).join("");
   document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
   document.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`http://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`https://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".copy-value").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();copyText(b.dataset.copy,b.dataset.label||"text");}));
-  document.querySelectorAll(".save-preferred").forEach(b=>b.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();const sel=b.parentElement.querySelector(".preferred-ap-select");try{await savePreferenceFor(b.dataset.key,sel.value);$("updated").textContent=`Preferred AP saved: ${sel.value}`;}catch(err){$("updated").textContent="Save preferred AP failed: "+err.message;}}));
-  document.querySelectorAll(".move-now").forEach(b=>b.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();const x=rows.find(r=>rowPrefKey(r)===b.dataset.key);if(x)moveNow(x).catch(err=>$("updated").textContent="Move failed: "+err.message);}));
   const online=rows.filter(x=>x.status==="online").length, idle=rows.filter(x=>x.status==="idle").length, offline=rows.filter(x=>x.status==="offline").length;
   const wifi=rows.filter(x=>x.status==="online"&&x.connection&&x.connection!=="Ethernet"&&x.connection!=="Tailscale").length;
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;
@@ -460,6 +478,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   loadConfig();
   load();
 });
-  </script>
+
+</script>
 </body>
 </html>

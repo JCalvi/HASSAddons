@@ -41,3 +41,10 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
 
 .evidence-chip{display:inline-block;border:1px solid var(--border);background:var(--card2);border-radius:999px;padding:2px 7px;margin:2px;font-size:12px;color:var(--muted)}
 .evidence-row{margin-top:4px}
+
+.muted{color:var(--muted)}
+.detail-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px 26px;max-width:1200px}
+.detail-section h3{font-size:15px;margin:10px 0 6px;color:var(--text)}
+.detail-actions.grouped{gap:22px;align-items:flex-start}
+.detail-actions.grouped>div>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.evidence-chip.present{color:var(--text);border-color:rgba(88,210,107,.35)}

@@ -169,28 +169,64 @@ function fillFilters(){
 }
 function statusText(x){return x.status==="online"?"Online":x.status==="idle"?"Idle":"Offline";}
 function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}catch(e){return s;}}
-function sourceEvidence(source){
-  const parts=String(source||"").split(" + ").filter(Boolean);
-  if(!parts.length) return "";
-  const primary=parts[0];
-  const evidence=parts.slice(1).map(x=>`<span class="evidence-chip">${esc(x)}</span>`).join(" ");
-  return `<div><b>${esc(primary)}</b></div>${evidence?`<div class="evidence-row">${evidence}</div>`:""}`;
+function evidenceLabels(source){
+  const raw=String(source||"").split(" + " ).filter(Boolean);
+  const labels=[];
+  const add=(label)=>{if(!labels.includes(label)) labels.push(label);};
+  raw.forEach(x=>{
+    if(/Managed Device/i.test(x)) add("Managed Device");
+    else if(/Static DHCP/i.test(x)) add("Static DHCP");
+    else if(/DHCP Lease/i.test(x)) add("DHCP Lease");
+    else if(/Static DNS/i.test(x)) add("Static DNS");
+    else if(/Wi-Fi Live/i.test(x)) add("Live Wi-Fi");
+    else if(/OpenWrt/i.test(x)) add("OpenWrt");
+    else if(/Neighbour/i.test(x)) add("ARP / Neighbour");
+    else if(/Ping/i.test(x)) add("Ping");
+    else if(/Tailscale/i.test(x)) add("Tailscale");
+    else if(/^TCP/i.test(x)) add(x);
+    else add(x);
+  });
+  return labels;
 }
+function sourceEvidence(source){
+  const labels=evidenceLabels(source);
+  if(!labels.length) return "";
+  return labels.map(x=>`<span class="evidence-chip present">🟢 ${esc(x)}</span>`).join(" " );
+}
+function section(title, inner){return inner?`<div class="detail-section"><h3>${esc(title)}</h3>${inner}</div>`:"";}
+function row(label,value){return value?`<div>${esc(label)}</div><div>${value}</div>`:"";}
 
 function detailHtml(x){
-  const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac);
-  const actions=[];
+  const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac), fqdn=esc(x.fqdn);
+  const tsIp=esc(x.tailscale_ip||((x.connection==="Tailscale")?x.ip:""));
+  const tsHost=esc(x.tailscale_host||((x.connection==="Tailscale")?x.host:""));
+  const tsFqdn=esc(x.tailscale_fqdn||"");
+  const openButtons=[];
+  const copyButtons=[];
   if(x.ip){
-    actions.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">Open http://${ip}</button>`);
-    actions.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">Open https://${ip}</button>`);
-    actions.push(`<button class="detail-action copy-value" data-label="IP" data-copy="${ip}" type="button">Copy IP</button>`);
+    openButtons.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">HTTP</button>`);
+    openButtons.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">HTTPS</button>`);
+    copyButtons.push(`<button class="detail-action copy-value" data-label="IPv4" data-copy="${ip}" type="button">IPv4</button>`);
   }
-  if(x.host) actions.push(`<button class="detail-action copy-value" data-label="hostname" data-copy="${host}" type="button">Copy Host</button>`);
-  if(x.mac) actions.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">Copy MAC</button>`);
-  const tsRows = x.connection==="Tailscale" || x.tailscale_ip || x.tailscale_host || x.tailscale_fqdn
-    ? `<div>Tailscale IP</div><div>${esc(x.tailscale_ip||x.ip||"")}</div><div>Tailscale Host</div><div>${esc(x.tailscale_host||"")}</div><div>Tailscale FQDN</div><div>${esc(x.tailscale_fqdn||"")}</div>`
-    : "";
-  return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div><div class="detail-grid"><div>IP</div><div>${ip}</div><div>Host</div><div>${host}</div><div>FQDN</div><div>${esc(x.fqdn)}</div>${tsRows}<div>MAC</div><div>${mac}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Evidence</div><div>${sourceEvidence(x.source)}</div></div></td></tr>`;
+  if(x.host) copyButtons.push(`<button class="detail-action copy-value" data-label="Host" data-copy="${host}" type="button">Host</button>`);
+  if(x.mac) copyButtons.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">MAC</button>`);
+  if(tsIp) copyButtons.push(`<button class="detail-action copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">Tailscale IP</button>`);
+
+  const actions=`<div class="detail-actions grouped"><div><b>Open</b><div>${openButtons.join("")||""}</div></div><div><b>Copy</b><div>${copyButtons.join("")||""}</div></div></div>`;
+  const identity=section("Identity", `<div class="detail-grid">${row("Host",host)}${row("FQDN",fqdn)}${row("MAC",mac)}</div>`);
+  const network=section("Network", `<div class="detail-grid">${row("IPv4",ip)}${row("Tailscale IP",tsIp)}${row("Connection",esc(x.connection))}${row("Status",esc(statusText(x)))}</div>`);
+  const tailscale=section("Tailscale", (tsHost||tsFqdn)?`<div class="detail-grid">${row("Host",tsHost)}${row("FQDN",tsFqdn)}</div>`:"");
+  let wifiInner="";
+  if(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"){
+    wifiInner=`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap||"Auto"))}${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}</div>`;
+  } else {
+    wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:""}`;
+  }
+  const wifi=section("Wi-Fi", wifiInner);
+  const discovery=section("Discovery", `<div class="evidence-row">${sourceEvidence(x.source)}</div>`);
+  const historyRows=`${row("First Seen",esc(seenText(x.first_seen)))}${row("Last Seen",esc(seenText(x.last_seen)))}${row("Neighbour State",esc(x.neighbour_state))}${row("Last Wi-Fi Event",esc(x.wifi_last_event))}${row("Last Wi-Fi Seen",esc(x.wifi_last_seen))}`;
+  const history=section("History", historyRows?`<div class="detail-grid">${historyRows}</div>`:"");
+  return `<tr class="detail"><td colspan="8"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b>${actions}<div class="detail-sections">${identity}${network}${tailscale}${wifi}${discovery}${history}</div></td></tr>`;
 }
 
 function clearFilters(){
@@ -215,7 +251,7 @@ function render(){
     if(ap&&x.ap!==ap)return false;
     return true;
   }).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
-  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td>${esc(x.mac)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td><td>${esc(x.source)}</td></tr>${open?detailHtml(x):""}`;}).join("");
+  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td>${esc(x.mac)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td></tr>${open?detailHtml(x):""}`;}).join("");
   document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
   document.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`http://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`https://${b.dataset.ip}`,"_blank");}));
