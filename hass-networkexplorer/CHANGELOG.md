@@ -1,18 +1,17 @@
+## 2026.6.17
+
+- Detect Tailscale/CGNAT addresses in `100.64.0.0/10` and show them as `Tailscale` instead of Ethernet.
+- Display short hostnames in the main table while preserving FQDN in device details.
+- Prefer higher-confidence hostnames: managed/SSH names, then Static DHCP, DHCP leases, Static DNS, then Pi-hole network names.
+- Seed managed device names into inventory so configured infrastructure names win over lower-confidence sources.
+
 ## 2026.6.16
 
 - Fixed global settings precedence: HA add-on Configuration values now override stale runtime data.
 - Runtime device storage now only persists managed devices and per-client Preferred AP preferences.
 - Removed legacy runtime shadowing of steering interval/cooldown settings.
 - Added service-style steering API endpoints for Home Assistant automations: `/api/steer`, `/api/steer_device` and `/api/service/steer`.
-
-## 2026.6.15
-
-- Moved SSH key path to a per-device setting in Network Explorer setup.
-- Removed the global SSH key path from the Home Assistant Configuration page.
-- Kept all global settings in the Home Assistant Configuration page with descriptions.
-- Added descriptions for Preferred AP steering settings.
-- Preferred AP steering interval/cooldown are now global add-on options.
-- Added OpenWrt neighbour collection for managed OpenWrt devices, including non-Wi-Fi gateways.
+- Backfilled missing changelog entries for 2026.6.13 and 2026.6.14.
 
 ## 2026.6.14
 
@@ -25,6 +24,16 @@
 - Added Preferred AP steering refinements.
 - Added OpenWrt client disassociation testing for manual move actions.
 - Improved device detail controls for Preferred AP management.
+
+## 2026.6.15
+
+- Moved SSH key path to a per-device setting in Network Explorer setup.
+- Removed the global SSH key path from the Home Assistant Configuration page.
+- Kept all global settings in the Home Assistant Configuration page with descriptions.
+- Added descriptions for Preferred AP steering settings.
+- Preferred AP steering interval/cooldown are now global add-on options.
+- Added OpenWrt neighbour collection for managed OpenWrt devices, including non-Wi-Fi gateways.
+
 
 ## 2026.6.12
 

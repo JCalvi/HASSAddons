@@ -1,7 +1,7 @@
 rem https://github.com/dotnet/dotnet-docker/blob/main/README.aspnet.md#full-tag-listing
 @echo off
 
-set jcversion=2026.6.16
+set jcversion=2026.6.17
 
 :: 1. If the symlink already exists, jump straight to the build logic to avoid UAC popups
 if exist "%USERPROFILE%\.docker\cli-plugins" (
