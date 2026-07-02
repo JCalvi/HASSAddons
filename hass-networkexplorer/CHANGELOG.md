@@ -1,11 +1,19 @@
-# 2026.6.20
+# Changelog
 
-- Default MQTT broker host is now `core-mosquitto`.
-- Added MQTT connection/status logging and status reporting.
-- MQTT command listener remains persistent while enabled and connected.
-- Added Tailscale IP/hostname/FQDN fields to device details.
-- Improved device details source display into primary/evidence chips.
-- Preserves short hostname in the main table while keeping FQDN in details.
+## 2026.6.21
+
+- Added MQTT `{"all": true}` steering execution for all live Wi-Fi devices with a Preferred AP set.
+- MQTT steer-all now publishes a summary to `<prefix>/status/steer` with requested, steered, already-correct, skipped and failed counts.
+- Added clearer MQTT command logging for steer and steer-all requests.
+- Added optional Tailscale status collection from managed devices with the `tailscale` CLI installed.
+- Device details include FQDN and Tailscale Host/FQDN/IP when known.
+
+## 2026.6.20
+
+- MQTT command listener now stays connected and logs connection/subscription state.
+- Default MQTT broker host is `core-mosquitto`.
+- Added MQTT status support for command testing.
+- Improved device detail layout for FQDN, Tailscale and source/evidence information.
 
 ## 2026.6.19
 

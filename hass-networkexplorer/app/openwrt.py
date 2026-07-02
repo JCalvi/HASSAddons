@@ -149,3 +149,49 @@ def collect_openwrt_neighbours(devices: dict, cfg: dict):
         user, key_path = _creds_for_ip(cfg, ip)
         out = ssh_cmd(ip, user, key_path, OPENWRT_NEIGHBOURS, timeout=8)
         _parse_openwrt_neigh(devices, out)
+
+TAILSCALE_STATUS = """
+if command -v tailscale >/dev/null 2>&1; then
+  tailscale status --json 2>/dev/null
+fi
+"""
+
+
+def collect_tailscale_status(devices: dict, cfg: dict):
+    """Collect Tailscale peer names from any managed device with tailscale installed."""
+    import json
+    from .models import is_tailscale_ip
+    for dev in cfg.get("devices") or []:
+        ip = str(dev.get("ip") or "").strip()
+        if not ip:
+            continue
+        user, key_path = _creds_for_ip(cfg, ip)
+        out = ssh_cmd(ip, user, key_path, TAILSCALE_STATUS, timeout=8)
+        if not out.strip().startswith("{"):
+            continue
+        try:
+            data = json.loads(out)
+        except Exception:
+            continue
+        items = []
+        if isinstance(data.get("Self"), dict):
+            items.append(data.get("Self"))
+        peers = data.get("Peer") or {}
+        if isinstance(peers, dict):
+            items.extend([v for v in peers.values() if isinstance(v, dict)])
+        for item in items:
+            ips = item.get("TailscaleIPs") or []
+            host = item.get("HostName") or ""
+            dns = item.get("DNSName") or ""
+            for ts_ip in ips:
+                if not is_tailscale_ip(str(ts_ip)):
+                    continue
+                d = merge_device(devices, ip=str(ts_ip), host=dns or host, source="Tailscale")
+                if d:
+                    d["connection"] = "Tailscale"
+                    d["tailscale_ip"] = str(ts_ip)
+                    if host:
+                        d["tailscale_host"] = host
+                    if dns:
+                        d["tailscale_fqdn"] = dns.strip('.')
+                    add_source(d, "Tailscale")

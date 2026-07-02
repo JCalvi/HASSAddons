@@ -40,6 +40,69 @@ def _pub(cfg: dict, topic: str, payload: Any, retain: bool = False) -> None:
         pass
 
 
+
+def _steer_all(cfg: dict) -> dict:
+    rows = collect_inventory(load_config())
+    targets = []
+    skipped_no_pref = 0
+    skipped_not_wifi = 0
+    already_correct = 0
+    results = []
+    for row in rows:
+        pref = row.get("preferred_ap") or "Auto"
+        if not pref or pref == "Auto":
+            skipped_no_pref += 1
+            continue
+        if row.get("status") != "online" or not row.get("mac") or not row.get("ap"):
+            skipped_not_wifi += 1
+            continue
+        if row.get("ap") == pref:
+            already_correct += 1
+            results.append({
+                "ok": True,
+                "skipped": True,
+                "message": "Already on preferred AP.",
+                "device": row.get("mac") or row.get("ip") or row.get("host"),
+                "host": row.get("host"),
+                "current_ap": row.get("ap"),
+                "preferred_ap": pref,
+            })
+            continue
+        targets.append(row)
+
+    for row in targets:
+        try:
+            r = run_steering_once(row)
+            if isinstance(r, list):
+                results.extend(r)
+            else:
+                results.append(r)
+        except Exception as exc:
+            results.append({
+                "ok": False,
+                "error": str(exc),
+                "device": row.get("mac") or row.get("ip") or row.get("host"),
+                "host": row.get("host"),
+                "current_ap": row.get("ap"),
+                "preferred_ap": row.get("preferred_ap"),
+            })
+
+    steered = len([r for r in results if r.get("ok") and not r.get("skipped")])
+    failed = len([r for r in results if not r.get("ok")])
+    return {
+        "ok": failed == 0,
+        "mode": "all",
+        "total_devices": len(rows),
+        "requested": len(targets),
+        "steered": steered,
+        "already_correct": already_correct,
+        "skipped_no_preferred_ap": skipped_no_pref,
+        "skipped_not_live_wifi": skipped_not_wifi,
+        "failed": failed,
+        "results": results,
+    }
+
+
 def _find_row(selector: dict) -> dict | None:
     rows = collect_inventory(load_config())
     ip = str(selector.get("ip") or "").strip().lower()
@@ -66,11 +129,19 @@ def _handle_message(cfg: dict, topic: str, message: str) -> None:
         payload = {"value": message.strip()}
 
     if rel in {"command/steer", "steer", "service/steer"}:
+        if isinstance(payload, dict) and payload.get("all") is True:
+            _log("Steer-all requested")
+            summary = _steer_all(cfg)
+            _log(f"Steer-all complete: requested={summary.get('requested')} steered={summary.get('steered')} already_correct={summary.get('already_correct')} failed={summary.get('failed')}")
+            _pub(cfg, "status/steer", {"ok": summary.get("ok", False), "request": payload, **summary})
+            return
         row = _find_row(payload if isinstance(payload, dict) else {})
         if not row:
+            _log("Steer request failed: device not found")
             _pub(cfg, "status/steer", {"ok": False, "error": "Device not found", "request": payload})
             return
         result = run_steering_once(row)
+        _log(f"Steer request complete: {json.dumps(result)[:300]}")
         _pub(cfg, "status/steer", {"ok": True, "request": payload, "results": result})
         return
 

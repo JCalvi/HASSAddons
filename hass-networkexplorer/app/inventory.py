@@ -1,6 +1,6 @@
 from .models import add_source, merge_device, is_tailscale_ip
 from .pihole import collect_pihole
-from .openwrt import collect_wifi_live, collect_wifi_history, collect_openwrt_neighbours
+from .openwrt import collect_wifi_live, collect_wifi_history, collect_openwrt_neighbours, collect_tailscale_status
 from .probe import apply_active_probes
 
 
@@ -66,6 +66,7 @@ def collect_inventory(cfg: dict) -> list[dict]:
         collect_pihole(devices, ip, cfg)
 
     collect_openwrt_neighbours(devices, cfg)
+    collect_tailscale_status(devices, cfg)
     collect_wifi_live(devices, cfg)
     apply_active_probes(devices, cfg)
     collect_wifi_history(devices, cfg)

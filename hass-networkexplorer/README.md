@@ -112,10 +112,3 @@ The device must already have a Preferred AP set in Network Explorer. MQTT steeri
 ## 2026.6.19 Notes
 
 This release keeps MQTT optional and prevents MQTT connection failures from using CPU. Automatic Preferred AP steering waits for the configured interval rather than running a full scan immediately at add-on startup.
-
-
-## MQTT command listener
-
-When enabled, Network Explorer connects to the configured MQTT broker and subscribes to `<prefix>/command/#`. The default broker host is `core-mosquitto`, suitable for the Home Assistant Mosquitto add-on. If your broker requires authentication, create or use an MQTT account and enter its username/password in the add-on Configuration page.
-
-Example steering command topic: `<prefix>/command/steer` with payload `{"mac":"aa:bb:cc:dd:ee:ff"}` or `{"ip":"192.168.1.80"}`. Results are published under `<prefix>/status/steer`.

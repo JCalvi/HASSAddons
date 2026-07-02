@@ -71,6 +71,39 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return row
         return None
 
+
+
+    def steer_all_devices(self):
+        cfg = load_config()
+        rows = collect_inventory(cfg)
+        results = []
+        skipped_no_pref = 0
+        skipped_not_wifi = 0
+        already_correct = 0
+        targets = []
+        for row in rows:
+            pref = row.get("preferred_ap") or "Auto"
+            if not pref or pref == "Auto":
+                skipped_no_pref += 1
+                continue
+            if row.get("status") != "online" or not row.get("mac") or not row.get("ap"):
+                skipped_not_wifi += 1
+                continue
+            if row.get("ap") == pref:
+                already_correct += 1
+                results.append({"ok": True, "skipped": True, "message": "Already on preferred AP.", "device": row.get("mac") or row.get("ip") or row.get("host"), "host": row.get("host"), "current_ap": row.get("ap"), "preferred_ap": pref})
+                continue
+            targets.append(row)
+        for row in targets:
+            r = run_steering_once(row)
+            if isinstance(r, list):
+                results.extend(r)
+            else:
+                results.append(r)
+        steered = len([r for r in results if r.get("ok") and not r.get("skipped")])
+        failed = len([r for r in results if not r.get("ok")])
+        return {"ok": failed == 0, "mode": "all", "total_devices": len(rows), "requested": len(targets), "steered": steered, "already_correct": already_correct, "skipped_no_preferred_ap": skipped_no_pref, "skipped_not_live_wifi": skipped_not_wifi, "failed": failed, "results": results}
+
     def do_GET(self):
         path = urlparse(self.path).path
         if path in {"/api/refresh", "/network.json"}:
@@ -128,6 +161,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok": True, "config": self.safe_config()})
                 return
             if path == "/api/steer":
+                if payload.get("all") is True:
+                    self.send_json(self.steer_all_devices())
+                    return
                 row = payload.get("device") or {}
                 if not row:
                     row = self.find_device_row(payload) or {}
