@@ -1,6 +1,6 @@
 from .models import add_source
 from .pihole import collect_pihole
-from .openwrt import collect_wifi_live, collect_wifi_history
+from .openwrt import collect_wifi_live, collect_wifi_history, collect_openwrt_neighbours
 from .probe import apply_active_probes
 
 
@@ -34,6 +34,7 @@ def collect_inventory(cfg: dict) -> list[dict]:
     for ip in cfg.get("piholes", []):
         collect_pihole(devices, ip, cfg)
 
+    collect_openwrt_neighbours(devices, cfg)
     collect_wifi_live(devices, cfg)
     apply_active_probes(devices, cfg)
     collect_wifi_history(devices, cfg)

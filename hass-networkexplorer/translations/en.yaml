@@ -1,10 +1,4 @@
 configuration:
-  ssh_key_path:
-    name: SSH key path
-    description: >-
-      Location of the private SSH key used by Network Explorer. The key is
-      generated and managed by the add-on and is used to connect to managed
-      Pi-hole, OpenWrt and Linux devices.
   ping_workers:
     name: ping_workers
     description: >-
@@ -27,3 +21,21 @@ configuration:
     description: >-
       TCP ports to test when tcp_probe is enabled. Common examples are 22 for
       SSH, 53 for DNS, 80 for HTTP and 443 for HTTPS.
+  steering_enabled:
+    name: steering_enabled
+    description: >-
+      Enables automatic Preferred AP steering. When enabled, Network Explorer
+      checks live Wi-Fi clients on the configured interval and disconnects
+      clients that are connected to the wrong AP so they can reconnect to
+      their preferred AP. Manual Move Now buttons still work when this is off.
+  steering_interval_minutes:
+    name: steering_interval_minutes
+    description: >-
+      The time in minutes between automatic Preferred AP steering checks. This
+      only applies when steering_enabled is on. Default: 10.
+  steering_cooldown_minutes:
+    name: steering_cooldown_minutes
+    description: >-
+      The minimum time in minutes before the same device can be automatically
+      steered again. This prevents repeated disconnect/reconnect loops. Default:
+      30.

@@ -17,15 +17,17 @@ Default network:
 
 Open the add-on web UI, enter each device IP/user/password, then use **Install Key** or **Install All Keys**. Passwords are used once to install the public key and are not saved.
 
-The private key stays inside the Home Assistant config folder at the configured SSH key path.
+The private key stays inside the Home Assistant config folder. Each managed device can use its own SSH key path, defaulting to `/config/ssh/id_ed25519`.
 
 ## Advanced add-on options
 
 Devices are managed from the Network Explorer web UI, not from the Home Assistant add-on Configuration tab.
 
-- `ssh_key_path`: Location of the SSH private key used for managed devices.
 - `ping_workers`: Number of concurrent pings to send during each refresh. Higher values complete scans faster but create a larger short burst of traffic.
 - `ping_timeout`: Time in seconds to wait for each ping response.
 - `tcp_probe`: Also probe configured TCP ports when ping is not enough.
 - `tcp_ports`: TCP ports to test when TCP probing is enabled.
+- `steering_enabled`: Enables automatic Preferred AP steering. Manual Move Now still works when off.
+- `steering_interval_minutes`: Time between automatic steering checks.
+- `steering_cooldown_minutes`: Minimum time before the same device can be automatically steered again.
 

@@ -48,13 +48,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         safe = {k: v for k, v in cfg.items() if k != "password"}
         safe["devices"] = configured_devices(cfg)
         safe["preferences"] = get_preferences(cfg)
-        safe["settings"] = cfg.get("settings", {})
-        steering = (cfg.get("settings") or {}).get("steering") or {}
-        safe["steering"] = {
-            "enabled": bool(steering.get("enabled", cfg.get("steering_enabled", False))),
-            "interval_minutes": int(steering.get("interval_minutes", cfg.get("steering_interval_minutes", 10)) or 10),
-            "cooldown_minutes": int(steering.get("cooldown_minutes", cfg.get("steering_cooldown_minutes", 30)) or 30),
-        }
+        safe["steering"] = {"enabled": cfg.get("steering_enabled", False), "interval_minutes": cfg.get("steering_interval_minutes", 10), "cooldown_minutes": cfg.get("steering_cooldown_minutes", 30)}
         return safe
 
     def do_GET(self):
@@ -95,13 +89,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 if payload.get("devices") is not None:
                     cfg = save_devices_from_payload(payload)
                 else:
-                    allowed = {"ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports", "settings"}
+                    allowed = {"piholes", "access_points", "ssh_user", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports", "steering_enabled", "steering_interval_minutes", "steering_cooldown_minutes"}
                     save_runtime_config({k: v for k, v in payload.items() if k in allowed})
                     cfg = load_config()
                 self.send_json({"ok": True, "config": self.safe_config(), "key": key_status()})
                 return
             if path == "/api/ssh/generate":
-                self.send_json({"ok": True, "key": ensure_key(load_config())})
+                self.send_json({"ok": True, "key": ensure_key(load_config(), payload.get("ssh_key_path"))})
                 return
             if path in {"/api/ssh/install", "/api/ssh/install_all", "/api/ssh/install_one"}:
                 self.send_json({"ok": True, "results": install_keys(payload), "key": key_status(), "config": self.safe_config()})

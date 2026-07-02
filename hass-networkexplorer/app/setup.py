@@ -113,15 +113,18 @@ fi
     return {"ok": True, "os": detected_os, "profile": profile, "type": detected_type, "host": host, "raw": raw, "error": ""}
 
 
-def key_paths(cfg=None):
+DEFAULT_SSH_KEY_PATH = "/config/ssh/id_ed25519"
+
+
+def key_paths(cfg=None, key_path=None):
     cfg = cfg or load_config()
-    private_key = Path(cfg.get("ssh_key_path") or "/config/ssh/id_ed25519")
+    private_key = Path(key_path or cfg.get("ssh_key_path") or DEFAULT_SSH_KEY_PATH)
     public_key = Path(str(private_key) + ".pub")
     return private_key, public_key
 
 
-def ensure_key(cfg=None):
-    private_key, public_key = key_paths(cfg)
+def ensure_key(cfg=None, key_path=None):
+    private_key, public_key = key_paths(cfg, key_path)
     private_key.parent.mkdir(parents=True, exist_ok=True)
     if not private_key.exists() or not public_key.exists():
         rc, out, err = _run([
@@ -139,9 +142,9 @@ def ensure_key(cfg=None):
     }
 
 
-def key_status():
+def key_status(key_path=None):
     cfg = load_config()
-    private_key, public_key = key_paths(cfg)
+    private_key, public_key = key_paths(cfg, key_path)
     return {
         "private_key": str(private_key),
         "public_key": str(public_key),
@@ -152,18 +155,27 @@ def key_status():
 
 def configured_devices(cfg=None):
     cfg = cfg or load_config()
+    saved = cfg.get("devices") or []
+    if saved:
+        out = []
+        for d in saved:
+            ip = str(d.get("ip") or "").strip()
+            if not ip:
+                continue
+            out.append({
+                "type": d.get("type") or "Auto",
+                "ip": ip,
+                "user": d.get("user") or cfg.get("ssh_user", "root"),
+                "name": d.get("name") or "",
+                "ssh_key_path": d.get("ssh_key_path") or cfg.get("ssh_key_path") or DEFAULT_SSH_KEY_PATH,
+            })
+        return out
+
     out = []
-    for d in cfg.get("devices") or []:
-        ip = str(d.get("ip") or "").strip()
-        if not ip:
-            continue
-        out.append({
-            "type": d.get("type") or "Auto",
-            "ip": ip,
-            "user": d.get("user") or "root",
-            "name": d.get("name") or "",
-            "capabilities": d.get("capabilities") or [],
-        })
+    for ip in cfg.get("piholes", []):
+        out.append({"type": "Pi-hole", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": "", "ssh_key_path": cfg.get("ssh_key_path") or DEFAULT_SSH_KEY_PATH})
+    for ip in cfg.get("access_points", []):
+        out.append({"type": "OpenWrt Wi-Fi", "ip": ip, "user": cfg.get("ssh_user", "root"), "name": "", "ssh_key_path": cfg.get("ssh_key_path") or DEFAULT_SSH_KEY_PATH})
     return out
 
 
@@ -173,22 +185,30 @@ def save_devices_from_payload(payload):
         ip = str(d.get("ip") or "").strip()
         if not ip:
             continue
-        dtype = d.get("type") or "Auto"
-        capabilities = d.get("capabilities") if isinstance(d.get("capabilities"), list) else []
-        if dtype in ["OpenWrt Wi-Fi", "OpenWrt AP"] and "wifi" not in capabilities:
-            capabilities.append("wifi")
-        item = {
-            "type": dtype,
+        devices.append({
+            "type": d.get("type") or "Auto",
             "ip": ip,
-            "user": d.get("user") or "root",
+            "user": d.get("user") or payload.get("ssh_user") or "root",
             "name": d.get("name") or "",
-        }
-        if capabilities:
-            item["capabilities"] = capabilities
-        devices.append(item)
+            "ssh_key_path": d.get("ssh_key_path") or payload.get("ssh_key_path") or DEFAULT_SSH_KEY_PATH,
+        })
 
-    updates = {"devices": devices}
-    for key in ["ssh_key_path", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"]:
+    if not devices:
+        for ip in payload.get("piholes", []) or []:
+            if str(ip).strip():
+                devices.append({"type": "Pi-hole", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": "", "ssh_key_path": payload.get("ssh_key_path") or DEFAULT_SSH_KEY_PATH})
+        for ip in payload.get("access_points", []) or []:
+            if str(ip).strip():
+                devices.append({"type": "OpenWrt Wi-Fi", "ip": str(ip).strip(), "user": payload.get("ssh_user") or "root", "name": "", "ssh_key_path": payload.get("ssh_key_path") or DEFAULT_SSH_KEY_PATH})
+
+    piholes = [d["ip"] for d in devices if d.get("type") == "Pi-hole"]
+    aps = [d["ip"] for d in devices if d.get("type") in ["OpenWrt Wi-Fi", "OpenWrt AP"]]
+    updates = {
+        "devices": devices,
+        "piholes": piholes,
+        "access_points": aps,
+    }
+    for key in ["ssh_user", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports"]:
         if key in payload:
             updates[key] = payload[key]
     save_runtime_config(updates)
@@ -241,45 +261,17 @@ fi
     }
 
 
-def persist_detected_results(results):
-    if not results:
-        return
-    cfg_now = load_config()
-    devices = cfg_now.get("devices") or []
-    changed = False
-    for r in results:
-        if not (r.get("ok") and r.get("ip")):
-            continue
-        for d in devices:
-            if str(d.get("ip") or "").strip() == str(r.get("ip")):
-                if r.get("type") and r.get("type") != "Unknown" and d.get("type") != r.get("type"):
-                    d["type"] = r.get("type")
-                    changed = True
-                if r.get("host") and not d.get("name"):
-                    d["name"] = r.get("host")
-                    changed = True
-                caps = d.get("capabilities") if isinstance(d.get("capabilities"), list) else []
-                if d.get("type") in ["OpenWrt Wi-Fi", "OpenWrt AP"] and "wifi" not in caps:
-                    caps.append("wifi")
-                    d["capabilities"] = caps
-                    changed = True
-    if changed:
-        save_runtime_config({"devices": devices})
-
-
 def test_connections(payload=None):
     cfg = load_config()
     if payload and (payload.get("devices") or payload.get("piholes") or payload.get("access_points")):
         cfg = save_devices_from_payload(payload)
-    ensure_key(cfg)
     results = []
     for h in configured_devices(cfg):
-        r = test_host(h["ip"], h.get("user") or cfg.get("ssh_user", "root"), cfg.get("ssh_key_path", ""))
+        ensure_key(cfg, h.get("ssh_key_path"))
+        r = test_host(h["ip"], h.get("user") or cfg.get("ssh_user", "root"), h.get("ssh_key_path") or cfg.get("ssh_key_path", ""))
         r["type"] = h["type"]
         r["name"] = h.get("name", "")
         results.append(r)
-
-    persist_detected_results(results)
     return results
 
 
@@ -342,8 +334,6 @@ def install_key_on_host(ip, user, password, public_key_text):
 
 def install_keys(payload):
     cfg = save_devices_from_payload(payload)
-    key = ensure_key(cfg)
-    public_key_text = key["public_key_text"]
     requested_ip = str(payload.get("ip") or "").strip()
     payload_devices = payload.get("devices") or []
     results = []
@@ -359,6 +349,8 @@ def install_keys(payload):
             r.update({"ok": False, "key_ok": False, "error": "Password required for this device"})
             results.append(r)
             continue
+        key = ensure_key(cfg, h.get("ssh_key_path"))
+        public_key_text = key["public_key_text"]
         installed = install_key_on_host(h["ip"], user, password, public_key_text)
         r.update(installed)
         if installed.get("type") and installed.get("type") != "Unknown":
@@ -366,7 +358,7 @@ def install_keys(payload):
         if installed.get("host") and not r.get("name"):
             r["name"] = installed.get("host")
         if r["ok"]:
-            t = test_host(h["ip"], user, cfg.get("ssh_key_path", ""))
+            t = test_host(h["ip"], user, h.get("ssh_key_path") or cfg.get("ssh_key_path", ""))
             r["key_ok"] = t["ok"]
             r["host"] = t.get("host", "")
             if not t["ok"]:
@@ -374,5 +366,4 @@ def install_keys(payload):
         else:
             r["key_ok"] = False
         results.append(r)
-    persist_detected_results(results)
     return results

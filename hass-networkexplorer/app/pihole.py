@@ -127,8 +127,16 @@ def _parse_db(devices, txt: str):
                 merge_device(devices, ip=ip, host=host, mac=mac, source="Pi-hole Network")
 
 
+
+def _creds_for_ip(cfg: dict, ip: str):
+    for d in cfg.get("devices") or []:
+        if str(d.get("ip") or "").strip() == str(ip):
+            return d.get("user") or cfg.get("ssh_user", "root"), d.get("ssh_key_path") or cfg.get("ssh_key_path", "")
+    return cfg.get("ssh_user", "root"), cfg.get("ssh_key_path", "")
+
 def collect_pihole(devices: dict, ip: str, cfg: dict):
-    out = ssh_cmd(ip, cfg["ssh_user"], cfg.get("ssh_key_path", ""), REMOTE_COLLECT, timeout=10)
+    user, key_path = _creds_for_ip(cfg, ip)
+    out = ssh_cmd(ip, user, key_path, REMOTE_COLLECT, timeout=10)
     files, neigh, db = _split_sections(out)
     _parse_pihole_toml(devices, files.get("/etc/pihole/pihole.toml", ""))
     _parse_custom_list(devices, files.get("/etc/pihole/custom.list", ""), "Static DNS")

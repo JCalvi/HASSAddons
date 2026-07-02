@@ -1,18 +1,11 @@
-# Changelog
+## 2026.6.15
 
-## 2026.6.14
-
-- Cleaned persistent config schema.
-- Removed duplicated `piholes` and `access_points` fields from `devices.json`; these are now derived from managed devices.
-- Steering settings are now stored under `settings.steering` and persist correctly.
-- Migrates old root-level steering settings into the new grouped settings format.
-- Keeps compatibility aliases internally so existing collectors continue to work.
-
-# 2026.6.13
-
-- Preferred AP steering now matches the OpenWrt LuCI Disconnect action by using `ubus call hostapd.<interface> del_client` with deauth reason 5.
-- Kept hostapd_cli and iw as fallback methods for unusual OpenWrt builds.
-- Renamed the detail action button to **Move Now**.
+- Moved SSH key path to a per-device setting in Network Explorer setup.
+- Removed the global SSH key path from the Home Assistant Configuration page.
+- Kept all global settings in the Home Assistant Configuration page with descriptions.
+- Added descriptions for Preferred AP steering settings.
+- Preferred AP steering interval/cooldown are now global add-on options.
+- Added OpenWrt neighbour collection for managed OpenWrt devices, including non-Wi-Fi gateways.
 
 
 ## 2026.6.12

@@ -53,22 +53,18 @@ def save_preferences(payload):
     steering = payload.get('steering') or {}
     save_runtime_config({
         'preferences': prefs,
-        'settings': {
-            'steering': {
-                'enabled': bool(steering.get('enabled', cfg.get('steering_enabled', False))),
-                'interval_minutes': int(steering.get('interval_minutes', cfg.get('steering_interval_minutes', 10)) or 10),
-                'cooldown_minutes': int(steering.get('cooldown_minutes', cfg.get('steering_cooldown_minutes', 30)) or 30),
-            }
-        },
+        'steering_enabled': bool(steering.get('enabled', cfg.get('steering_enabled', False))),
+        'steering_interval_minutes': int(steering.get('interval_minutes', cfg.get('steering_interval_minutes', 10)) or 10),
+        'steering_cooldown_minutes': int(steering.get('cooldown_minutes', cfg.get('steering_cooldown_minutes', 30)) or 30),
     })
     return load_config()
 
 
-def managed_user_for_ip(cfg, ip):
+def managed_creds_for_ip(cfg, ip):
     for d in cfg.get('devices') or []:
         if str(d.get('ip') or '').strip() == str(ip):
-            return d.get('user') or cfg.get('ssh_user', 'root')
-    return cfg.get('ssh_user', 'root')
+            return d.get('user') or cfg.get('ssh_user', 'root'), d.get('ssh_key_path') or cfg.get('ssh_key_path', '')
+    return cfg.get('ssh_user', 'root'), cfg.get('ssh_key_path', '')
 
 
 def disassociate(row, reason='manual'):
@@ -78,38 +74,21 @@ def disassociate(row, reason='manual'):
     mac = row.get('mac') or ''
     if not ap_ip or not iface or not mac:
         return {'ok': False, 'error': 'Current Wi-Fi AP/interface is not known for this device.', 'row': row}
-    user = managed_user_for_ip(cfg, ap_ip)
-    key = cfg.get('ssh_key_path', '')
+    user, key = managed_creds_for_ip(cfg, ap_ip)
     remote = """MAC='%s'
 IFACE='%s'
-OBJ="hostapd.$IFACE"
-PAYLOAD="{\\"addr\\":\\"$MAC\\",\\"deauth\\":true,\\"reason\\":5}"
-
-# Match the OpenWrt LuCI Disconnect button: call hostapd.<iface> del_client.
-if command -v ubus >/dev/null 2>&1; then
-  if ubus -S call "$OBJ" del_client "$PAYLOAD" >/tmp/network-explorer-steer.out 2>&1; then
-    echo OK_UBUS
-    cat /tmp/network-explorer-steer.out
-    rm -f /tmp/network-explorer-steer.out
-    exit 0
-  fi
-  cat /tmp/network-explorer-steer.out 2>/dev/null
-  rm -f /tmp/network-explorer-steer.out
-fi
-
-# Fallbacks for non-standard builds.
 if command -v hostapd_cli >/dev/null 2>&1; then
-  hostapd_cli -i "$IFACE" disassociate "$MAC" >/dev/null 2>&1 && echo OK_HOSTAPD && exit 0
+  hostapd_cli -i \"$IFACE\" disassociate \"$MAC\" >/dev/null 2>&1 && echo OK_HOSTAPD && exit 0
 fi
 if command -v iw >/dev/null 2>&1; then
-  iw dev "$IFACE" station del "$MAC" >/dev/null 2>&1 && echo OK_IW && exit 0
+  iw dev \"$IFACE\" station del \"$MAC\" >/dev/null 2>&1 && echo OK_IW && exit 0
 fi
 echo FAILED
 exit 1
 """ % (mac, iface)
     out = ssh_cmd(ap_ip, user, key, remote, timeout=10)
-    ok = 'OK_UBUS' in out or 'OK_HOSTAPD' in out or 'OK_IW' in out
-    return {'ok': ok, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'method': 'ubus del_client', 'error': '' if ok else (out or 'Disassociate failed')}
+    ok = 'OK_HOSTAPD' in out or 'OK_IW' in out
+    return {'ok': ok, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'error': '' if ok else (out or 'Disassociate failed')}
 
 
 def run_steering_once(manual_row=None):

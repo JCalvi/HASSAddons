@@ -88,10 +88,6 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
 
       <div class="setup-body">
         <div class="setup-top">
-          <label class="field key-path">
-            <span>SSH key path</span>
-            <input id="sshKeyPathInput" value="/config/ssh/id_ed25519" autocomplete="off">
-          </label>
           <div class="setup-actions compact">
             <button id="addDeviceBtn" type="button" class="secondary">Add Device</button>
             <button id="saveConfigBtn" type="button" class="secondary">Save</button>
@@ -99,12 +95,6 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
             <button id="installAllBtn" type="button" class="primary">Install All Keys</button>
             <button id="testSshBtn" type="button" class="secondary">Test All</button>
           </div>
-        </div>
-
-        <div class="steering-options">
-          <label class="inline"><input id="steeringEnabled" type="checkbox"> Preferred AP steering</label>
-          <label class="field"><span>Check interval (minutes)</span><input id="steeringInterval" type="number" min="1" value="10"></label>
-          <label class="field"><span>Cooldown (minutes)</span><input id="steeringCooldown" type="number" min="1" value="30"></label>
         </div>
 
         <div class="device-setup-wrap">
@@ -115,6 +105,7 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
                 <th>Name</th>
                 <th>IP</th>
                 <th>User</th>
+                <th>SSH key path</th>
                 <th>One-time password</th>
                 <th>SSH</th>
                 <th>Action</th>
@@ -216,7 +207,7 @@ function restoreView(){
 function sortBy(k){asc=sortKey===k?!asc:true;sortKey=k;persistView();render();}
 function rssiClass(v){let n=parseInt(v);if(!n)return"";if(n>=-60)return"rssi-good";if(n>=-72)return"rssi-ok";return"rssi-bad";}
 async function postJson(url,obj){const r=await fetch(apiPath(url),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj||{})});const d=await r.json();if(!d.ok)throw new Error(d.error||"Request failed");return d;}
-function defaultDevice(type){return {type:type||"Auto",name:"",ip:"",user:"root",password:"",ssh:"unknown",message:"",detail:"",detected_os:"",install_path:""};}
+function defaultDevice(type){return {type:type||"Auto",name:"",ip:"",user:"root",ssh_key_path:"/config/ssh/id_ed25519",password:"",ssh:"unknown",message:"",detail:"",detected_os:"",install_path:""};}
 function sortSetupDevices(){setupDevices.sort((a,b)=>ipCmp(a.ip,b.ip)||String(a.name||"").localeCompare(String(b.name||"")));}
 function setSetupMessage(msg, kind="info"){$("setupStatus").className=`setup-status ${kind}`;$('setupStatus').textContent=msg||"";}
 function setSetupOutput(obj){$("setupOutput").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
@@ -242,8 +233,9 @@ function enrichSeen(items){
 function setupPayload(includePasswords=true){
   updateAllSetupDevices();
   return {
-    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,password:includePasswords?d.password:"",capabilities:d.capabilities||[]})),
-    ssh_key_path: $("sshKeyPathInput").value.trim()||"/config/ssh/id_ed25519"
+    devices: setupDevices.map(d=>({type:d.type,name:d.name,ip:d.ip,user:d.user,ssh_key_path:d.ssh_key_path||"/config/ssh/id_ed25519",password:includePasswords?d.password:""})),
+    piholes: setupDevices.filter(d=>d.type==="Pi-hole"&&d.ip).map(d=>d.ip),
+    access_points: setupDevices.filter(d=>["OpenWrt Wi-Fi","OpenWrt AP"].includes(d.type)&&d.ip).map(d=>d.ip)
   };
 }
 function updateDeviceFromRow(i){
@@ -252,6 +244,7 @@ function updateDeviceFromRow(i){
   setupDevices[i].name=row.querySelector(".dev-name").value.trim();
   setupDevices[i].ip=row.querySelector(".dev-ip").value.trim();
   setupDevices[i].user=row.querySelector(".dev-user").value.trim()||"root";
+  setupDevices[i].ssh_key_path=row.querySelector(".dev-key-path").value.trim()||"/config/ssh/id_ed25519";
   setupDevices[i].password=row.querySelector(".dev-password").value;
 }
 function updateAllSetupDevices(){setupDevices.forEach((_,i)=>updateDeviceFromRow(i));sortSetupDevices();}
@@ -281,6 +274,7 @@ function renderSetupDevices(){
       <td><input class="dev-name" value="${esc(d.name)}" placeholder="auto"></td>
       <td><input class="dev-ip" value="${esc(d.ip)}" placeholder="192.168.1.x"></td>
       <td><input class="dev-user" value="${esc(d.user||"root")}" placeholder="root"></td>
+      <td><input class="dev-key-path" value="${esc(d.ssh_key_path||"/config/ssh/id_ed25519")}" placeholder="/config/ssh/id_ed25519"></td>
       <td><input class="dev-password" type="password" value="${esc(d.password||"")}" placeholder="${installed?"installed":"not saved"}" ${installed?"disabled":""}></td>
       <td class="ssh-status">${statusChip(d)}${d.detected_os?`<small>${esc(d.detected_os)}${d.install_path?` - ${esc(d.install_path)}`:""}</small>`:""}${d.ssh==="fail"&&detail?`<button class="link-button show-detail" type="button">Details</button>`:""}</td>
       <td class="row-actions"><button class="secondary install-one" type="button">Install Key</button><button class="secondary test-one" type="button">Test</button><button class="danger remove-one" type="button">Remove</button></td>
@@ -320,20 +314,37 @@ function mergeStatuses(results){
 async function loadConfig(){
   try{
     const r=await fetch(apiPath("api/config?_="+Date.now()),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
-    const c=d.config||{}; $("sshKeyPathInput").value=c.ssh_key_path||"/config/ssh/id_ed25519";
+    const c=d.config||{};
     preferences=c.preferences||{}; steeringConfig=c.steering||steeringConfig;
-    if($("steeringEnabled"))$("steeringEnabled").checked=!!steeringConfig.enabled;
-    if($("steeringInterval"))$("steeringInterval").value=steeringConfig.interval_minutes||10;
-    if($("steeringCooldown"))$("steeringCooldown").value=steeringConfig.cooldown_minutes||30;
     setupDevices=(c.devices&&c.devices.length?c.devices:[]).map(x=>({...defaultDevice(x.type),...x,password:"",ssh:"unknown",message:"",detail:""}));
+    if(!setupDevices.length){
+      (c.piholes||[]).forEach(ip=>setupDevices.push({...defaultDevice("Pi-hole"),ip}));
+      (c.access_points||[]).forEach(ip=>setupDevices.push({...defaultDevice("OpenWrt Wi-Fi"),ip}));
+    }
     renderSetupDevices(); showKeyInfo(d.key); testAll(false).catch(()=>{});
   }catch(e){setSetupMessage("Config load failed: "+e.message,"bad");}
 }
 async function saveConfig(show=true){const d=await postJson("api/config",setupPayload(false));showKeyInfo(d.key); if(show){setSetupMessage("Configuration saved.","ok");setSetupOutput(d.config||{});} return d;}
-async function generateKey(){await saveConfig(false); setSetupMessage("Generating SSH key...","info");const d=await postJson("api/ssh/generate",{}); showKeyInfo(d.key); setSetupMessage("SSH key ready.","ok"); setSetupOutput(d.key||{}); return d;}
+async function generateKey(){
+  await saveConfig(false);
+  setSetupMessage("Generating SSH key(s)...","info");
+  updateAllSetupDevices();
+  const paths=[...new Set(setupDevices.map(d=>d.ssh_key_path||"/config/ssh/id_ed25519"))];
+  if(!paths.length) paths.push("/config/ssh/id_ed25519");
+  const results=[];
+  let last=null;
+  for(const path of paths){
+    const d=await postJson("api/ssh/generate",{ssh_key_path:path});
+    results.push(d.key); last=d.key;
+  }
+  showKeyInfo(last);
+  setSetupMessage(`${results.length} SSH key path${results.length===1?"":"s"} ready.`,"ok");
+  setSetupOutput(results);
+  return {ok:true,keys:results};
+}
 async function installOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} if(!dev.password){setSetupMessage(`Password required for ${dev.ip}.`,"bad");return;} dev.ssh="installing";dev.message="Installing key";dev.detail="";renderSetupDevices(); const payload=setupPayload(true); payload.ip=dev.ip; const d=await postJson("api/ssh/install_one",payload); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`SSH key installed on ${dev.ip}.`:`Install failed for ${dev.ip}.`,r&&r.ok?"ok":"bad");}
 async function installAll(){updateAllSetupDevices(); setSetupMessage("Installing SSH keys...","info"); setupDevices.forEach(d=>{if(d.ip&&d.password){d.ssh="installing";d.message="Installing key";}});renderSetupDevices(); const d=await postJson("api/ssh/install_all",setupPayload(true)); mergeStatuses(d.results); showKeyInfo(d.key); setSetupOutput(d.results||[]); const ok=(d.results||[]).filter(x=>x.ok&&x.key_ok!==false).length; const total=(d.results||[]).length; setSetupMessage(`${ok} of ${total} SSH keys installed/tested successfully.`,ok===total?"ok":"bad");}
-async function testOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} dev.ssh="testing";dev.message="Testing";dev.detail="";renderSetupDevices(); const payload=setupPayload(false); payload.devices=[{type:dev.type,name:dev.name,ip:dev.ip,user:dev.user,password:""}]; const d=await postJson("api/ssh/test",payload); mergeStatuses(d.results); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`${dev.ip} connected.`:`${dev.ip} failed: ${shortError(r&&r.error)}`,r&&r.ok?"ok":"bad");}
+async function testOne(i){updateDeviceFromRow(i); const dev=setupDevices[i]; if(!dev.ip){setSetupMessage("IP address required.","bad");return;} dev.ssh="testing";dev.message="Testing";dev.detail="";renderSetupDevices(); const payload=setupPayload(false); payload.devices=[{type:dev.type,name:dev.name,ip:dev.ip,user:dev.user,ssh_key_path:dev.ssh_key_path||"/config/ssh/id_ed25519",password:""}]; const d=await postJson("api/ssh/test",payload); mergeStatuses(d.results); setSetupOutput(d.results||[]); const r=(d.results||[]).find(x=>x.ip===dev.ip); setSetupMessage(r&&r.ok?`${dev.ip} connected.`:`${dev.ip} failed: ${shortError(r&&r.error)}`,r&&r.ok?"ok":"bad");}
 async function testAll(show=true){updateAllSetupDevices(); if(show)setSetupMessage("Testing SSH connections...","info"); setupDevices.forEach(d=>{if(d.ip){d.ssh="testing";d.message="Testing";}});renderSetupDevices(); const d=await postJson("api/ssh/test",setupPayload(false)); mergeStatuses(d.results); setSetupOutput(d.results||[]); const ok=(d.results||[]).filter(x=>x.ok).length; const total=(d.results||[]).length; if(show)setSetupMessage(`${ok} of ${total} SSH connections OK.`,ok===total?"ok":"bad");}
 function fillFilters(){
   const c=$("connectionFilter"), a=$("apFilter"); const cv=c.value, av=a.value;
@@ -347,7 +358,7 @@ function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}cat
 function rowPrefKey(x){return x.mac||x.ip||x.host||"";}
 function preferredApFor(x){const k=rowPrefKey(x);return (preferences[k]&&preferences[k].preferred_ap)||x.preferred_ap||"Auto";}
 function availableAps(){return [...new Set(rows.map(r=>r.ap).filter(Boolean))].sort();}
-async function savePreferenceFor(key,value){preferences[key]=value&&value!=="Auto"?{preferred_ap:value}:undefined;if(!preferences[key])delete preferences[key];const d=await postJson("api/preferences",{preferences:{[key]:value},steering:{enabled:$("steeringEnabled")?.checked||false,interval_minutes:parseInt($("steeringInterval")?.value||"10",10),cooldown_minutes:parseInt($("steeringCooldown")?.value||"30",10)}});if(d.config){preferences=d.config.preferences||preferences;steeringConfig=d.config.steering||steeringConfig;}}
+async function savePreferenceFor(key,value){preferences[key]=value&&value!=="Auto"?{preferred_ap:value}:undefined;if(!preferences[key])delete preferences[key];const d=await postJson("api/preferences",{preferences:{[key]:value}});if(d.config){preferences=d.config.preferences||preferences;steeringConfig=d.config.steering||steeringConfig;}}
 async function moveNow(x){const pref=preferredApFor(x);const payload={...x,preferred_ap:pref};const d=await postJson("api/steer",{device:payload});const r=(d.results||[])[0]||{};$("updated").textContent=r.ok?(r.skipped?(r.message||"Already on preferred AP"):`Move requested for ${x.host||x.ip||x.mac}`):`Move failed: ${r.error||"unknown error"}`;setTimeout(load,2000);}
 function detailHtml(x){
   const actions=[];
@@ -363,7 +374,7 @@ function detailHtml(x){
   const aps=availableAps();
   const prefOptions=['Auto',...aps].map(ap=>`<option value="${esc(ap)}" ${ap===pref?'selected':''}>${esc(ap)}</option>`).join('');
   const steering = x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"
-    ? `<div class="preferred-box"><b>Preferred AP</b><select class="preferred-ap-select" data-key="${k}">${prefOptions}</select><button class="save-preferred" data-key="${k}" type="button">Save Preferred AP</button><button class="move-now" data-key="${k}" type="button">Move Now</button></div>`
+    ? `<div class="preferred-box"><b>Preferred AP</b><select class="preferred-ap-select" data-key="${k}">${prefOptions}</select><button class="save-preferred" data-key="${k}" type="button">Save Preferred AP</button><button class="move-now" data-key="${k}" type="button">Move now to preferred AP</button></div>`
     : `<div class="preferred-box"><b>Preferred AP</b><span>Not a live Wi-Fi device</span></div>`;
   return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div>${steering}<div class="detail-grid"><div>IP</div><div>${esc(x.ip)}</div><div>Host</div><div>${esc(x.host)}</div><div>MAC</div><div>${esc(x.mac)}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Preferred AP</div><div>${esc(pref)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;
 }
@@ -436,7 +447,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("installAllBtn").addEventListener("click",e=>{e.preventDefault();installAll().catch(err=>setSetupMessage(err.message,"bad"));});
   $("testSshBtn").addEventListener("click",e=>{e.preventDefault();testAll().catch(err=>setSetupMessage(err.message,"bad"));});
   $("addDeviceBtn").addEventListener("click",e=>{e.preventDefault();setupDevices.push(defaultDevice("Auto"));renderSetupDevices();});
-  ["steeringEnabled","steeringInterval","steeringCooldown"].forEach(id=>$(id)?.addEventListener("change",()=>savePreferenceFor("__noop__","Auto").catch(()=>{})));
   $("toggleSetupBtn").addEventListener("click",e=>{e.preventDefault();setSetupCollapsed(true);});
   $("settingsBtn").addEventListener("click",e=>{e.preventDefault();const hidden=$('setupPanel').classList.contains("collapsed");setSetupCollapsed(!hidden);if(hidden)$("setupPanel").scrollIntoView({behavior:"smooth",block:"start"});});
   setSetupCollapsed(localStorage.getItem("networkExplorerSetupCollapsed")==="1");

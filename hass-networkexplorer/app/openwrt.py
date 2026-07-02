@@ -1,4 +1,4 @@
-from .models import norm_mac, merge_device, add_source
+from .models import norm_mac, merge_device, add_source, is_ipv4
 from .sshutil import ssh_cmd
 
 AP_CLIENTS = r'''
@@ -37,16 +37,17 @@ done
 '''
 
 
-def _user_for_ip(cfg: dict, ip: str) -> str:
+
+def _creds_for_ip(cfg: dict, ip: str):
     for d in cfg.get("devices") or []:
         if str(d.get("ip") or "").strip() == str(ip):
-            return d.get("user") or "root"
-    return "root"
-
+            return d.get("user") or cfg.get("ssh_user", "root"), d.get("ssh_key_path") or cfg.get("ssh_key_path", "")
+    return cfg.get("ssh_user", "root"), cfg.get("ssh_key_path", "")
 
 def collect_wifi_live(devices: dict, cfg: dict):
     for ap_ip in cfg.get("access_points", []):
-        out = ssh_cmd(ap_ip, _user_for_ip(cfg, ap_ip), cfg.get("ssh_key_path", ""), AP_CLIENTS, timeout=10)
+        user, key_path = _creds_for_ip(cfg, ap_ip)
+        out = ssh_cmd(ap_ip, user, key_path, AP_CLIENTS, timeout=10)
         for line in out.splitlines():
             parts = line.split("|")
             if len(parts) < 5:
@@ -79,7 +80,8 @@ def collect_wifi_live(devices: dict, cfg: dict):
 def collect_wifi_history(devices: dict, cfg: dict):
     history = {}
     for ap_ip in cfg.get("access_points", []):
-        out = ssh_cmd(ap_ip, _user_for_ip(cfg, ap_ip), cfg.get("ssh_key_path", ""), AP_HISTORY, timeout=10)
+        user, key_path = _creds_for_ip(cfg, ap_ip)
+        out = ssh_cmd(ap_ip, user, key_path, AP_HISTORY, timeout=10)
         for line in out.splitlines():
             parts = line.split("|")
             if len(parts) < 5:
@@ -103,3 +105,47 @@ def collect_wifi_history(devices: dict, cfg: dict):
         d["wifi_last_event"] = "Disconnected" if h["event"] == "AP-STA-DISCONNECTED" else "Connected"
         d["wifi_last_seen"] = h["when"]
         add_source(d, "Wi-Fi Last Seen")
+
+
+OPENWRT_NEIGHBOURS = """
+echo "__NEIGH__"
+ip neigh show 2>/dev/null
+"""
+
+
+def _parse_openwrt_neigh(devices: dict, txt: str):
+    for line in (txt or "").splitlines():
+        parts = line.split()
+        if not parts or not is_ipv4(parts[0]):
+            continue
+        ip = parts[0]
+        mac = ""
+        if "lladdr" in parts:
+            i = parts.index("lladdr")
+            if i + 1 < len(parts):
+                mac = norm_mac(parts[i + 1])
+        state = parts[-1] if parts else ""
+        if ip and mac:
+            d = None
+            for existing in devices.values():
+                if existing.get("mac") == mac or existing.get("ip") == ip:
+                    d = existing
+                    break
+            if not d:
+                d = merge_device(devices, ip=ip, mac=mac, source="OpenWrt Neighbour")
+            if d:
+                d["neighbour_state"] = state
+                add_source(d, "OpenWrt Neighbour")
+
+
+def collect_openwrt_neighbours(devices: dict, cfg: dict):
+    for dev in cfg.get("devices") or []:
+        dtype = dev.get("type") or ""
+        if not str(dtype).startswith("OpenWrt"):
+            continue
+        ip = str(dev.get("ip") or "").strip()
+        if not ip:
+            continue
+        user, key_path = _creds_for_ip(cfg, ip)
+        out = ssh_cmd(ip, user, key_path, OPENWRT_NEIGHBOURS, timeout=8)
+        _parse_openwrt_neigh(devices, out)
