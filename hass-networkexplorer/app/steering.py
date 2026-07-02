@@ -50,13 +50,10 @@ def save_preferences(payload):
             prefs.pop(k, None)
         else:
             prefs[k] = {'preferred_ap': str(v)}
-    steering = payload.get('steering') or {}
-    save_runtime_config({
-        'preferences': prefs,
-        'steering_enabled': bool(steering.get('enabled', cfg.get('steering_enabled', False))),
-        'steering_interval_minutes': int(steering.get('interval_minutes', cfg.get('steering_interval_minutes', 10)) or 10),
-        'steering_cooldown_minutes': int(steering.get('cooldown_minutes', cfg.get('steering_cooldown_minutes', 30)) or 30),
-    })
+
+    # Only per-client preferences are saved here. Global steering settings are
+    # controlled by the Home Assistant add-on Configuration page.
+    save_runtime_config({'preferences': prefs})
     return load_config()
 
 

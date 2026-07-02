@@ -1,3 +1,23 @@
+## 2026.6.16
+
+- Fixed global settings precedence: HA add-on Configuration values now override stale runtime data.
+- Runtime device storage now only persists managed devices and per-client Preferred AP preferences.
+- Removed legacy runtime shadowing of steering interval/cooldown settings.
+- Added service-style steering API endpoints for Home Assistant automations: `/api/steer`, `/api/steer_device` and `/api/service/steer`.
+- Backfilled missing changelog entries for 2026.6.13 and 2026.6.14.
+
+## 2026.6.14
+
+- Improved Buildx-based Docker build workflow for multi-architecture images.
+- Continued Preferred AP steering testing and packaging updates.
+- Improved Home Assistant add-on metadata/version handling.
+
+## 2026.6.13
+
+- Added Preferred AP steering refinements.
+- Added OpenWrt client disassociation testing for manual move actions.
+- Improved device detail controls for Preferred AP management.
+
 ## 2026.6.15
 
 - Moved SSH key path to a per-device setting in Network Explorer setup.

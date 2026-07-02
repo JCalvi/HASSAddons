@@ -48,8 +48,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
         safe = {k: v for k, v in cfg.items() if k != "password"}
         safe["devices"] = configured_devices(cfg)
         safe["preferences"] = get_preferences(cfg)
-        safe["steering"] = {"enabled": cfg.get("steering_enabled", False), "interval_minutes": cfg.get("steering_interval_minutes", 10), "cooldown_minutes": cfg.get("steering_cooldown_minutes", 30)}
+        safe["steering"] = {
+            "enabled": cfg.get("steering_enabled", False),
+            "interval_minutes": cfg.get("steering_interval_minutes", 10),
+            "cooldown_minutes": cfg.get("steering_cooldown_minutes", 30),
+        }
         return safe
+
+    def find_device_row(self, payload):
+        selector_ip = str(payload.get("ip") or "").strip().lower()
+        selector_mac = str(payload.get("mac") or "").strip().lower()
+        selector_host = str(payload.get("host") or payload.get("name") or "").strip().lower()
+        rows = collect_inventory(load_config())
+        for row in rows:
+            if selector_ip and str(row.get("ip") or "").lower() == selector_ip:
+                return row
+            if selector_mac and str(row.get("mac") or "").lower() == selector_mac:
+                return row
+            if selector_host and str(row.get("host") or "").lower() == selector_host:
+                return row
+        return None
 
     def do_GET(self):
         path = urlparse(self.path).path
@@ -109,6 +127,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             if path == "/api/steer":
                 row = payload.get("device") or {}
+                if not row:
+                    row = self.find_device_row(payload) or {}
+                if not row:
+                    self.send_json({"ok": False, "error": "Device not found or not currently visible"}, status=404)
+                    return
+                results = run_steering_once(row)
+                self.send_json({"ok": True, "results": results})
+                return
+            if path in {"/api/steer_device", "/api/service/steer"}:
+                row = self.find_device_row(payload) or {}
+                if not row:
+                    self.send_json({"ok": False, "error": "Device not found or not currently visible"}, status=404)
+                    return
                 results = run_steering_once(row)
                 self.send_json({"ok": True, "results": results})
                 return

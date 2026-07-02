@@ -31,3 +31,37 @@ Devices are managed from the Network Explorer web UI, not from the Home Assistan
 - `steering_interval_minutes`: Time between automatic steering checks.
 - `steering_cooldown_minutes`: Minimum time before the same device can be automatically steered again.
 
+
+
+## Home Assistant automation / service-style steering
+
+Network Explorer exposes a small HTTP API that Home Assistant can call from a `rest_command`, script, automation, or dashboard button.
+
+Example payloads:
+
+```json
+{ "ip": "192.168.1.80" }
+```
+
+```json
+{ "mac": "aa:bb:cc:dd:ee:ff" }
+```
+
+Endpoint:
+
+```text
+POST /api/steer_device
+```
+
+The device must already have a Preferred AP set in Network Explorer. Manual steering works even when automatic steering is disabled.
+
+Example Home Assistant `rest_command`:
+
+```yaml
+rest_command:
+  network_explorer_steer_device:
+    url: "http://<network-explorer-host>:8090/api/steer_device"
+    method: POST
+    content_type: "application/json"
+    payload: '{"ip":"{{ ip }}"}'
+```
