@@ -58,6 +58,9 @@ def new_device(ip="", host="", mac="", source="") -> dict:
         "ip": ip or "",
         "host": short_host,
         "fqdn": fqdn,
+        "tailscale_ip": ip if is_tailscale_ip(ip or "") else "",
+        "tailscale_host": short_host if is_tailscale_ip(ip or "") else "",
+        "tailscale_fqdn": fqdn if is_tailscale_ip(ip or "") else "",
         "_host_rank": host_rank(source) if short_host else 0,
         "mac": norm_mac(mac),
         "status": "offline",
@@ -110,6 +113,7 @@ def merge_device(devices: dict, ip="", host="", mac="", source="") -> dict | Non
         d["ip"] = ip
         if is_tailscale_ip(ip):
             d["connection"] = "Tailscale"
+            d["tailscale_ip"] = ip
             add_source(d, "Tailscale")
     if host:
         rank = host_rank(source)
@@ -118,6 +122,11 @@ def merge_device(devices: dict, ip="", host="", mac="", source="") -> dict | Non
             d["_host_rank"] = rank
         if fqdn and not d.get("fqdn"):
             d["fqdn"] = fqdn
+        if is_tailscale_ip(d.get("ip") or ""):
+            if host and not d.get("tailscale_host"):
+                d["tailscale_host"] = host
+            if fqdn and not d.get("tailscale_fqdn"):
+                d["tailscale_fqdn"] = fqdn
     if mac and not d.get("mac"):
         d["mac"] = mac
     add_source(d, source)

@@ -1,5 +1,5 @@
 name: Network Explorer
-version: 2026.6.19
+version: 2026.6.20
 slug: networkexplorer
 description: Live network inventory for Pi-hole and OpenWrt networks
 url: https://github.com/JCalvi/HASSAddons
@@ -35,7 +35,7 @@ options:
   steering_interval_minutes: 60
   steering_cooldown_minutes: 180
   mqtt_enabled: false
-  mqtt_host: ""
+  mqtt_host: core-mosquitto
   mqtt_port: 1883
   mqtt_username: ""
   mqtt_password: ""

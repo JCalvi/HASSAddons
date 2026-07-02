@@ -8,6 +8,14 @@ from .config import load_config
 from .inventory import collect_inventory
 from .steering import run_steering_once
 
+MQTT_STATUS = {"enabled": False, "connected": False, "message": "Not started", "topic": "", "last_command": ""}
+
+def _log(msg: str) -> None:
+    print(f"MQTT: {msg}", flush=True)
+
+def get_mqtt_status() -> dict:
+    return dict(MQTT_STATUS)
+
 
 def _base_cmd(cfg: dict) -> list[str]:
     cmd = ["-h", cfg.get("mqtt_host") or "", "-p", str(cfg.get("mqtt_port") or 1883)]
@@ -48,6 +56,8 @@ def _find_row(selector: dict) -> dict | None:
 
 
 def _handle_message(cfg: dict, topic: str, message: str) -> None:
+    MQTT_STATUS["last_command"] = topic
+    _log(f"Command received on {topic}: {message[:200]}")
     prefix = cfg.get("mqtt_topic_prefix", "network_explorer").strip("/")
     rel = topic[len(prefix):].strip("/") if topic.startswith(prefix) else topic
     try:
@@ -77,6 +87,7 @@ def mqtt_loop() -> None:
     while True:
         cfg = load_config()
         if not cfg.get("mqtt_enabled") or not cfg.get("mqtt_host"):
+            MQTT_STATUS.update({"enabled": bool(cfg.get("mqtt_enabled")), "connected": False, "message": "Disabled" if not cfg.get("mqtt_enabled") else "No broker host configured", "topic": ""})
             # Disabled means genuinely idle. Check occasionally in case the
             # user enables MQTT from the add-on Configuration page.
             time.sleep(60)
@@ -84,11 +95,15 @@ def mqtt_loop() -> None:
 
         prefix = cfg.get("mqtt_topic_prefix", "network_explorer").strip("/")
         topic = f"{prefix}/command/#"
+        MQTT_STATUS.update({"enabled": True, "connected": False, "message": f"Connecting to {cfg.get('mqtt_host')}:{cfg.get('mqtt_port')}", "topic": topic})
+        _log(MQTT_STATUS["message"])
         _pub(cfg, "status", {"online": True}, retain=True)
         cmd = ["mosquitto_sub", *_base_cmd(cfg), "-t", topic, "-v"]
         proc = None
         try:
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            MQTT_STATUS.update({"connected": True, "message": "Connected", "topic": topic})
+            _log(f"Connected and subscribed to {topic}")
             assert proc.stdout is not None
             for line in proc.stdout:
                 line = line.rstrip("\n")
@@ -104,8 +119,9 @@ def mqtt_loop() -> None:
                     new_cfg.get("mqtt_topic_prefix") != cfg.get("mqtt_topic_prefix")):
                     break
             backoff = 30
-        except Exception:
-            pass
+        except Exception as exc:
+            MQTT_STATUS.update({"connected": False, "message": str(exc) or "MQTT error"})
+            _log(f"Error: {MQTT_STATUS['message']}")
         finally:
             try:
                 if proc is not None:
@@ -115,6 +131,8 @@ def mqtt_loop() -> None:
 
         # If mosquitto_sub exits immediately because the broker is down or the
         # credentials are wrong, do not tight-loop and burn CPU.
+        MQTT_STATUS.update({"connected": False, "message": f"Disconnected. Retrying in {backoff} seconds", "topic": topic if 'topic' in locals() else ""})
+        _log(MQTT_STATUS["message"])
         time.sleep(backoff)
         backoff = min(backoff * 2, 300)
 

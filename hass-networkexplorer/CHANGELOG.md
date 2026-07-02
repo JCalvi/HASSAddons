@@ -1,4 +1,13 @@
-# 2026.6.19
+# 2026.6.20
+
+- Default MQTT broker host is now `core-mosquitto`.
+- Added MQTT connection/status logging and status reporting.
+- MQTT command listener remains persistent while enabled and connected.
+- Added Tailscale IP/hostname/FQDN fields to device details.
+- Improved device details source display into primary/evidence chips.
+- Preserves short hostname in the main table while keeping FQDN in details.
+
+## 2026.6.19
 
 - Stability release after MQTT introduction.
 - Prevented MQTT reconnect failures from tight-looping and using high CPU.

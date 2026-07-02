@@ -9,7 +9,7 @@ from .config import load_config, save_runtime_config
 from .inventory import collect_inventory
 from .setup import key_status, ensure_key, install_keys, test_connections, configured_devices, save_devices_from_payload
 from .steering import get_preferences, save_preferences, run_steering_once, start_steering_loop
-from .mqtt import start_mqtt_loop
+from .mqtt import start_mqtt_loop, get_mqtt_status
 
 PORT = 8090
 BASE = Path("/app/web")
@@ -54,6 +54,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "interval_minutes": cfg.get("steering_interval_minutes", 10),
             "cooldown_minutes": cfg.get("steering_cooldown_minutes", 30),
         }
+        safe["mqtt_status"] = get_mqtt_status()
         return safe
 
     def find_device_row(self, payload):

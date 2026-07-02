@@ -169,6 +169,14 @@ function fillFilters(){
 }
 function statusText(x){return x.status==="online"?"Online":x.status==="idle"?"Idle":"Offline";}
 function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}catch(e){return s;}}
+function sourceEvidence(source){
+  const parts=String(source||"").split(" + ").filter(Boolean);
+  if(!parts.length) return "";
+  const primary=parts[0];
+  const evidence=parts.slice(1).map(x=>`<span class="evidence-chip">${esc(x)}</span>`).join(" ");
+  return `<div><b>${esc(primary)}</b></div>${evidence?`<div class="evidence-row">${evidence}</div>`:""}`;
+}
+
 function detailHtml(x){
   const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac);
   const actions=[];
@@ -179,7 +187,10 @@ function detailHtml(x){
   }
   if(x.host) actions.push(`<button class="detail-action copy-value" data-label="hostname" data-copy="${host}" type="button">Copy Host</button>`);
   if(x.mac) actions.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">Copy MAC</button>`);
-  return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div><div class="detail-grid"><div>IP</div><div>${ip}</div><div>Host</div><div>${host}</div><div>FQDN</div><div>${esc(x.fqdn)}</div><div>MAC</div><div>${mac}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;
+  const tsRows = x.connection==="Tailscale" || x.tailscale_ip || x.tailscale_host || x.tailscale_fqdn
+    ? `<div>Tailscale IP</div><div>${esc(x.tailscale_ip||x.ip||"")}</div><div>Tailscale Host</div><div>${esc(x.tailscale_host||"")}</div><div>Tailscale FQDN</div><div>${esc(x.tailscale_fqdn||"")}</div>`
+    : "";
+  return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div><div class="detail-grid"><div>IP</div><div>${ip}</div><div>Host</div><div>${host}</div><div>FQDN</div><div>${esc(x.fqdn)}</div>${tsRows}<div>MAC</div><div>${mac}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Evidence</div><div>${sourceEvidence(x.source)}</div></div></td></tr>`;
 }
 
 function clearFilters(){

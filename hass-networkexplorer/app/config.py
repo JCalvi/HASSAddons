@@ -26,7 +26,7 @@ DEFAULTS = {
     "steering_interval_minutes": 60,
     "steering_cooldown_minutes": 180,
     "mqtt_enabled": False,
-    "mqtt_host": "",
+    "mqtt_host": "core-mosquitto",
     "mqtt_port": 1883,
     "mqtt_username": "",
     "mqtt_password": "",

@@ -29,6 +29,11 @@ def apply_tailscale_classification(devices: dict):
         ip = d.get("ip") or ""
         if is_tailscale_ip(ip):
             d["connection"] = "Tailscale"
+            d["tailscale_ip"] = ip
+            if d.get("host") and not d.get("tailscale_host"):
+                d["tailscale_host"] = d.get("host")
+            if d.get("fqdn") and not d.get("tailscale_fqdn"):
+                d["tailscale_fqdn"] = d.get("fqdn")
             add_source(d, "Tailscale")
 
 
