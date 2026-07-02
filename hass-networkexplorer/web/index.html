@@ -377,7 +377,11 @@ function detailHtml(x){
   const steering = x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"
     ? `<div class="preferred-box"><b>Preferred AP</b><select class="preferred-ap-select" data-key="${k}">${prefOptions}</select><button class="save-preferred" data-key="${k}" type="button">Save Preferred AP</button><button class="move-now" data-key="${k}" type="button">Move now to preferred AP</button></div>`
     : `<div class="preferred-box"><b>Preferred AP</b><span>Not a live Wi-Fi device</span></div>`;
-  return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div>${steering}<div class="detail-grid"><div>IP</div><div>${esc(x.ip)}</div><div>Host</div><div>${esc(x.host)}</div><div>MAC</div><div>${esc(x.mac)}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Preferred AP</div><div>${esc(pref)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;
+  const fqdnRow = x.fqdn ? `<div>FQDN</div><div>${esc(x.fqdn)}</div>` : "";
+  const tsRows = (x.connection==="Tailscale" || x.tailscale_ip || x.tailscale_host || x.tailscale_fqdn)
+    ? `<div>Tailscale IP</div><div>${esc(x.tailscale_ip||x.ip||"")}</div><div>Tailscale Host</div><div>${esc(x.tailscale_host||"")}</div><div>Tailscale FQDN</div><div>${esc(x.tailscale_fqdn||"")}</div>`
+    : "";
+  return `<tr class="detail"><td colspan="9"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><div class="detail-actions">${actions.join("")}</div>${steering}<div class="detail-grid"><div>IP</div><div>${esc(x.ip)}</div><div>Host</div><div>${esc(x.host)}</div>${fqdnRow}${tsRows}<div>MAC</div><div>${esc(x.mac)}</div><div>Status</div><div>${esc(statusText(x))}</div><div>Connection</div><div>${esc(x.connection)}</div><div>AP</div><div>${esc(x.ap)}</div><div>Preferred AP</div><div>${esc(pref)}</div><div>Band</div><div>${esc(x.band)}</div><div>RSSI</div><div>${esc(x.rssi?x.rssi+" dBm":"")}</div><div>Ping</div><div>${esc(x.ping)}</div><div>TCP</div><div>${esc(x.tcp)}</div><div>First Seen</div><div>${esc(seenText(x.first_seen))}</div><div>Last Seen</div><div>${esc(seenText(x.last_seen))}</div><div>Neighbour State</div><div>${esc(x.neighbour_state)}</div><div>Last Wi-Fi Event</div><div>${esc(x.wifi_last_event)}</div><div>Last Wi-Fi Seen</div><div>${esc(x.wifi_last_seen)}</div><div>Source</div><div>${esc(x.source)}</div></div></td></tr>`;
 }
 
 function clearFilters(){
@@ -395,6 +399,8 @@ function render(){
     let blob=Object.values(x).join(" ").toLowerCase();
     if(q&&!blob.includes(q))return false;
     if(status&&x.status!==status)return false;
+    // Hide Tailscale peers by default. Use the Tailscale summary chip or connection filter to show them.
+    if(!conn && x.connection==="Tailscale")return false;
     if(conn==="__wifi__"){if(!x.connection||x.connection==="Ethernet"||x.connection==="Tailscale")return false;}
     else if(conn&&x.connection!==conn)return false;
     if(ap&&x.ap!==ap)return false;

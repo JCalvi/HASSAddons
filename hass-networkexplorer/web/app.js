@@ -208,6 +208,8 @@ function render(){
     let blob=Object.values(x).join(" ").toLowerCase();
     if(q&&!blob.includes(q))return false;
     if(status&&x.status!==status)return false;
+    // Hide Tailscale peers by default. Use the Tailscale summary chip or connection filter to show them.
+    if(!conn && x.connection==="Tailscale")return false;
     if(conn==="__wifi__"){if(!x.connection||x.connection==="Ethernet"||x.connection==="Tailscale")return false;}
     else if(conn&&x.connection!==conn)return false;
     if(ap&&x.ap!==ap)return false;

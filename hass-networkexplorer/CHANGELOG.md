@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.6.22
+
+- Hide Tailscale peers from the default LAN view while keeping the Tailscale summary chip/filter available.
+- Fixed device details so FQDN, Tailscale IP, Tailscale hostname and Tailscale FQDN are shown when known.
+- Updated README/Info content to remove old fixed-network notes and stale release-specific notes.
+- Documented Home Assistant `rest_command` steering and MQTT single-device / steer-all commands.
+
 ## 2026.6.21
 
 - Added MQTT `{"all": true}` steering execution for all live Wi-Fi devices with a Preferred AP set.

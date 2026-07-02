@@ -1,56 +1,66 @@
 # Network Explorer
 
-Home Assistant add-on for a live network inventory page.
+Home Assistant add-on for live network inventory, OpenWrt/Pi-hole discovery, Wi-Fi visibility and Preferred AP steering.
 
-Sources:
+## What it collects
 
-- Pi-hole static DHCP, static DNS, leases, network database and neighbour table via SSH
-- OpenWrt live Wi-Fi associations and hostapd connect/disconnect history via SSH
-- Parallel ping checks from the add-on container
+Network Explorer can collect information from:
 
-Default network:
-
-- Pi-hole: `192.168.1.2`, `192.168.1.3`
-- OpenWrt APs: `192.168.1.11`, `192.168.1.12`
-
-## Setup
-
-Open the add-on web UI, enter each device IP/user/password, then use **Install Key** or **Install All Keys**. Passwords are used once to install the public key and are not saved.
-
-The private key stays inside the Home Assistant config folder. Each managed device can use its own SSH key path, defaulting to `/config/ssh/id_ed25519`.
-
-## Advanced add-on options
+- Managed Pi-hole/Linux devices over SSH: static DHCP, static DNS, leases, Pi-hole network database and neighbour table.
+- Managed OpenWrt devices over SSH: neighbour tables, live Wi-Fi associations, hostapd connect/disconnect history and optional Tailscale status.
+- The add-on container: parallel ping checks and optional TCP probes.
 
 Devices are managed from the Network Explorer web UI, not from the Home Assistant add-on Configuration tab.
 
-- `ping_workers`: Number of concurrent pings to send during each refresh. Higher values complete scans faster but create a larger short burst of traffic.
-- `ping_timeout`: Time in seconds to wait for each ping response.
-- `tcp_probe`: Also probe configured TCP ports when ping is not enough.
+## Setup
+
+Open the add-on web UI and use **Settings**.
+
+1. Add each managed device by IP address.
+2. Enter the SSH username and one-time password.
+3. Use **Install Key** or **Install All Keys**.
+4. The password is used once to install the public key and is not saved.
+
+The private key stays inside the Home Assistant config folder. Each managed device can use its own SSH key path, defaulting to:
+
+```text
+/config/ssh/id_ed25519
+```
+
+## Advanced add-on options
+
+The Home Assistant Configuration page contains global/runtime options only:
+
+- `ping_workers`: number of concurrent pings to send during each refresh.
+- `ping_timeout`: time in seconds to wait for each ping response.
+- `tcp_probe`: also probe configured TCP ports when ping is not enough.
 - `tcp_ports`: TCP ports to test when TCP probing is enabled.
-- `steering_enabled`: Enables automatic Preferred AP steering. Manual Move Now still works when off.
-- `steering_interval_minutes`: Time between automatic steering checks.
-- `steering_cooldown_minutes`: Minimum time before the same device can be automatically steered again.
-- `mqtt_enabled`: Enables the MQTT command listener.
-- `mqtt_host`: MQTT broker hostname or IP address.
+- `steering_enabled`: enables automatic Preferred AP steering. Manual Move Now still works when off.
+- `steering_interval_minutes`: time between automatic steering checks.
+- `steering_cooldown_minutes`: minimum time before the same device can be automatically steered again.
+- `mqtt_enabled`: enables the MQTT command listener.
+- `mqtt_host`: MQTT broker hostname or IP address. For the Home Assistant Mosquitto add-on this is normally `core-mosquitto`.
 - `mqtt_port`: MQTT broker port, usually `1883`.
-- `mqtt_username` / `mqtt_password`: Optional MQTT credentials.
-- `mqtt_topic_prefix`: Topic prefix, default `network_explorer`.
+- `mqtt_username` / `mqtt_password`: optional MQTT credentials, required when your broker requires authentication.
+- `mqtt_topic_prefix`: topic prefix, default `network_explorer`.
 
+## Preferred AP steering
 
+For live Wi-Fi devices, set a Preferred AP from the expanded device details panel.
 
-## Home Assistant automation / service-style steering
+Manual steering:
 
-Network Explorer exposes a small HTTP API that Home Assistant can call from a `rest_command`, script, automation, or dashboard button.
+- Use **Move now to preferred AP** in the details panel.
+- Manual steering works even when automatic steering is disabled.
 
-Example payloads:
+Automatic steering:
 
-```json
-{ "ip": "192.168.1.80" }
-```
+- Controlled by `steering_enabled`, `steering_interval_minutes` and `steering_cooldown_minutes` in the Home Assistant Configuration page.
+- Network Explorer periodically checks live Wi-Fi clients and disconnects clients that are connected to the wrong AP so they can reconnect to their preferred AP.
 
-```json
-{ "mac": "aa:bb:cc:dd:ee:ff" }
-```
+## Home Assistant automation / `rest_command` steering
+
+Network Explorer exposes a small HTTP API that Home Assistant can call from a `rest_command`, script, automation or dashboard button.
 
 Endpoint:
 
@@ -58,7 +68,19 @@ Endpoint:
 POST /api/steer_device
 ```
 
-The device must already have a Preferred AP set in Network Explorer. Manual steering works even when automatic steering is disabled.
+Payload by IP:
+
+```json
+{ "ip": "192.168.1.80" }
+```
+
+Payload by MAC:
+
+```json
+{ "mac": "aa:bb:cc:dd:ee:ff" }
+```
+
+The device must already have a Preferred AP set in Network Explorer.
 
 Example Home Assistant `rest_command`:
 
@@ -70,7 +92,6 @@ rest_command:
     content_type: "application/json"
     payload: '{"ip":"{{ ip }}"}'
 ```
-
 
 ## MQTT commands
 
@@ -86,18 +107,36 @@ Default prefix:
 network_explorer
 ```
 
-Move a device to its Preferred AP using an IP address:
+### Test command
+
+```text
+Topic: network_explorer/command/test
+Payload: {"hello":"world"}
+```
+
+### Move one device to its Preferred AP
+
+By IP address:
 
 ```text
 Topic: network_explorer/command/steer
 Payload: {"ip":"192.168.1.80"}
 ```
 
-Or using a MAC address:
+By MAC address:
 
 ```text
 Topic: network_explorer/command/steer
 Payload: {"mac":"aa:bb:cc:dd:ee:ff"}
+```
+
+### Move all eligible devices
+
+This steers all currently live Wi-Fi devices that have a Preferred AP set and are not already on that AP:
+
+```text
+Topic: network_explorer/command/steer
+Payload: {"all":true}
 ```
 
 Result messages are published to:
@@ -106,9 +145,4 @@ Result messages are published to:
 network_explorer/status/steer
 ```
 
-The device must already have a Preferred AP set in Network Explorer. MQTT steering works even when automatic steering is disabled.
-
-
-## 2026.6.19 Notes
-
-This release keeps MQTT optional and prevents MQTT connection failures from using CPU. Automatic Preferred AP steering waits for the configured interval rather than running a full scan immediately at add-on startup.
+MQTT steering works even when automatic steering is disabled.
