@@ -56,6 +56,25 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
 .detail-actions.grouped>div>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .evidence-chip.present{color:var(--text);border-color:rgba(88,210,107,.35)}
 
+/* 2026.7.5 polished details cards */
+.detail td{padding:0;background:linear-gradient(135deg,rgba(32,38,50,.95),rgba(23,27,34,.95));}
+.device-detail-panel{padding:20px 24px 18px;border-top:1px solid var(--border);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.detail-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;font-size:18px}.detail-title>div{display:flex;align-items:center;gap:10px}.device-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:rgba(3,169,217,.15);color:var(--blue)}.detail-close{border:0;background:transparent;color:var(--muted);font-size:28px;line-height:1;min-height:0;padding:0 4px}.detail-close:hover{color:var(--text);filter:none}
+.detail-toolbar{display:flex;gap:22px;align-items:flex-start;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px}.action-group b{display:block;margin-bottom:8px}.action-group>div{display:flex;gap:8px;flex-wrap:wrap}.action-separator{width:1px;align-self:stretch;background:var(--border)}.detail-action{min-height:36px;padding:6px 12px;border-radius:8px}.mini-copy{margin-left:6px;min-height:0;padding:1px 5px;border-radius:5px;color:var(--muted)}
+.detail-card-grid{display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,1fr) minmax(340px,1.2fr);gap:12px 14px}.detail-card{border:1px solid var(--border);border-radius:12px;padding:16px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.005));min-width:0}.detail-card h3{display:flex;align-items:center;gap:8px;margin:0 0 14px;font-size:17px}.section-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:rgba(3,169,217,.12)}.detail-card-wifi{grid-row:span 2}.detail-card-wifi-wide{grid-row:span 2}.detail-grid{display:grid;grid-template-columns:minmax(130px,190px) minmax(0,1fr);gap:8px 16px;max-width:none}.detail-label{color:var(--text)}.detail-value{color:var(--text);word-break:break-word}.wifi-control{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}.wifi-control label{font-weight:600;color:var(--text)}.wifi-control select{width:100%;min-width:0}.wifi-control .move-now{width:100%;min-height:42px;background:linear-gradient(180deg,#0ea5e9,#0277bd);font-weight:700}.wifi-readonly{border-top:1px solid var(--border);padding-top:12px;margin-top:10px}.hint{color:var(--muted);font-size:13px;line-height:1.35;margin:12px 0 0}.evidence-row{display:flex;flex-wrap:wrap;gap:7px}.evidence-chip{display:inline-flex;align-items:center;border:1px solid var(--border);background:rgba(255,255,255,.025);border-radius:999px;padding:4px 10px;margin:0;font-size:13px;color:var(--muted)}.evidence-chip.present{color:var(--text);border-color:rgba(88,210,107,.35);background:rgba(88,210,107,.06)}
+@media(max-width:1200px){.detail-card-grid{grid-template-columns:1fr}.detail-card-wifi-wide{grid-row:auto}.detail-toolbar{flex-wrap:wrap}.action-separator{display:none}}
+/* Light-theme overrides for detail panel (dark-biased backgrounds above) */
+:root:not([data-theme="dark"]):not([data-theme="auto"]) .detail td{background:var(--card2)}
+:root:not([data-theme="dark"]):not([data-theme="auto"]) .detail-card{background:var(--card)}
+:root:not([data-theme="dark"]):not([data-theme="auto"]) .evidence-chip{background:var(--card2)}
+:root:not([data-theme="dark"]):not([data-theme="auto"]) .evidence-chip.present{border-color:rgba(21,128,61,.3);background:rgba(21,128,61,.07)}
+@media(prefers-color-scheme:light){
+  :root[data-theme="auto"] .detail td{background:var(--card2)}
+  :root[data-theme="auto"] .detail-card{background:var(--card)}
+  :root[data-theme="auto"] .evidence-chip{background:var(--card2)}
+  :root[data-theme="auto"] .evidence-chip.present{border-color:rgba(21,128,61,.3);background:rgba(21,128,61,.07)}
+}
+
 </style>
 </head>
 <body>
