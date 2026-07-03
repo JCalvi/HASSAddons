@@ -198,29 +198,6 @@ function sourceEvidence(source){
 function section(title, inner){return inner?`<div class="detail-section"><h3>${esc(title)}</h3>${inner}</div>`:"";}
 function row(label,value){return value?`<div>${esc(label)}</div><div>${value}</div>`:"";}
 
-function preferredApControl(x){
-  const key=x.mac||x.ip||x.host||"";
-  if(!key) return esc(x.preferred_ap||"Auto");
-  const current=x.preferred_ap||"Auto";
-  const aps=[...new Set(rows.map(r=>r.ap).filter(Boolean))].sort();
-  const opts=["Auto",...aps].map(ap=>`<option value="${esc(ap)}" ${ap===current?"selected":""}>${esc(ap)}</option>`).join("");
-  const disabled=aps.length?"":"disabled";
-  return `<div class="pref-ap-control"><select class="preferred-ap-select" data-key="${esc(key)}" ${disabled}>${opts}</select><button class="detail-action move-now" data-key="${esc(key)}" type="button">Move now</button></div>`;
-}
-
-async function savePreferredAp(key,value){
-  if(!key) return;
-  await postJson("api/preferences",{preferences:{[key]:value||"Auto"}});
-  rows.forEach(r=>{if((r.mac||r.ip||r.host)===key) r.preferred_ap=value||"Auto";});
-}
-
-async function moveNow(key){
-  const row=rows.find(r=>(r.mac||r.ip||r.host)===key);
-  if(!row){alert("Device not found.");return;}
-  const d=await postJson("api/steer",{device:row});
-  alert((d.results&&JSON.stringify(d.results,null,2))||"Move command sent.");
-}
-
 function detailHtml(x){
   const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac), fqdn=esc(x.fqdn);
   const tsIp=esc(x.tailscale_ip||((x.connection==="Tailscale")?x.ip:""));
@@ -243,9 +220,12 @@ function detailHtml(x){
   const tailscale=section("Tailscale", (tsHost||tsFqdn)?`<div class="detail-grid">${row("Host",tsHost)}${row("FQDN",tsFqdn)}</div>`:"");
   let wifiInner="";
   if(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"){
-    wifiInner=`<div class="detail-grid">${row("Preferred AP",preferredApControl(x))}${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}</div>`;
+    const apOptions=["Auto", ...new Set(rows.map(r=>r.ap).filter(Boolean).sort())];
+    const currentPref=x.preferred_ap||"Auto";
+    const prefSelect=`<select class="preferred-ap-select" data-key="${esc(deviceKey(x))}">${apOptions.map(ap=>`<option value="${esc(ap)}" ${ap===currentPref?"selected":""}>${esc(ap)}</option>`).join("")}</select>`;
+    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>Move now</button><div class="hint">Move now disconnects this device from the current AP so it can reconnect to the preferred AP.</div></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}${row("Interface",esc(x.wifi_interface||""))}</div>`;
   } else {
-    wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",preferredApControl(x))}</div>`:""}`;
+    wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:""}`;
   }
   const wifi=section("Wi-Fi", wifiInner);
   const discovery=section("Discovery", `<div class="evidence-row">${sourceEvidence(x.source)}</div>`);
@@ -281,8 +261,9 @@ function render(){
   document.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`http://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`https://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".copy-value").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();copyText(b.dataset.copy,b.dataset.label||"text");}));
-  document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("change",e=>{e.preventDefault();e.stopPropagation();savePreferredAp(sel.dataset.key,sel.value).catch(err=>alert(err.message));}));
-  document.querySelectorAll(".move-now").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();moveNow(b.dataset.key).catch(err=>alert(err.message));}));
+  document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("click",e=>e.stopPropagation()));
+  document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("change",async e=>{e.stopPropagation();try{const key=sel.dataset.key;const val=sel.value;await postJson("api/preferences",{preferences:{[key]:val}}); rows.forEach(r=>{if(deviceKey(r)===key)r.preferred_ap=val;}); $("updated").textContent=`Preferred AP saved: ${val}`; render();}catch(err){$("updated").textContent="Preferred AP save failed: "+err.message;}}));
+  document.querySelectorAll(".move-now").forEach(btn=>btn.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();try{const device=JSON.parse(btn.dataset.device||"{}");btn.disabled=true;btn.textContent="Moving...";const d=await postJson("api/steer",{device});$("updated").textContent=(d.results||[]).map(r=>r.message||r.output||r.error||"Steer requested").join("; ")||"Steer requested";setTimeout(load,2500);}catch(err){$("updated").textContent="Move failed: "+err.message;btn.disabled=false;btn.textContent="Move now";}}));
   const online=rows.filter(x=>x.status==="online").length, idle=rows.filter(x=>x.status==="idle").length, offline=rows.filter(x=>x.status==="offline").length;
   const wifi=rows.filter(x=>x.status==="online"&&x.connection&&x.connection!=="Ethernet"&&x.connection!=="Tailscale").length;
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;

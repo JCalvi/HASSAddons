@@ -48,5 +48,11 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
 .detail-actions.grouped{gap:22px;align-items:flex-start}
 .detail-actions.grouped>div>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .evidence-chip.present{color:var(--text);border-color:rgba(88,210,107,.35)}
-.pref-ap-control{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.pref-ap-control select{min-width:220px}
+
+/* 2026.7.2 device detail layout */
+.detail-sections{display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,1fr) minmax(340px,1.2fr);gap:18px 28px;max-width:none;border-top:1px solid var(--border);padding-top:14px;margin-top:12px}
+.detail-section{min-width:0}.detail-section h3{font-size:15px;margin:0 0 10px;color:var(--text)}
+.detail-grid{display:grid;grid-template-columns:minmax(120px,180px) minmax(0,1fr);gap:7px 14px;max-width:none}
+.wifi-control{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px}.wifi-control label{font-weight:600}.wifi-control select{width:100%;min-width:0}.wifi-control .move-now{width:100%;min-height:40px}.wifi-control .hint{color:var(--muted);font-size:12px;line-height:1.35}.wifi-readonly{border-top:1px solid var(--border);padding-top:10px}
+.detail-actions.grouped{gap:28px;align-items:flex-start;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:14px}
+@media(max-width:1100px){.detail-sections{grid-template-columns:1fr}.detail-grid{grid-template-columns:130px 1fr}}

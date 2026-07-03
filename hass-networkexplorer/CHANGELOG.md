@@ -1,9 +1,9 @@
-## 2026.7.1
+# 2026.7.2
 
-- Removed the MAC column from the main device table for a cleaner list.
-- MAC addresses remain searchable and visible/copyable from the device details pane.
-- Restored the Preferred AP selector in the Wi-Fi details section.
-- Restored the Move Now button for manually steering a Wi-Fi device to its Preferred AP.
+- Improved device details layout so Wi-Fi controls fit cleanly within the details pane.
+- Restored Preferred AP selector and Move now button for live Wi-Fi devices.
+- Improved steering to deauthenticate clients from their current AP/interface using hostapd_cli, matching LuCI behaviour more closely, with disassociate and iw station delete fallbacks.
+- Kept MAC addresses out of the main table while preserving MAC search and detail/copy support.
 
 ## 2026.6.24
 

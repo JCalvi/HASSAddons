@@ -75,16 +75,17 @@ def disassociate(row, reason='manual'):
     remote = """MAC='%s'
 IFACE='%s'
 if command -v hostapd_cli >/dev/null 2>&1; then
-  hostapd_cli -i \"$IFACE\" disassociate \"$MAC\" >/dev/null 2>&1 && echo OK_HOSTAPD && exit 0
+  hostapd_cli -i \"$IFACE\" deauthenticate \"$MAC\" >/tmp/ne_steer.out 2>&1 && echo OK_HOSTAPD_DEAUTH && cat /tmp/ne_steer.out && exit 0
+  hostapd_cli -i \"$IFACE\" disassociate \"$MAC\" >/tmp/ne_steer.out 2>&1 && echo OK_HOSTAPD_DISASSOC && cat /tmp/ne_steer.out && exit 0
 fi
 if command -v iw >/dev/null 2>&1; then
-  iw dev \"$IFACE\" station del \"$MAC\" >/dev/null 2>&1 && echo OK_IW && exit 0
+  iw dev \"$IFACE\" station del \"$MAC\" >/tmp/ne_steer.out 2>&1 && echo OK_IW && cat /tmp/ne_steer.out && exit 0
 fi
 echo FAILED
 exit 1
 """ % (mac, iface)
     out = ssh_cmd(ap_ip, user, key, remote, timeout=10)
-    ok = 'OK_HOSTAPD' in out or 'OK_IW' in out
+    ok = 'OK_HOSTAPD_DEAUTH' in out or 'OK_HOSTAPD_DISASSOC' in out or 'OK_IW' in out
     return {'ok': ok, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'error': '' if ok else (out or 'Disassociate failed')}
 
 
