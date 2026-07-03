@@ -2,6 +2,7 @@ let rows=[], sortKey="ip", asc=true, expandedKey="";
 let setupDevices=[];
 let autoRefreshTimer=null;
 let steerState={};
+const MAX_STEER_MESSAGE_LEN=300;
 const $ = id => document.getElementById(id);
 
 function addonBase(){
@@ -271,7 +272,8 @@ function renderDetailPanel(){
       const d=await postJson("api/steer",{device});
       const results=d.results||[];
       const fail=results.find(r=>!r.ok);
-      const msg=(results.map(r=>r.message||r.output||r.error).filter(Boolean).join("; ")||"Steer requested").slice(0,300);
+      const fullMsg=results.map(r=>r.message||r.output||r.error).filter(Boolean).join("; ")||"Steer requested";
+      const msg=fullMsg.length>MAX_STEER_MESSAGE_LEN?`${fullMsg.slice(0,MAX_STEER_MESSAGE_LEN-1)}…`:fullMsg;
       steerState[key]={working:false,message:msg,ok:!fail};
       $("updated").textContent=msg;
       if(!fail) setTimeout(load,5000);

@@ -9,6 +9,7 @@ from .openwrt import get_ap_bssid
 from .sshutil import ssh_cmd
 
 STATE_FILE = Path('/config/networkexplorer/steering_state.json')
+TEMP_DENY_SECONDS = 12
 
 
 def _read_state():
@@ -136,7 +137,15 @@ fi
 
 # 3. Temporarily deny re-association to the current AP (background job)
 if [ -n "$RESULT" ]; then
-  (run_hc deny_acl ADD_MAC "$MAC" >/dev/null 2>&1; sleep 12; run_hc deny_acl DEL_MAC "$MAC" >/dev/null 2>&1) &
+  MAC_TAG="$(echo "$MAC" | tr -d ':')"
+  DENY_TAG="/tmp/ne_deny_${MAC_TAG}.stamp"
+  STAMP="$(date +%%s)"
+  echo "$STAMP" > "$DENY_TAG"
+  (
+    run_hc deny_acl ADD_MAC "$MAC" >/dev/null 2>&1
+    sleep %s
+    [ "$(cat "$DENY_TAG" 2>/dev/null)" = "$STAMP" ] && run_hc deny_acl DEL_MAC "$MAC" >/dev/null 2>&1
+  ) &
   echo "$RESULT"
   cat /tmp/ne_steer.out
   exit 0
@@ -145,7 +154,7 @@ fi
 echo FAILED
 cat /tmp/ne_steer.out
 exit 1
-""" % (_sh(mac), _sh(iface), _sh(preferred_bssid))
+""" % (_sh(mac), _sh(iface), _sh(preferred_bssid), TEMP_DENY_SECONDS)
     out = ssh_cmd(ap_ip, user, key, remote, timeout=10)
     ok = 'OK_HOSTAPD_DEAUTH' in out or 'OK_HOSTAPD_DISASSOC' in out or 'OK_IW' in out
     method = ''

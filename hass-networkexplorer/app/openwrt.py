@@ -45,13 +45,17 @@ def _creds_for_ip(cfg: dict, ip: str):
     return cfg.get("ssh_user", "root"), cfg.get("ssh_key_path", "")
 
 
+def _sh(s: str) -> str:
+    return str(s or "").replace("'", "'\"'\"'")
+
+
 def get_ap_bssid(ap_ip: str, iface: str, cfg: dict) -> str:
     ap_ip = str(ap_ip or "").strip()
     iface = str(iface or "").strip()
     if not ap_ip or not iface:
         return ""
     user, key_path = _creds_for_ip(cfg, ap_ip)
-    cmd = f"iw dev '{iface}' info 2>/dev/null | awk '/addr/ {{print $2; exit}}'"
+    cmd = "iw dev '%s' info 2>/dev/null | awk '/addr/ {print $2; exit}'" % _sh(iface)
     out = ssh_cmd(ap_ip, user, key_path, cmd, timeout=8)
     return (out or "").strip().splitlines()[0] if (out or "").strip() else ""
 

@@ -206,7 +206,7 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
           <div id="detailTitle" class="detail-title"></div>
           <span id="detailStatusChip" class="status-pill offline">Offline</span>
         </div>
-        <button id="detailCloseBtn" class="secondary detail-close" type="button" aria-label="Close details">✕</button>
+        <button id="detailCloseBtn" class="secondary detail-close" type="button" aria-label="Close device details panel">✕</button>
       </div>
       <div id="detailPanelBody" class="detail-body"></div>
     </aside>
@@ -217,6 +217,7 @@ let rows=[], sortKey="ip", asc=true, expandedKey="";
 let setupDevices=[];
 let autoRefreshTimer=null;
 let steerState={};
+const MAX_STEER_MESSAGE_LEN=300;
 const $ = id => document.getElementById(id);
 
 function addonBase(){
@@ -486,7 +487,8 @@ function renderDetailPanel(){
       const d=await postJson("api/steer",{device});
       const results=d.results||[];
       const fail=results.find(r=>!r.ok);
-      const msg=(results.map(r=>r.message||r.output||r.error).filter(Boolean).join("; ")||"Steer requested").slice(0,300);
+      const fullMsg=results.map(r=>r.message||r.output||r.error).filter(Boolean).join("; ")||"Steer requested";
+      const msg=fullMsg.length>MAX_STEER_MESSAGE_LEN?`${fullMsg.slice(0,MAX_STEER_MESSAGE_LEN-1)}…`:fullMsg;
       steerState[key]={working:false,message:msg,ok:!fail};
       $("updated").textContent=msg;
       if(!fail) setTimeout(load,5000);
