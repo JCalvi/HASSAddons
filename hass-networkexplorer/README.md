@@ -146,3 +146,25 @@ network_explorer/status/steer
 ```
 
 MQTT steering works even when automatic steering is disabled.
+
+
+## Custom web UI override
+
+Network Explorer can serve custom web files from:
+
+```text
+/config/network_explorer/web/
+```
+
+When a file exists there, it overrides the packaged file in `/app/web/`.
+If the file is missing, Network Explorer falls back to the packaged UI.
+
+Common files to override:
+
+```text
+/config/network_explorer/web/index.html
+/config/network_explorer/web/app.js
+/config/network_explorer/web/style.css
+```
+
+This is intended for live UI development and user skinning. Copy files with WinSCP, refresh the browser with Ctrl+F5, and avoid rebuilding the add-on for each CSS/JS change.

@@ -13,6 +13,7 @@ from .mqtt import start_mqtt_loop, get_mqtt_status
 
 PORT = 8090
 BASE = Path("/app/web")
+CUSTOM_WEB = Path("/config/network_explorer/web")
 
 CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -21,6 +22,27 @@ CONTENT_TYPES = {
     ".png": "image/png",
     ".svg": "image/svg+xml",
 }
+
+
+def resolve_web_file(request_path: str) -> Path | None:
+    """Return custom web file if present, otherwise packaged file.
+
+    This allows live UI development / skinning by copying files to
+    /config/network_explorer/web without rebuilding the add-on.
+    Path traversal is blocked for both custom and packaged roots.
+    """
+    rel = request_path.lstrip("/") or "index.html"
+    if rel.endswith("/"):
+        rel += "index.html"
+    for root in (CUSTOM_WEB, BASE):
+        try:
+            candidate = (root / rel).resolve()
+            root_resolved = root.resolve()
+            if str(candidate).startswith(str(root_resolved)) and candidate.exists() and candidate.is_file():
+                return candidate
+        except Exception:
+            continue
+    return None
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -128,8 +150,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path == "/" or path == "":
             path = "/index.html"
-        file_path = (BASE / path.lstrip("/")).resolve()
-        if not str(file_path).startswith(str(BASE.resolve())) or not file_path.exists():
+        file_path = resolve_web_file(path)
+        if not file_path:
             self.send_bytes(404, b"Not found", "text/plain")
             return
         self.send_bytes(200, file_path.read_bytes(), CONTENT_TYPES.get(file_path.suffix, "application/octet-stream"))

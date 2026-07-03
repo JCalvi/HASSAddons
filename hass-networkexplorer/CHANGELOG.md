@@ -1,5 +1,12 @@
 ## Changelog
 
+# 2026.7.9
+
+- Added developer/custom web override support.
+- Static web files are now loaded from `/config/network_explorer/web/` first when present, then fall back to the packaged `/app/web/` files.
+- Supports overriding `index.html`, `app.js`, `style.css` and other static assets such as images or icons without rebuilding the add-on.
+- Keeps packaged UI as the safe default for normal users.
+
 
 # 2026.7.8
 
