@@ -1,6 +1,12 @@
 ## Changelog
 
 
+# 2026.7.8
+
+- Hotfix for 2026.7.6 where the embedded inline JavaScript was corrupted and prevented refresh/config loading.
+- Switched the web UI to load `style.css` and `app.js` as external static files to avoid inline escaping issues.
+- Keeps the 2026.7.6 mockup-based details layout work and the verified ubus-only steering method.
+
 # 2026.7.7
 
 - Revert to 2026.7.5 codebase. 2026.7.6 completely broken.
