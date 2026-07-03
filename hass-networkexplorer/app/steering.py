@@ -68,10 +68,9 @@ def disassociate(row, reason='manual'):
     cfg = load_config()
     ap_ip = row.get('wifi_ap_ip') or ''
     iface = row.get('wifi_interface') or ''
-    mac = (row.get('mac') or '').lower()
+    mac = row.get('mac') or ''
     if not ap_ip or not iface or not mac:
         return {'ok': False, 'error': 'Current Wi-Fi AP/interface is not known for this device.', 'row': row}
-
     user, key = managed_creds_for_ip(cfg, ap_ip)
     remote = """MAC='%s'
 IFACE='%s'
@@ -94,7 +93,6 @@ exit "$RC"
     ok = 'OK_UBUS_HOSTAPD_DEL_CLIENT' in out
     return {
         'ok': ok,
-        'message': f"Steer requested via ubus hostapd.{iface} del_client" if ok else '',
         'output': out,
         'method': 'UBUS_HOSTAPD_DEL_CLIENT',
         'ap_ip': ap_ip,

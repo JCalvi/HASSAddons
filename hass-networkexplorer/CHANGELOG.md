@@ -1,5 +1,10 @@
 ## Changelog
 
+
+# 2026.7.7
+
+- Revert to 2026.7.5 codebase. 2026.7.6 completely broken.
+
 # 2026.7.6
 
 - Rebuilt the expanded device details panel using the approved mockup HTML/CSS direction.

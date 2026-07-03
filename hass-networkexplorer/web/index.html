@@ -218,8 +218,7 @@ function sortSetupDevices(){setupDevices.sort((a,b)=>ipCmp(a.ip,b.ip)||String(a.
 function setSetupMessage(msg, kind="info"){$("setupStatus").className=`setup-status ${kind}`;$('setupStatus').textContent=msg||"";}
 function setSetupOutput(obj){$("setupOutput").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
 function showKeyInfo(key){if(!key){$("keyInfo").textContent="";return;}$("keyInfo").innerHTML=`<div><b>SSH key:</b> ${esc(key.exists?"created":"missing")} - ${esc(key.private_key||"")}</div><div><b>Public key:</b></div><code>${esc(key.public_key_text||"")}</code>`;}
-function shortError(s){s=String(s||"").trim();if(!s)return"Failed";if(/Permission denied/i.test(s))return"Authentication failed";if(/Connection refused/i.test(s))return"Connection refused";if(/timed out|timeout/i.test(s))return"Connection timeout";if(/No route to host/i.test(s))return"No route to host";if(/Name or service not known|Could not resolve/i.test(s))return"Could not resolve host";return s.split("
-").map(x=>x.trim()).filter(Boolean).pop().slice(0,80)||"Failed";}
+function shortError(s){s=String(s||"").trim();if(!s)return"Failed";if(/Permission denied/i.test(s))return"Authentication failed";if(/Connection refused/i.test(s))return"Connection refused";if(/timed out|timeout/i.test(s))return"Connection timeout";if(/No route to host/i.test(s))return"No route to host";if(/Name or service not known|Could not resolve/i.test(s))return"Could not resolve host";return s.split("\n").map(x=>x.trim()).filter(Boolean).pop().slice(0,80)||"Failed";}
 function deviceTypeClass(t){return (t||"Host").toLowerCase().replace(/[^a-z0-9]+/g,"-");}
 function copyText(text,label){if(!text)return; navigator.clipboard?.writeText(text).then(()=>{$("updated").textContent=`Copied ${label||"text"}: ${text}`;}).catch(()=>{});}
 function deviceKey(x){return x.mac || x.ip || x.host || "";}
@@ -308,13 +307,10 @@ function mergeStatuses(results){
     if(r.detected_os) meta.push(`Detected OS: ${r.detected_os}`);
     if(r.profile) meta.push(`Profile: ${r.profile}`);
     if(r.install_path) meta.push(`Key path: ${r.install_path}`);
-    if(r.os_detail) meta.push(`OS detail:
-${r.os_detail}`);
+    if(r.os_detail) meta.push(`OS detail:\n${r.os_detail}`);
     const raw=r.error||r.host||"";
     d.message=d.ssh==="ok"?(r.host||r.detected_os||"Connected"):shortError(r.error||"Failed");
-    d.detail=[raw,...meta].filter(Boolean).join("
-
-");
+    d.detail=[raw,...meta].filter(Boolean).join("\n\n");
     if(r.host && !d.name)d.name=r.host;
     if(r.type&&r.type!=="Unknown")d.type=r.type;
     d.password="";
@@ -370,64 +366,46 @@ function evidenceLabels(source){
 function sourceEvidence(source){
   const labels=evidenceLabels(source);
   if(!labels.length) return "";
-  return labels.map(x=>`<span class="badge">● ${esc(x)}</span>`).join("" );
+  return labels.map(x=>`<span class="evidence-chip present">🟢 ${esc(x)}</span>`).join(" " );
 }
-function statusPill(x){return `<span class="pill ${esc(x.status)}">${esc(statusText(x))}</span>`;}
-function detailRow(label,value){return value?`<dt>${esc(label)}</dt><dd>${value}</dd>`:"";}
-function actionButton(cls,label,attrs="") { return `<button class="btn small ${cls}" ${attrs} type="button">${label}</button>`; }
-function preferredOptions(x){
-  const aps=[...new Set(rows.map(r=>r.ap).filter(Boolean))].sort();
-  const pref=x.preferred_ap||"Auto";
-  return ["Auto",...aps].map(ap=>`<option value="${esc(ap)}" ${ap===pref?"selected":""}>${esc(ap)}</option>`).join("");
-}
-async function savePreferredAp(key,value){
-  await postJson("api/preferences",{preferences:{[key]:value||"Auto"}});
-  rows.forEach(r=>{if(deviceKey(r)===key) r.preferred_ap=value||"Auto";});
-}
+function section(title, inner){return inner?`<div class="detail-section"><h3>${esc(title)}</h3>${inner}</div>`:"";}
+function row(label,value){return value?`<div>${esc(label)}</div><div>${value}</div>`:"";}
 
 function detailHtml(x){
   const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac), fqdn=esc(x.fqdn);
   const tsIp=esc(x.tailscale_ip||((x.connection==="Tailscale")?x.ip:""));
   const tsHost=esc(x.tailscale_host||((x.connection==="Tailscale")?x.host:""));
   const tsFqdn=esc(x.tailscale_fqdn||"");
-  const key=esc(deviceKey(x));
   const openButtons=[];
   const copyButtons=[];
   if(x.ip){
-    openButtons.push(actionButton('open-http','◎ HTTP',`data-ip="${ip}"`));
-    openButtons.push(actionButton('open-https','🔒 HTTPS',`data-ip="${ip}"`));
-    copyButtons.push(actionButton('copy-value','▣ IPv4',`data-label="IPv4" data-copy="${ip}"`));
+    openButtons.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">HTTP</button>`);
+    openButtons.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">HTTPS</button>`);
+    copyButtons.push(`<button class="detail-action copy-value" data-label="IPv4" data-copy="${ip}" type="button">IPv4</button>`);
   }
-  if(x.host) copyButtons.push(actionButton('copy-value','▭ Host',`data-label="Host" data-copy="${host}"`));
-  if(x.mac) copyButtons.push(actionButton('copy-value','▤ MAC',`data-label="MAC" data-copy="${mac}"`));
-  if(tsIp) copyButtons.push(actionButton('copy-value','◇ Tailscale IP',`data-label="Tailscale IP" data-copy="${tsIp}"`));
+  if(x.host) copyButtons.push(`<button class="detail-action copy-value" data-label="Host" data-copy="${host}" type="button">Host</button>`);
+  if(x.mac) copyButtons.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">MAC</button>`);
+  if(tsIp) copyButtons.push(`<button class="detail-action copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">Tailscale IP</button>`);
 
-  const isWifi = x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale";
-  const wifiContent = isWifi ? `
-      <label class="field-label">Preferred AP</label>
-      <select class="wide preferred-ap-select" data-key="${key}">${preferredOptions(x)}</select>
-      <button class="btn primary wide move-now" data-device='${esc(JSON.stringify(x))}' type="button">☈ Move now</button>
-      <div class="rule"></div>
-      <dl>
-        ${detailRow("Current AP",esc(x.ap))}
-        ${detailRow("Band",esc(x.band))}
-        ${detailRow("RSSI",esc(x.rssi?x.rssi+" dBm":""))}
-        ${detailRow("Interface",esc(x.wifi_interface||""))}
-      </dl>
-      <p class="hint">Move now disconnects this device from the current AP so it can reconnect to the preferred AP.</p>` : `<p class="muted">Not a live Wi-Fi device</p>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<dl>${detailRow("Preferred AP",esc(x.preferred_ap))}</dl>`:""}`;
-
-  const tailscaleLine = tsIp ? detailRow("Tailscale IP",`${tsIp} <button class="mini-copy copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">⧉</button>`) : "";
-  const actions=`<div class="actions-row"><div class="action-group"><div class="group-label">Open</div>${openButtons.join("")}</div><div class="divider"></div><div class="action-group"><div class="group-label">Copy</div>${copyButtons.join("")}</div></div>`;
-  const identity=`<section class="info-card identity"><h3><span>👤</span> Identity</h3><dl>${detailRow("Host",host)}${detailRow("MAC Address",mac)}${detailRow("FQDN",fqdn)}</dl></section>`;
-  const network=`<section class="info-card network"><h3><span>🖧</span> Network</h3><dl>${detailRow("IP Version",ip?"IPv4":"")}${detailRow("IP Address",ip)}${detailRow("Connection / SSID",esc(x.connection))}${detailRow("Status",statusPill(x))}${tailscaleLine}</dl></section>`;
-  const wifi=`<section class="info-card wifi"><h3><span>📶</span> Wi-Fi</h3>${wifiContent}</section>`;
-  const discovery=`<section class="info-card discovery"><h3><span>🔎</span> Discovery</h3><div class="badges">${sourceEvidence(x.source)}</div></section>`;
-  const history=`<section class="info-card history"><h3><span>◷</span> History</h3><dl>${detailRow("First Seen",esc(seenText(x.first_seen)))}${detailRow("Last Seen",esc(seenText(x.last_seen)))}${detailRow("Neighbour State",esc(x.neighbour_state))}${detailRow("Last Wi-Fi Event",esc(x.wifi_last_event))}${detailRow("Last Wi-Fi Seen",esc(x.wifi_last_seen))}</dl></section>`;
-  const tailscale=`${(tsHost||tsFqdn)&&!tsIp?`<section class="info-card tailscale"><h3><span>◇</span> Tailscale</h3><dl>${detailRow("Host",tsHost)}${detailRow("FQDN",tsFqdn)}</dl></section>`:""}`;
-
-  return `<tr class="detail"><td colspan="7"><article class="details-card"><div class="details-title"><div class="device-title"><span class="device-icon">▣</span> ${esc(x.host||x.ip||x.mac||"Unknown device")} ${statusPill(x)}</div><button class="close detail-close" type="button">×</button></div>${actions}<div class="details-grid">${identity}${network}${wifi}${discovery}${history}${tailscale}</div></article></td></tr>`;
+  const actions=`<div class="detail-actions grouped"><div><b>Open</b><div>${openButtons.join("")||""}</div></div><div><b>Copy</b><div>${copyButtons.join("")||""}</div></div></div>`;
+  const identity=section("Identity", `<div class="detail-grid">${row("Host",host)}${row("FQDN",fqdn)}${row("MAC",mac)}</div>`);
+  const network=section("Network", `<div class="detail-grid">${row("IPv4",ip)}${row("Tailscale IP",tsIp)}${row("Connection",esc(x.connection))}${row("Status",esc(statusText(x)))}</div>`);
+  const tailscale=section("Tailscale", (tsHost||tsFqdn)?`<div class="detail-grid">${row("Host",tsHost)}${row("FQDN",tsFqdn)}</div>`:"");
+  let wifiInner="";
+  if(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"){
+    const apOptions=["Auto", ...new Set(rows.map(r=>r.ap).filter(Boolean).sort())];
+    const currentPref=x.preferred_ap||"Auto";
+    const prefSelect=`<select class="preferred-ap-select" data-key="${esc(deviceKey(x))}">${apOptions.map(ap=>`<option value="${esc(ap)}" ${ap===currentPref?"selected":""}>${esc(ap)}</option>`).join("")}</select>`;
+    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>Move now</button><div class="hint">Move now disconnects this device from the current AP so it can reconnect to the preferred AP.</div></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}${row("Interface",esc(x.wifi_interface||""))}</div>`;
+  } else {
+    wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:""}`;
+  }
+  const wifi=section("Wi-Fi", wifiInner);
+  const discovery=section("Discovery", `<div class="evidence-row">${sourceEvidence(x.source)}</div>`);
+  const historyRows=`${row("First Seen",esc(seenText(x.first_seen)))}${row("Last Seen",esc(seenText(x.last_seen)))}${row("Neighbour State",esc(x.neighbour_state))}${row("Last Wi-Fi Event",esc(x.wifi_last_event))}${row("Last Wi-Fi Seen",esc(x.wifi_last_seen))}`;
+  const history=section("History", historyRows?`<div class="detail-grid">${historyRows}</div>`:"");
+  return `<tr class="detail"><td colspan="7"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b>${actions}<div class="detail-sections">${identity}${network}${tailscale}${wifi}${discovery}${history}</div></td></tr>`;
 }
-
 
 function clearFilters(){
   $("search").value="";
@@ -456,10 +434,9 @@ function render(){
   document.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`http://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`https://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".copy-value").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();copyText(b.dataset.copy,b.dataset.label||"text");}));
-  document.querySelectorAll(".detail-close").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();expandedKey="";persistView();render();}));
   document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("click",e=>e.stopPropagation()));
-  document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("change",async e=>{e.stopPropagation();try{await savePreferredAp(sel.dataset.key,sel.value);$("updated").textContent=`Preferred AP saved: ${sel.value}`;}catch(err){$("updated").textContent="Preferred AP save failed: "+err.message;}}));
-  document.querySelectorAll(".move-now").forEach(btn=>btn.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();try{const device=JSON.parse(btn.dataset.device||"{}");btn.disabled=true;btn.textContent="Moving...";const d=await postJson("api/steer",{device});$("updated").textContent=(d.results||[]).map(r=>r.message||r.error||r.output||"Steer requested").join("; ")||"Steer requested";setTimeout(load,2500);}catch(err){$("updated").textContent="Move failed: "+err.message;btn.disabled=false;btn.textContent="☈ Move now";}}));
+  document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("change",async e=>{e.stopPropagation();try{const key=sel.dataset.key;const val=sel.value;await postJson("api/preferences",{preferences:{[key]:val}}); rows.forEach(r=>{if(deviceKey(r)===key)r.preferred_ap=val;}); $("updated").textContent=`Preferred AP saved: ${val}`; render();}catch(err){$("updated").textContent="Preferred AP save failed: "+err.message;}}));
+  document.querySelectorAll(".move-now").forEach(btn=>btn.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();try{const device=JSON.parse(btn.dataset.device||"{}");btn.disabled=true;btn.textContent="Moving...";const d=await postJson("api/steer",{device});$("updated").textContent=(d.results||[]).map(r=>r.message||r.output||r.error||"Steer requested").join("; ")||"Steer requested";setTimeout(load,2500);}catch(err){$("updated").textContent="Move failed: "+err.message;btn.disabled=false;btn.textContent="Move now";}}));
   const online=rows.filter(x=>x.status==="online").length, idle=rows.filter(x=>x.status==="idle").length, offline=rows.filter(x=>x.status==="offline").length;
   const wifi=rows.filter(x=>x.status==="online"&&x.connection&&x.connection!=="Ethernet"&&x.connection!=="Tailscale").length;
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;
