@@ -1,3 +1,8 @@
+# 2026.6.26
+
+- Emergency hotfix for 2026.6.25 frontend regression where refresh failed with `preferences is not defined`.
+- Restored Preferred AP preference state loading before refresh/render.
+
 ## 2026.6.25
 
 - Removed MAC address from the main device table for readability.

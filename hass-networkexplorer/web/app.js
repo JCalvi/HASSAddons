@@ -1,5 +1,7 @@
 let rows=[], sortKey="ip", asc=true, expandedKey="";
 let setupDevices=[];
+let preferences={};
+let steeringConfig={};
 let autoRefreshTimer=null;
 const $ = id => document.getElementById(id);
 
@@ -147,6 +149,8 @@ async function loadConfig(){
   try{
     const r=await fetch(apiPath("api/config?_="+Date.now()),{cache:"no-store"}); const d=await r.json(); if(!d.ok)throw new Error(d.error||"Config failed");
     const c=d.config||{};
+    preferences=c.preferences||{};
+    steeringConfig=c.steering||{};
     setupDevices=(c.devices&&c.devices.length?c.devices:[]).map(x=>({...defaultDevice(x.type),...x,ssh_key_path:x.ssh_key_path||"/config/ssh/id_ed25519",password:"",ssh:"unknown",message:"",detail:""}));
     if(!setupDevices.length){
       (c.piholes||[]).forEach(ip=>setupDevices.push({...defaultDevice("Pi-hole"),ip}));
