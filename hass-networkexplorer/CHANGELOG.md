@@ -1,3 +1,9 @@
+## 2026.6.25
+
+- Removed MAC address from the main device table for readability.
+- MAC address remains searchable and is shown/copyable in device details.
+- Restored Preferred AP selector and Move Now button for live Wi-Fi devices.
+
 ## 2026.6.24
 
 - Fixed setup/config loading regression from 2026.6.23.

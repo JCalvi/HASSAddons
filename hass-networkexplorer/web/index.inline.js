@@ -171,6 +171,23 @@ function fillFilters(){
 }
 function statusText(x){return x.status==="online"?"Online":x.status==="idle"?"Idle":"Offline";}
 function seenText(s){if(!s)return"";try{return new Date(s).toLocaleString();}catch(e){return s;}}
+function rowPrefKey(x){return x.mac||x.ip||x.host||"";}
+function preferredApFor(x){const k=rowPrefKey(x);return (preferences[k]&&preferences[k].preferred_ap)||x.preferred_ap||"Auto";}
+function availableAps(){return [...new Set(rows.map(r=>r.ap).filter(Boolean))].sort();}
+async function savePreferenceFor(key,value){
+  preferences[key]=value&&value!=="Auto"?{preferred_ap:value}:undefined;
+  if(!preferences[key])delete preferences[key];
+  const d=await postJson("api/preferences",{preferences:{[key]:value}});
+  if(d.config){preferences=d.config.preferences||preferences;steeringConfig=d.config.steering||steeringConfig;}
+}
+async function moveNow(x){
+  const pref=preferredApFor(x);
+  const payload={...x,preferred_ap:pref};
+  const d=await postJson("api/steer",{device:payload});
+  const r=(d.results||[])[0]||{};
+  $("updated").textContent=r.ok?(r.skipped?(r.message||"Already on preferred AP"):`Move requested for ${x.host||x.ip||x.mac}`):`Move failed: ${r.error||"unknown error"}`;
+  setTimeout(load,2000);
+}
 function evidenceLabels(source){
   const raw=String(source||"").split(" + " ).filter(Boolean);
   const labels=[];
@@ -219,16 +236,20 @@ function detailHtml(x){
   const network=section("Network", `<div class="detail-grid">${row("IPv4",ip)}${row("Tailscale IP",tsIp)}${row("Connection",esc(x.connection))}${row("Status",esc(statusText(x)))}</div>`);
   const tailscale=section("Tailscale", (tsHost||tsFqdn)?`<div class="detail-grid">${row("Host",tsHost)}${row("FQDN",tsFqdn)}</div>`:"");
   let wifiInner="";
-  if(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"){
-    wifiInner=`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap||"Auto"))}${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}</div>`;
+  const pref=preferredApFor(x);
+  const isLiveWifi=!!(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale");
+  if(isLiveWifi){
+    const k=esc(rowPrefKey(x));
+    const prefOptions=["Auto",...availableAps()].map(ap=>`<option value="${esc(ap)}" ${ap===pref?"selected":""}>${esc(ap)}</option>`).join("");
+    wifiInner=`<div class="preferred-box"><b>Preferred AP</b><select class="preferred-ap-select" data-key="${k}">${prefOptions}</select><button class="save-preferred" data-key="${k}" type="button">Save Preferred AP</button><button class="move-now" data-key="${k}" type="button">Move now to preferred AP</button></div><div class="detail-grid">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}</div>`;
   } else {
-    wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:""}`;
+    wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${pref&&pref!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(pref))}</div>`:""}`;
   }
   const wifi=section("Wi-Fi", wifiInner);
   const discovery=section("Discovery", `<div class="evidence-row">${sourceEvidence(x.source)}</div>`);
   const historyRows=`${row("First Seen",esc(seenText(x.first_seen)))}${row("Last Seen",esc(seenText(x.last_seen)))}${row("Neighbour State",esc(x.neighbour_state))}${row("Last Wi-Fi Event",esc(x.wifi_last_event))}${row("Last Wi-Fi Seen",esc(x.wifi_last_seen))}`;
   const history=section("History", historyRows?`<div class="detail-grid">${historyRows}</div>`:"");
-  return `<tr class="detail"><td colspan="8"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b>${actions}<div class="detail-sections">${identity}${network}${tailscale}${wifi}${discovery}${history}</div></td></tr>`;
+  return `<tr class="detail"><td colspan="7"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b>${actions}<div class="detail-sections">${identity}${network}${tailscale}${wifi}${discovery}${history}</div></td></tr>`;
 }
 
 function clearFilters(){
@@ -253,11 +274,13 @@ function render(){
     if(ap&&x.ap!==ap)return false;
     return true;
   }).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
-  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td>${esc(x.mac)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td></tr>${open?detailHtml(x):""}`;}).join("");
+  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td></tr>${open?detailHtml(x):""}`;}).join("");
   document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
   document.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`http://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`https://${b.dataset.ip}`,"_blank");}));
   document.querySelectorAll(".copy-value").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();copyText(b.dataset.copy,b.dataset.label||"text");}));
+  document.querySelectorAll(".save-preferred").forEach(b=>b.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();const sel=b.parentElement.querySelector(".preferred-ap-select");try{await savePreferenceFor(b.dataset.key,sel.value);$("updated").textContent=`Preferred AP saved: ${sel.value}`;}catch(err){$("updated").textContent="Save preferred AP failed: "+err.message;}}));
+  document.querySelectorAll(".move-now").forEach(b=>b.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();const x=rows.find(r=>rowPrefKey(r)===b.dataset.key);if(x)moveNow(x).catch(err=>$("updated").textContent="Move failed: "+err.message);}));
   const online=rows.filter(x=>x.status==="online").length, idle=rows.filter(x=>x.status==="idle").length, offline=rows.filter(x=>x.status==="offline").length;
   const wifi=rows.filter(x=>x.status==="online"&&x.connection&&x.connection!=="Ethernet"&&x.connection!=="Tailscale").length;
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;
