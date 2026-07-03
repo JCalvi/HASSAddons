@@ -1,3 +1,6 @@
+## Changelog
+
+
 # 2026.7.2
 
 - Improved device details layout so Wi-Fi controls fit cleanly within the details pane.
@@ -5,7 +8,21 @@
 - Improved steering to deauthenticate clients from their current AP/interface using hostapd_cli, matching LuCI behaviour more closely, with disassociate and iw station delete fallbacks.
 - Kept MAC addresses out of the main table while preserving MAC search and detail/copy support.
 
-## 2026.6.24
+# 2026.7.1
+
+- Fix for 2026.6.25 frontend regression where refresh failed with `preferences is not defined`.
+- Restored Preferred AP preference state loading before refresh/render.
+
+# 2026.6.26
+
+- Try fix for 2026.6.25 frontend regression where refresh failed with `preferences is not defined`.
+
+# 2026.6.25
+
+- Try fix missing preferred AP and Move
+- Try remove MAC address main table.
+
+# 2026.6.24
 
 - Fixed setup/config loading regression from 2026.6.23.
 
@@ -18,16 +35,14 @@
 - Reworked device details into Identity, Network, Tailscale, Wi-Fi, Discovery and History sections.
 - Discovery evidence is now shown as badges in the expanded device details.
 
-# Changelog
-
-## 2026.6.22
+# 2026.6.22
 
 - Hide Tailscale peers from the default LAN view while keeping the Tailscale summary chip/filter available.
 - Fixed device details so FQDN, Tailscale IP, Tailscale hostname and Tailscale FQDN are shown when known.
 - Updated README/Info content to remove old fixed-network notes and stale release-specific notes.
 - Documented Home Assistant `rest_command` steering and MQTT single-device / steer-all commands.
 
-## 2026.6.21
+# 2026.6.21
 
 - Added MQTT `{"all": true}` steering execution for all live Wi-Fi devices with a Preferred AP set.
 - MQTT steer-all now publishes a summary to `<prefix>/status/steer` with requested, steered, already-correct, skipped and failed counts.
@@ -35,14 +50,14 @@
 - Added optional Tailscale status collection from managed devices with the `tailscale` CLI installed.
 - Device details include FQDN and Tailscale Host/FQDN/IP when known.
 
-## 2026.6.20
+# 2026.6.20
 
 - MQTT command listener now stays connected and logs connection/subscription state.
 - Default MQTT broker host is `core-mosquitto`.
 - Added MQTT status support for command testing.
 - Improved device detail layout for FQDN, Tailscale and source/evidence information.
 
-## 2026.6.19
+# 2026.6.19
 
 - Stability release after MQTT introduction.
 - Prevented MQTT reconnect failures from tight-looping and using high CPU.
@@ -50,7 +65,7 @@
 - Improved Home Assistant option display names and descriptions.
 - MQTT listener remains optional and stays idle unless enabled with a broker host.
 
-## 2026.6.18
+# 2026.6.18
 
 - Preserve global Home Assistant add-on settings across add-on remove/reinstall by backing them up under `/config/networkexplorer/settings.json`.
 - Default automatic Preferred AP steering settings are now enabled, 60 minute interval and 180 minute cooldown.
@@ -59,14 +74,14 @@
 - MQTT steering command topic: `<prefix>/command/steer` with payload such as `{"ip":"192.168.1.80"}` or `{"mac":"aa:bb:cc:dd:ee:ff"}`.
 - MQTT status replies publish to `<prefix>/status/steer`.
 
-## 2026.6.17
+# 2026.6.17
 
 - Detect Tailscale/CGNAT addresses in `100.64.0.0/10` and show them as `Tailscale` instead of Ethernet.
 - Display short hostnames in the main table while preserving FQDN in device details.
 - Prefer higher-confidence hostnames: managed/SSH names, then Static DHCP, DHCP leases, Static DNS, then Pi-hole network names.
 - Seed managed device names into inventory so configured infrastructure names win over lower-confidence sources.
 
-## 2026.6.16
+# 2026.6.16
 
 - Fixed global settings precedence: HA add-on Configuration values now override stale runtime data.
 - Runtime device storage now only persists managed devices and per-client Preferred AP preferences.
@@ -74,19 +89,19 @@
 - Added service-style steering API endpoints for Home Assistant automations: `/api/steer`, `/api/steer_device` and `/api/service/steer`.
 - Backfilled missing changelog entries for 2026.6.13 and 2026.6.14.
 
-## 2026.6.14
+# 2026.6.14
 
 - Improved Buildx-based Docker build workflow for multi-architecture images.
 - Continued Preferred AP steering testing and packaging updates.
 - Improved Home Assistant add-on metadata/version handling.
 
-## 2026.6.13
+# 2026.6.13
 
 - Added Preferred AP steering refinements.
 - Added OpenWrt client disassociation testing for manual move actions.
 - Improved device detail controls for Preferred AP management.
 
-## 2026.6.15
+# 2026.6.15
 
 - Moved SSH key path to a per-device setting in Network Explorer setup.
 - Removed the global SSH key path from the Home Assistant Configuration page.
@@ -96,27 +111,27 @@
 - Added OpenWrt neighbour collection for managed OpenWrt devices, including non-Wi-Fi gateways.
 
 
-## 2026.6.12
+# 2026.6.12
 
 - Added Preferred AP Steering.
 - Preferred AP is set per Wi-Fi device from the expanded details panel.
 - Added Move now to preferred AP action.
 - Added optional scheduled steering interval and cooldown.
 
-## 2026.6.11
+# 2026.6.11
 
 - Persist managed devices under `/config/networkexplorer/devices.json` so they survive add-on removal/reinstall.
 - Migrate existing runtime device config from the older `/data/networkexplorer_config.json` location during upgrades.
 - Add Home Assistant option descriptions for SSH key path, ping workers, ping timeout, TCP probe and TCP ports.
 
-## 2026.6.10
+# 2026.6.10
 
 - Removed legacy Pi-hole/access point/SSH user fields from the Home Assistant add-on configuration page.
 - Device management now lives solely in the Network Explorer UI.
 - Ignored stale legacy HA options so old Pi-hole/AP values cannot reappear after update.
 - Default ping worker count is now 50.
 
-## 2026.6.09
+# 2026.6.09
 - Moved refresh controls into the top header beside Theme and Settings.
 - Refresh is now a combined immediate-refresh and auto-refresh control.
 - Removed the separate auto-refresh row from the filter card.
@@ -125,7 +140,7 @@
 
 # Changelog
 
-## 2026.6.08
+# 2026.6.08
 - Settings button now toggles to Hide Settings when open.
 - Setup devices sort numerically by IP address.
 - Added configurable auto-refresh with Off as the default.
@@ -135,12 +150,12 @@
 - Added client-side first seen / last seen details.
 
 
-## 2026.6.07
+# 2026.6.07
 - OpenWrt-safe SSH test now uses UCI or `/proc/sys/kernel/hostname` instead of `hostname`.
 - Setup now uses a single Add Device button.
 - Device type is detected after SSH install/test: Pi-hole, OpenWrt Wi-Fi, OpenWrt, Linux.
 - OpenWrt Wi-Fi devices are used for Wi-Fi/AP polling; non-Wi-Fi OpenWrt devices are treated as normal network devices.
 
-## 2026.6.06
+# 2026.6.06
 - Detect remote OS during SSH key installation.
 - Install OpenWrt keys to `/etc/dropbear/authorized_keys`.
