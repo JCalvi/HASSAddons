@@ -362,8 +362,7 @@ function sortSetupDevices(){setupDevices.sort((a,b)=>ipCmp(a.ip,b.ip)||String(a.
 function setSetupMessage(msg, kind="info"){$("setupStatus").className=`setup-status ${kind}`;$('setupStatus').textContent=msg||"";}
 function setSetupOutput(obj){$("setupOutput").textContent=typeof obj==="string"?obj:JSON.stringify(obj,null,2);}
 function showKeyInfo(key){if(!key){$("keyInfo").textContent="";return;}$("keyInfo").innerHTML=`<div><b>SSH key:</b> ${esc(key.exists?"created":"missing")} - ${esc(key.private_key||"")}</div><div><b>Public key:</b></div><code>${esc(key.public_key_text||"")}</code>`;}
-function shortError(s){s=String(s||"").trim();if(!s)return"Failed";if(/Permission denied/i.test(s))return"Authentication failed";if(/Connection refused/i.test(s))return"Connection refused";if(/timed out|timeout/i.test(s))return"Connection timeout";if(/No route to host/i.test(s))return"No route to host";if(/Name or service not known|Could not resolve/i.test(s))return"Could not resolve host";return s.split("
-").map(x=>x.trim()).filter(Boolean).pop().slice(0,80)||"Failed";}
+function shortError(s){s=String(s||"").trim();if(!s)return"Failed";if(/Permission denied/i.test(s))return"Authentication failed";if(/Connection refused/i.test(s))return"Connection refused";if(/timed out|timeout/i.test(s))return"Connection timeout";if(/No route to host/i.test(s))return"No route to host";if(/Name or service not known|Could not resolve/i.test(s))return"Could not resolve host";return s.split("\n").map(x=>x.trim()).filter(Boolean).pop().slice(0,80)||"Failed";}
 function deviceTypeClass(t){return (t||"Host").toLowerCase().replace(/[^a-z0-9]+/g,"-");}
 function copyText(text,label){if(!text)return; navigator.clipboard?.writeText(text).then(()=>{$("updated").textContent=`Copied ${label||"text"}: ${text}`;}).catch(()=>{});}
 function deviceKey(x){return x.mac || x.ip || x.host || "";}
@@ -452,13 +451,10 @@ function mergeStatuses(results){
     if(r.detected_os) meta.push(`Detected OS: ${r.detected_os}`);
     if(r.profile) meta.push(`Profile: ${r.profile}`);
     if(r.install_path) meta.push(`Key path: ${r.install_path}`);
-    if(r.os_detail) meta.push(`OS detail:
-${r.os_detail}`);
+    if(r.os_detail) meta.push(`OS detail:\n${r.os_detail}`);
     const raw=r.error||r.host||"";
     d.message=d.ssh==="ok"?(r.host||r.detected_os||"Connected"):shortError(r.error||"Failed");
-    d.detail=[raw,...meta].filter(Boolean).join("
-
-");
+    d.detail=[raw,...meta].filter(Boolean).join("\n\n");
     if(r.host && !d.name)d.name=r.host;
     if(r.type&&r.type!=="Unknown")d.type=r.type;
     d.password="";
