@@ -1,5 +1,12 @@
 ## Changelog
 
+# 2026.7.6
+
+- Rebuilt the expanded device details panel using the approved mockup HTML/CSS direction.
+- Added card-based Identity, Network, Wi-Fi, Discovery and History sections with stronger visual separation and spacing.
+- Kept 2026.7.5 steering behaviour: current AP/interface only using `ubus call hostapd.<interface> del_client` with reason 5, deauth true and ban_time 3000.
+- Kept MAC addresses out of the main table while preserving MAC search and detail/copy support.
+
 
 # 2026.7.5
 
@@ -157,6 +164,8 @@
 - Removed the separate auto-refresh row from the filter card.
 - Summary chips are now clickable filters.
 - Wi-Fi summary chip filters all live Wi-Fi connections; Devices clears filters.
+
+# Changelog
 
 # 2026.6.08
 - Settings button now toggles to Hide Settings when open.
