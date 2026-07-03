@@ -5,9 +5,11 @@ from pathlib import Path
 
 from .config import load_config, save_runtime_config
 from .inventory import collect_inventory
+from .openwrt import get_ap_bssid
 from .sshutil import ssh_cmd
 
 STATE_FILE = Path('/config/networkexplorer/steering_state.json')
+TEMP_DENY_SECONDS = 12
 
 
 def _read_state():
@@ -64,6 +66,27 @@ def managed_creds_for_ip(cfg, ip):
     return cfg.get('ssh_user', 'root'), cfg.get('ssh_key_path', '')
 
 
+def _sh(s):
+    return str(s or '').replace("'", "'\"'\"'")
+
+
+def _preferred_ap_ip(preferred_ap: str, cfg: dict) -> str:
+    target = str(preferred_ap or '').strip().lower()
+    if not target or target == 'auto':
+        return ''
+    for d in cfg.get('devices') or []:
+        ip = str(d.get('ip') or '').strip()
+        if not ip:
+            continue
+        dtype = str(d.get('type') or '')
+        if not dtype.startswith('OpenWrt'):
+            continue
+        name = str(d.get('name') or '').strip().lower()
+        if name and name == target:
+            return ip
+    return ''
+
+
 def disassociate(row, reason='manual'):
     cfg = load_config()
     ap_ip = row.get('wifi_ap_ip') or ''
@@ -71,22 +94,77 @@ def disassociate(row, reason='manual'):
     mac = row.get('mac') or ''
     if not ap_ip or not iface or not mac:
         return {'ok': False, 'error': 'Current Wi-Fi AP/interface is not known for this device.', 'row': row}
+    preferred_ap = row.get('preferred_ap') or 'Auto'
+    preferred_ip = _preferred_ap_ip(preferred_ap, cfg)
+    preferred_bssid = get_ap_bssid(preferred_ip, iface, cfg) if preferred_ip else ''
     user, key = managed_creds_for_ip(cfg, ap_ip)
     remote = """MAC='%s'
 IFACE='%s'
-if command -v hostapd_cli >/dev/null 2>&1; then
-  hostapd_cli -i \"$IFACE\" deauthenticate \"$MAC\" >/tmp/ne_steer.out 2>&1 && echo OK_HOSTAPD_DEAUTH && cat /tmp/ne_steer.out && exit 0
-  hostapd_cli -i \"$IFACE\" disassociate \"$MAC\" >/tmp/ne_steer.out 2>&1 && echo OK_HOSTAPD_DISASSOC && cat /tmp/ne_steer.out && exit 0
+PREFERRED_BSSID='%s'
+
+# Resolve the hostapd_cli socket path
+HC_SOCK=""
+if [ -S "/var/run/hostapd/$IFACE" ]; then
+  HC_SOCK="/var/run/hostapd/$IFACE"
+elif [ -S "/var/run/hostapd-$IFACE" ]; then
+  HC_SOCK="/var/run/hostapd-$IFACE"
 fi
-if command -v iw >/dev/null 2>&1; then
-  iw dev \"$IFACE\" station del \"$MAC\" >/tmp/ne_steer.out 2>&1 && echo OK_IW && cat /tmp/ne_steer.out && exit 0
+
+run_hc() {
+  if [ -n "$HC_SOCK" ]; then
+    hostapd_cli -s "$HC_SOCK" "$@" 2>/dev/null
+  elif command -v hostapd_cli >/dev/null 2>&1; then
+    hostapd_cli -p /var/run/hostapd -i "$IFACE" "$@" 2>/dev/null || hostapd_cli -i "$IFACE" "$@" 2>/dev/null
+  fi
+}
+
+# 1. Try 802.11v BSS Transition (best-effort, suggest preferred AP)
+if [ -n "$PREFERRED_BSSID" ]; then
+  run_hc bss_tm_req "$MAC" pref=1 abridged=1 neighbor="$PREFERRED_BSSID,0,0,0,0" disassoc_imminent=1 disassoc_timer=5 >/dev/null 2>&1 || true
 fi
+
+# 2. Deauthenticate
+RESULT=""
+if run_hc deauthenticate "$MAC" > /tmp/ne_steer.out 2>&1; then
+  grep -q "^OK" /tmp/ne_steer.out && RESULT="OK_HOSTAPD_DEAUTH"
+fi
+if [ -z "$RESULT" ] && run_hc disassociate "$MAC" > /tmp/ne_steer.out 2>&1; then
+  grep -q "^OK" /tmp/ne_steer.out && RESULT="OK_HOSTAPD_DISASSOC"
+fi
+if [ -z "$RESULT" ] && command -v iw >/dev/null 2>&1; then
+  iw dev "$IFACE" station del "$MAC" > /tmp/ne_steer.out 2>&1 && RESULT="OK_IW"
+fi
+
+# 3. Temporarily deny re-association to the current AP (background job)
+if [ -n "$RESULT" ]; then
+  MAC_TAG="$(echo "$MAC" | tr -d ':')"
+  DENY_TAG="/tmp/ne_deny_${MAC_TAG}.stamp"
+  STAMP="$(date +%%s)"
+  echo "$STAMP" > "$DENY_TAG"
+  (
+    run_hc deny_acl ADD_MAC "$MAC" >/dev/null 2>&1
+    sleep %s
+    [ "$(cat "$DENY_TAG" 2>/dev/null)" = "$STAMP" ] && run_hc deny_acl DEL_MAC "$MAC" >/dev/null 2>&1
+  ) &
+  echo "$RESULT"
+  cat /tmp/ne_steer.out
+  exit 0
+fi
+
 echo FAILED
+cat /tmp/ne_steer.out
 exit 1
-""" % (mac, iface)
+""" % (_sh(mac), _sh(iface), _sh(preferred_bssid), TEMP_DENY_SECONDS)
     out = ssh_cmd(ap_ip, user, key, remote, timeout=10)
     ok = 'OK_HOSTAPD_DEAUTH' in out or 'OK_HOSTAPD_DISASSOC' in out or 'OK_IW' in out
-    return {'ok': ok, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'error': '' if ok else (out or 'Disassociate failed')}
+    method = ''
+    if 'OK_HOSTAPD_DEAUTH' in out:
+        method = 'hostapd_deauthenticate'
+    elif 'OK_HOSTAPD_DISASSOC' in out:
+        method = 'hostapd_disassociate'
+    elif 'OK_IW' in out:
+        method = 'iw_station_del'
+    return {'ok': ok, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'method': method, 'preferred_bssid': preferred_bssid, 'error': '' if ok else (out or 'Disassociate failed')}
 
 
 def run_steering_once(manual_row=None):

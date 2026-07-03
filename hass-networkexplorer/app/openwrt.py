@@ -12,11 +12,11 @@ for dev in $(iw dev | awk '/Interface/ {print $2}'); do
   [ "$channel" -lt 15 ] 2>/dev/null && band="2.4 GHz"
   [ "$channel" -ge 15 ] 2>/dev/null && band="5 GHz"
   [ -z "$ssid" ] && continue
-  iw dev "$dev" station dump 2>/dev/null | awk -v ssid="$ssid" -v ap="$AP" -v band="$band" -v dev="$dev" '
+  iw dev "$dev" station dump 2>/dev/null | awk -v ssid="$ssid" -v ap="$AP" -v band="$band" -v channel="$channel" -v dev="$dev" '
     /^Station / {mac=$2}
     /^[[:space:]]*signal:/ {sig=$2}
-    /^$/ { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band "|" dev; mac=""; sig="" }
-    END { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band "|" dev }
+    /^$/ { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band "|" channel "|" dev; mac=""; sig="" }
+    END { if(mac!="") print mac "|" ssid "|" ap "|" sig "|" band "|" channel "|" dev }
   '
 done
 '''
@@ -44,6 +44,22 @@ def _creds_for_ip(cfg: dict, ip: str):
             return d.get("user") or cfg.get("ssh_user", "root"), d.get("ssh_key_path") or cfg.get("ssh_key_path", "")
     return cfg.get("ssh_user", "root"), cfg.get("ssh_key_path", "")
 
+
+def _sh(s: str) -> str:
+    return str(s or "").replace("'", "'\"'\"'")
+
+
+def get_ap_bssid(ap_ip: str, iface: str, cfg: dict) -> str:
+    ap_ip = str(ap_ip or "").strip()
+    iface = str(iface or "").strip()
+    if not ap_ip or not iface:
+        return ""
+    user, key_path = _creds_for_ip(cfg, ap_ip)
+    cmd = "iw dev '%s' info 2>/dev/null | awk '/addr/ {print $2; exit}'" % _sh(iface)
+    out = ssh_cmd(ap_ip, user, key_path, cmd, timeout=8)
+    return (out or "").strip().splitlines()[0] if (out or "").strip() else ""
+
+
 def collect_wifi_live(devices: dict, cfg: dict):
     for ap_ip in cfg.get("access_points", []):
         user, key_path = _creds_for_ip(cfg, ap_ip)
@@ -53,7 +69,8 @@ def collect_wifi_live(devices: dict, cfg: dict):
             if len(parts) < 5:
                 continue
             mac, ssid, ap_name, sig, band = parts[:5]
-            iface = parts[5] if len(parts) >= 6 else ""
+            channel = parts[5] if len(parts) >= 6 else ""
+            iface = parts[6] if len(parts) >= 7 else ""
             mac = norm_mac(mac)
             if not mac:
                 continue
@@ -69,6 +86,7 @@ def collect_wifi_live(devices: dict, cfg: dict):
                 d["connection"] = ssid
                 d["ap"] = ap_name
                 d["band"] = band
+                d["channel"] = channel
                 d["rssi"] = sig
                 d["wifi_ap_ip"] = ap_ip
                 d["wifi_interface"] = iface
@@ -101,6 +119,7 @@ def collect_wifi_history(devices: dict, cfg: dict):
         d["connection"] = h["ssid"]
         d["ap"] = h["ap"]
         d["band"] = ""
+        d["channel"] = ""
         d["rssi"] = ""
         d["wifi_last_event"] = "Disconnected" if h["event"] == "AP-STA-DISCONNECTED" else "Connected"
         d["wifi_last_seen"] = h["when"]

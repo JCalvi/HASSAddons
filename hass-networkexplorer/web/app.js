@@ -1,6 +1,8 @@
 let rows=[], sortKey="ip", asc=true, expandedKey="";
 let setupDevices=[];
 let autoRefreshTimer=null;
+let steerState={};
+const MAX_STEER_MESSAGE_LEN=300;
 const $ = id => document.getElementById(id);
 
 function addonBase(){
@@ -196,41 +198,91 @@ function sourceEvidence(source){
 }
 function section(title, inner){return inner?`<div class="detail-section"><h3>${esc(title)}</h3>${inner}</div>`:"";}
 function row(label,value){return value?`<div>${esc(label)}</div><div>${value}</div>`:"";}
+function detailRow(){
+  if(!expandedKey) return null;
+  return rows.find(r=>`${r.ip}|${r.mac}`===expandedKey)||null;
+}
+function closeDetail(){expandedKey="";persistView();renderDetailPanel();}
 
 function detailHtml(x){
+  const panelKey=`${x.ip}|${x.mac}`;
+  const moveState=steerState[panelKey]||{};
   const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac), fqdn=esc(x.fqdn);
   const tsIp=esc(x.tailscale_ip||((x.connection==="Tailscale")?x.ip:""));
-  const tsHost=esc(x.tailscale_host||((x.connection==="Tailscale")?x.host:""));
-  const tsFqdn=esc(x.tailscale_fqdn||"");
+  const ipVersion=x.ip?(x.ip.includes(":")?"IPv6":"IPv4"):"";
   const openButtons=[];
   const copyButtons=[];
   if(x.ip){
-    openButtons.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">HTTP</button>`);
-    openButtons.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">HTTPS</button>`);
-    copyButtons.push(`<button class="detail-action copy-value" data-label="IPv4" data-copy="${ip}" type="button">IPv4</button>`);
+    openButtons.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">🌐 HTTP</button>`);
+    openButtons.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">🌐 HTTPS</button>`);
+    copyButtons.push(`<button class="detail-action copy-value" data-label="IPv4" data-copy="${ip}" type="button">📋 IPv4</button>`);
   }
-  if(x.host) copyButtons.push(`<button class="detail-action copy-value" data-label="Host" data-copy="${host}" type="button">Host</button>`);
-  if(x.mac) copyButtons.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">MAC</button>`);
-  if(tsIp) copyButtons.push(`<button class="detail-action copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">Tailscale IP</button>`);
+  if(x.host) copyButtons.push(`<button class="detail-action copy-value" data-label="Host" data-copy="${host}" type="button">📋 Host</button>`);
+  if(x.mac) copyButtons.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">📋 MAC</button>`);
+  if(tsIp) copyButtons.push(`<button class="detail-action copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">🛡 Tailscale IP</button>`);
 
-  const actions=`<div class="detail-actions grouped"><div><b>Open</b><div>${openButtons.join("")||""}</div></div><div><b>Copy</b><div>${copyButtons.join("")||""}</div></div></div>`;
+  const actions=`<div class="detail-actionbar"><div class="detail-action-group"><b>Open</b><div class="buttons">${openButtons.join("")||""}</div></div><div class="detail-action-group"><b>Copy</b><div class="buttons">${copyButtons.join("")||""}</div></div></div>`;
   const identity=section("Identity", `<div class="detail-grid">${row("Host",host)}${row("FQDN",fqdn)}${row("MAC",mac)}</div>`);
-  const network=section("Network", `<div class="detail-grid">${row("IPv4",ip)}${row("Tailscale IP",tsIp)}${row("Connection",esc(x.connection))}${row("Status",esc(statusText(x)))}</div>`);
-  const tailscale=section("Tailscale", (tsHost||tsFqdn)?`<div class="detail-grid">${row("Host",tsHost)}${row("FQDN",tsFqdn)}</div>`:"");
+  const network=section("Network", `<div class="detail-grid">${row("IP Version",esc(ipVersion))}${row("IP Address",ip)}${row("Connection / SSID",esc(x.connection))}${row("Status",`<span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span>`)}${row("Tailscale IP",tsIp)}</div>`);
   let wifiInner="";
   if(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"){
     const apOptions=["Auto", ...new Set(rows.map(r=>r.ap).filter(Boolean).sort())];
     const currentPref=x.preferred_ap||"Auto";
     const prefSelect=`<select class="preferred-ap-select" data-key="${esc(deviceKey(x))}">${apOptions.map(ap=>`<option value="${esc(ap)}" ${ap===currentPref?"selected":""}>${esc(ap)}</option>`).join("")}</select>`;
-    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>Move now</button><div class="hint">Move now disconnects this device from the current AP so it can reconnect to the preferred AP.</div></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}${row("Interface",esc(x.wifi_interface||""))}</div>`;
+    const moveText=moveState.working?`<span class="spin"></span>Moving...`:"↔️ Move now";
+    const resultText=moveState.message?`<div class="wifi-result ${moveState.ok?"ok":"bad"}">${esc(moveState.message)}</div>`:"";
+    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-panel-key="${esc(panelKey)}" data-device='${esc(JSON.stringify(x))}' ${moveState.working?"disabled":""}>${moveText}</button>${resultText}<div class="hint">Move now disconnects this device from the current AP so it can reconnect to the preferred AP.</div></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}${row("Channel",esc(x.channel||""))}${row("Interface",esc(x.wifi_interface||""))}</div>`;
   } else {
     wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:""}`;
   }
   const wifi=section("Wi-Fi", wifiInner);
   const discovery=section("Discovery", `<div class="evidence-row">${sourceEvidence(x.source)}</div>`);
-  const historyRows=`${row("First Seen",esc(seenText(x.first_seen)))}${row("Last Seen",esc(seenText(x.last_seen)))}${row("Neighbour State",esc(x.neighbour_state))}${row("Last Wi-Fi Event",esc(x.wifi_last_event))}${row("Last Wi-Fi Seen",esc(x.wifi_last_seen))}`;
+  const historyRows=`${row("Last Seen",esc(seenText(x.last_seen)))}${row("Neighbour State",esc(x.neighbour_state))}${row("Last Wi-Fi Event",esc(x.wifi_last_event))}${row("Last Wi-Fi Seen",esc(x.wifi_last_seen))}`;
   const history=section("History", historyRows?`<div class="detail-grid">${historyRows}</div>`:"");
-  return `<tr class="detail"><td colspan="7"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b>${actions}<div class="detail-sections">${identity}${network}${tailscale}${wifi}${discovery}${history}</div></td></tr>`;
+  return `${actions}<div class="detail-sections">${identity}${network}${wifi}${discovery}${history}</div>`;
+}
+function renderDetailPanel(){
+  const overlay=$("detailOverlay"), title=$("detailTitle"), status=$("detailStatusChip"), body=$("detailPanelBody");
+  const x=detailRow();
+  if(!overlay||!title||!status||!body) return;
+  if(!x){overlay.classList.remove("open");title.textContent="";status.textContent="";status.className="status-pill";body.innerHTML="";return;}
+  overlay.classList.add("open");
+  title.textContent=x.host||x.ip||x.mac||"Unknown device";
+  status.textContent=statusText(x);
+  status.className=`status-pill ${x.status||"offline"}`;
+  body.innerHTML=detailHtml(x);
+  body.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();window.open(`http://${b.dataset.ip}`,"_blank");}));
+  body.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();window.open(`https://${b.dataset.ip}`,"_blank");}));
+  body.querySelectorAll(".copy-value").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();copyText(b.dataset.copy,b.dataset.label||"text");}));
+  body.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("change",async()=>{
+    try{
+      const key=sel.dataset.key, val=sel.value;
+      await postJson("api/preferences",{preferences:{[key]:val}});
+      rows.forEach(r=>{if(deviceKey(r)===key)r.preferred_ap=val;});
+      $("updated").textContent=`Preferred AP saved: ${val}`;
+      renderDetailPanel();
+    }catch(err){$("updated").textContent="Preferred AP save failed: "+err.message;}
+  }));
+  body.querySelectorAll(".move-now").forEach(btn=>btn.addEventListener("click",async()=>{
+    const key=btn.dataset.panelKey||expandedKey;
+    steerState[key]={working:true,message:"",ok:true};
+    renderDetailPanel();
+    try{
+      const device=JSON.parse(btn.dataset.device||"{}");
+      const d=await postJson("api/steer",{device});
+      const results=d.results||[];
+      const fail=results.find(r=>!r.ok);
+      const fullMsg=results.map(r=>r.message||r.output||r.error).filter(Boolean).join("; ")||"Steer requested";
+      const msg=fullMsg.length>MAX_STEER_MESSAGE_LEN?`${fullMsg.slice(0,MAX_STEER_MESSAGE_LEN-1)}…`:fullMsg;
+      steerState[key]={working:false,message:msg,ok:!fail};
+      $("updated").textContent=msg;
+      if(!fail) setTimeout(load,5000);
+    }catch(err){
+      steerState[key]={working:false,message:"Move failed: "+err.message,ok:false};
+      $("updated").textContent="Move failed: "+err.message;
+    }
+    renderDetailPanel();
+  }));
 }
 
 function clearFilters(){
@@ -255,14 +307,8 @@ function render(){
     if(ap&&x.ap!==ap)return false;
     return true;
   }).sort((a,b)=>asc?cmp(a,b):-cmp(a,b));
-  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;const open=expandedKey===key;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td></tr>${open?detailHtml(x):""}`;}).join("");
-  document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",e=>{if(e.target.closest("button"))return;expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();render();}));
-  document.querySelectorAll(".open-http").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`http://${b.dataset.ip}`,"_blank");}));
-  document.querySelectorAll(".open-https").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();window.open(`https://${b.dataset.ip}`,"_blank");}));
-  document.querySelectorAll(".copy-value").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();copyText(b.dataset.copy,b.dataset.label||"text");}));
-  document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("click",e=>e.stopPropagation()));
-  document.querySelectorAll(".preferred-ap-select").forEach(sel=>sel.addEventListener("change",async e=>{e.stopPropagation();try{const key=sel.dataset.key;const val=sel.value;await postJson("api/preferences",{preferences:{[key]:val}}); rows.forEach(r=>{if(deviceKey(r)===key)r.preferred_ap=val;}); $("updated").textContent=`Preferred AP saved: ${val}`; render();}catch(err){$("updated").textContent="Preferred AP save failed: "+err.message;}}));
-  document.querySelectorAll(".move-now").forEach(btn=>btn.addEventListener("click",async e=>{e.preventDefault();e.stopPropagation();try{const device=JSON.parse(btn.dataset.device||"{}");btn.disabled=true;btn.textContent="Moving...";const d=await postJson("api/steer",{device});$("updated").textContent=(d.results||[]).map(r=>r.message||r.output||r.error||"Steer requested").join("; ")||"Steer requested";setTimeout(load,2500);}catch(err){$("updated").textContent="Move failed: "+err.message;btn.disabled=false;btn.textContent="Move now";}}));
+  $("body").innerHTML=out.map(x=>{const key=`${x.ip}|${x.mac}`;return `<tr class="mainrow" data-key="${esc(key)}"><td>${esc(x.ip)}</td><td>${esc(x.host)}</td><td><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></td><td>${esc(x.connection)}</td><td>${esc(x.ap)}</td><td>${esc(x.band)}</td><td class="${rssiClass(x.rssi)}">${esc(x.rssi)}</td></tr>`;}).join("");
+  document.querySelectorAll(".mainrow").forEach(row=>row.addEventListener("click",()=>{expandedKey=expandedKey===row.dataset.key?"":row.dataset.key;persistView();renderDetailPanel();}));
   const online=rows.filter(x=>x.status==="online").length, idle=rows.filter(x=>x.status==="idle").length, offline=rows.filter(x=>x.status==="offline").length;
   const wifi=rows.filter(x=>x.status==="online"&&x.connection&&x.connection!=="Ethernet"&&x.connection!=="Tailscale").length;
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;
@@ -275,6 +321,7 @@ function render(){
     if(chip.dataset.connection){$("statusFilter").value="online";$("connectionFilter").value=chip.dataset.connection;$("apFilter").value="";}
     persistView();render();
   }));
+  renderDetailPanel();
 }
 async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=enrichSeen(data.devices||[]); fillFilters(); restoreView(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; updateRefreshButtonLabel();}
 function setSetupCollapsed(collapsed){$("setupPanel").classList.toggle("collapsed", collapsed);localStorage.setItem("networkExplorerSetupCollapsed", collapsed?"1":"0");renderSetupSummary();}
@@ -306,6 +353,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("addDeviceBtn")?.addEventListener("click",e=>{e.preventDefault();setupDevices.push(defaultDevice("Auto"));renderSetupDevices();});
   $("toggleSetupBtn")?.addEventListener("click",e=>{e.preventDefault();setSetupCollapsed(true);});
   $("settingsBtn")?.addEventListener("click",e=>{e.preventDefault();const hidden=$('setupPanel')?.classList.contains("collapsed");setSetupCollapsed(!hidden);if(hidden)$("setupPanel")?.scrollIntoView({behavior:"smooth",block:"start"});});
+  $("detailCloseBtn")?.addEventListener("click",e=>{e.preventDefault();closeDetail();});
+  $("detailOverlay")?.addEventListener("click",e=>{if(e.target.id==="detailOverlay")closeDetail();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&expandedKey)closeDetail();});
   setSetupCollapsed(localStorage.getItem("networkExplorerSetupCollapsed")==="1");
   loadConfig();
   load();
