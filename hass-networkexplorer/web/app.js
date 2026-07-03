@@ -194,48 +194,52 @@ function sourceEvidence(source){
   if(!labels.length) return "";
   return labels.map(x=>`<span class="evidence-chip present">🟢 ${esc(x)}</span>`).join(" " );
 }
-function section(title, inner){
-  if(!inner)return "";
-  const icons={"Identity":"◉","Network":"⌘","Tailscale":"◇","Wi-Fi":"◌","Discovery":"◎","History":"◷"};
-  return `<div class="detail-section detail-section-${esc(title.toLowerCase().replace(/[^a-z0-9]+/g,"-"))}"><h3><span class="section-icon">${icons[title]||""}</span>${esc(title)}</h3>${inner}</div>`;
+function iconFor(title){
+  return ({"Identity":"👤","Network":"🖧","Wi-Fi":"📶","Tailscale":"🛡️","Discovery":"🔎","History":"🕘"}[title]||"");
 }
-function row(label,value){return value?`<div>${esc(label)}</div><div>${value}</div>`:"";}
+function section(title, inner, extra=""){
+  return inner?`<section class="detail-card detail-card-${title.toLowerCase().replace(/[^a-z0-9]+/g,'-')} ${extra}"><h3><span class="section-icon">${iconFor(title)}</span>${esc(title)}</h3>${inner}</section>`:"";
+}
+function row(label,value){return value?`<div class="detail-label">${esc(label)}</div><div class="detail-value">${value}</div>`:"";}
+function actionButton(cls,label,attrs="") { return `<button class="detail-action ${cls}" ${attrs} type="button">${label}</button>`; }
 
 function detailHtml(x){
   const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac), fqdn=esc(x.fqdn);
   const tsIp=esc(x.tailscale_ip||((x.connection==="Tailscale")?x.ip:""));
   const tsHost=esc(x.tailscale_host||((x.connection==="Tailscale")?x.host:""));
   const tsFqdn=esc(x.tailscale_fqdn||"");
+  const status=statusText(x);
   const openButtons=[];
   const copyButtons=[];
   if(x.ip){
-    openButtons.push(`<button class="detail-action open-http" data-ip="${ip}" type="button">HTTP</button>`);
-    openButtons.push(`<button class="detail-action open-https" data-ip="${ip}" type="button">HTTPS</button>`);
-    copyButtons.push(`<button class="detail-action copy-value" data-label="IPv4" data-copy="${ip}" type="button">IPv4</button>`);
+    openButtons.push(actionButton('open-http','🌐 HTTP',`data-ip="${ip}"`));
+    openButtons.push(actionButton('open-https','🔒 HTTPS',`data-ip="${ip}"`));
+    copyButtons.push(actionButton('copy-value','📄 IPv4',`data-label="IPv4" data-copy="${ip}"`));
   }
-  if(x.host) copyButtons.push(`<button class="detail-action copy-value" data-label="Host" data-copy="${host}" type="button">Host</button>`);
-  if(x.mac) copyButtons.push(`<button class="detail-action copy-value" data-label="MAC" data-copy="${mac}" type="button">MAC</button>`);
-  if(tsIp) copyButtons.push(`<button class="detail-action copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">Tailscale IP</button>`);
+  if(x.host) copyButtons.push(actionButton('copy-value','▣ Host',`data-label="Host" data-copy="${host}"`));
+  if(x.mac) copyButtons.push(actionButton('copy-value','▤ MAC',`data-label="MAC" data-copy="${mac}"`));
+  if(tsIp) copyButtons.push(actionButton('copy-value','🛡️ Tailscale IP',`data-label="Tailscale IP" data-copy="${tsIp}"`));
 
-  const actions=`<div class="detail-actions grouped"><div class="action-group"><b>Open</b><div>${openButtons.join("")||""}</div></div><div class="action-divider"></div><div class="action-group"><b>Copy</b><div>${copyButtons.join("")||""}</div></div></div>`;
-  const identity=section("Identity", `<div class="detail-grid">${row("Host",host)}${row("FQDN",fqdn)}${row("MAC",mac)}</div>`);
-  const network=section("Network", `<div class="detail-grid">${row("IPv4",ip)}${row("Tailscale IP",tsIp)}${row("Connection",esc(x.connection))}${row("Status",esc(statusText(x)))}</div>`);
+  const actions=`<div class="detail-toolbar"><div class="action-group"><b>Open</b><div>${openButtons.join("")}</div></div><div class="action-separator"></div><div class="action-group"><b>Copy</b><div>${copyButtons.join("")}</div></div></div>`;
+  const identity=section("Identity", `<div class="detail-grid">${row("Host",host)}${row("FQDN",fqdn)}${row("MAC Address",mac)}</div>`);
+  const network=section("Network", `<div class="detail-grid">${row("IP Version", ip?"IPv4":"")}${row("IP Address",ip)}${row("Connection / SSID",esc(x.connection))}${row("Status",`<span class="status-pill ${esc(x.status)}">${esc(status)}</span>`)}${row("Tailscale IP",tsIp?`${tsIp} <button class="mini-copy copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">⧉</button>`:"")}</div>`);
   const tailscale=section("Tailscale", (tsHost||tsFqdn)?`<div class="detail-grid">${row("Host",tsHost)}${row("FQDN",tsFqdn)}</div>`:"");
   let wifiInner="";
   if(x.connection && x.connection!=="Ethernet" && x.connection!=="Tailscale"){
     const apOptions=["Auto", ...new Set(rows.map(r=>r.ap).filter(Boolean).sort())];
     const currentPref=x.preferred_ap||"Auto";
     const prefSelect=`<select class="preferred-ap-select" data-key="${esc(deviceKey(x))}">${apOptions.map(ap=>`<option value="${esc(ap)}" ${ap===currentPref?"selected":""}>${esc(ap)}</option>`).join("")}</select>`;
-    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>Move now →</button><div class="hint">Move now disconnects this device from the current AP so it can reconnect to the preferred AP.</div></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}${row("Interface",esc(x.wifi_interface||""))}</div>`;
+    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>📡 Move now</button></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",esc(x.rssi?x.rssi+" dBm":""))}${row("Channel",esc(x.channel||""))}${row("Interface",esc(x.wifi_interface||""))}</div><p class="hint">Move now will disconnect this device from the current AP so it can reconnect to the preferred AP.</p>`;
   } else {
     wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${x.preferred_ap&&x.preferred_ap!=="Auto"?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:""}`;
   }
-  const wifi=section("Wi-Fi", wifiInner);
+  const wifi=section("Wi-Fi", wifiInner, "detail-card-wifi-wide");
   const discovery=section("Discovery", `<div class="evidence-row">${sourceEvidence(x.source)}</div>`);
   const historyRows=`${row("First Seen",esc(seenText(x.first_seen)))}${row("Last Seen",esc(seenText(x.last_seen)))}${row("Neighbour State",esc(x.neighbour_state))}${row("Last Wi-Fi Event",esc(x.wifi_last_event))}${row("Last Wi-Fi Seen",esc(x.wifi_last_seen))}`;
   const history=section("History", historyRows?`<div class="detail-grid">${historyRows}</div>`:"");
-  return `<tr class="detail"><td colspan="7"><div class="detail-title"><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b><span class="status-pill ${esc(x.status)}">${esc(statusText(x))}</span></div>${actions}<div class="detail-sections">${identity}${network}${tailscale}${wifi}${discovery}${history}</div></td></tr>`;
+  return `<tr class="detail"><td colspan="7"><div class="device-detail-panel"><div class="detail-title"><div><span class="device-icon">▣</span><b>${esc(x.host||x.ip||x.mac||"Unknown device")}</b> <span class="status-pill ${esc(x.status)}">${esc(status)}</span></div><button class="detail-close" type="button" onclick="expandedKey='';persistView();render();event.stopPropagation();">×</button></div>${actions}<div class="detail-card-grid">${identity}${network}${wifi}${tailscale}${discovery}${history}</div></div></td></tr>`;
 }
+
 
 function clearFilters(){
   $("search").value="";

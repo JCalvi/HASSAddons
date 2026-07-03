@@ -74,47 +74,33 @@ def disassociate(row, reason='manual'):
     user, key = managed_creds_for_ip(cfg, ap_ip)
     remote = """MAC='%s'
 IFACE='%s'
-logit(){ logger -t network-explorer-steer \"$*\" 2>/dev/null || true; }
-run_method(){
-  METHOD=\"$1\"
-  shift
-  : > /tmp/ne_steer.out
-  logit \"attempt method=$METHOD iface=$IFACE mac=$MAC\"
-  if \"$@\" >/tmp/ne_steer.out 2>&1; then
-    logit \"success method=$METHOD iface=$IFACE mac=$MAC\"
-    echo \"OK_$METHOD\"
-    cat /tmp/ne_steer.out
-    exit 0
-  fi
-  RC=$?
-  logit \"failed method=$METHOD rc=$RC iface=$IFACE mac=$MAC output=$(tr '\n' ' ' </tmp/ne_steer.out | cut -c1-180)\"
-  echo \"FAIL_$METHOD rc=$RC\"
-  cat /tmp/ne_steer.out
-}
-
-# Match LuCI behaviour first: local deauth request from the AP currently holding the client.
-if command -v hostapd_cli >/dev/null 2>&1; then
-  run_method HOSTAPD_DEAUTH hostapd_cli -i \"$IFACE\" deauthenticate \"$MAC\"
-  run_method HOSTAPD_DISASSOC hostapd_cli -i \"$IFACE\" disassociate \"$MAC\"
+PAYLOAD=$(printf '{"addr":"%%s","reason":5,"deauth":true,"ban_time":3000}' "$MAC")
+logger -t network-explorer-steer "attempt method=UBUS_HOSTAPD_DEL_CLIENT iface=$IFACE mac=$MAC reason=5 deauth=true ban_time=3000"
+OUT=$(ubus call "hostapd.$IFACE" del_client "$PAYLOAD" 2>&1)
+RC=$?
+if [ "$RC" -eq 0 ]; then
+  logger -t network-explorer-steer "success method=UBUS_HOSTAPD_DEL_CLIENT iface=$IFACE mac=$MAC"
+  echo OK_UBUS_HOSTAPD_DEL_CLIENT
+  echo "$OUT"
+  exit 0
 fi
-if command -v iw >/dev/null 2>&1; then
-  run_method IW_STATION_DEL iw dev \"$IFACE\" station del \"$MAC\"
-fi
-logit \"all methods failed iface=$IFACE mac=$MAC\"
-echo FAILED
-exit 1
+logger -t network-explorer-steer "failed method=UBUS_HOSTAPD_DEL_CLIENT iface=$IFACE mac=$MAC rc=$RC output=$OUT"
+echo FAILED_UBUS_HOSTAPD_DEL_CLIENT
+echo "$OUT"
+exit "$RC"
 """ % (mac, iface)
     out = ssh_cmd(ap_ip, user, key, remote, timeout=10)
-    ok = 'OK_HOSTAPD_DEAUTH' in out or 'OK_HOSTAPD_DISASSOC' in out or 'OK_IW_STATION_DEL' in out
-    method = ''
-    if 'OK_HOSTAPD_DEAUTH' in out:
-        method = 'hostapd_cli deauthenticate'
-    elif 'OK_HOSTAPD_DISASSOC' in out:
-        method = 'hostapd_cli disassociate'
-    elif 'OK_IW_STATION_DEL' in out:
-        method = 'iw station del'
-    message = f"Steer requested via {method} on {iface}" if ok else ''
-    return {'ok': ok, 'message': message, 'output': out, 'ap_ip': ap_ip, 'interface': iface, 'mac': mac, 'reason': reason, 'error': '' if ok else (out or 'Disassociate failed')}
+    ok = 'OK_UBUS_HOSTAPD_DEL_CLIENT' in out
+    return {
+        'ok': ok,
+        'output': out,
+        'method': 'UBUS_HOSTAPD_DEL_CLIENT',
+        'ap_ip': ap_ip,
+        'interface': iface,
+        'mac': mac,
+        'reason': reason,
+        'error': '' if ok else (out or 'ubus hostapd del_client failed')
+    }
 
 
 def run_steering_once(manual_row=None):

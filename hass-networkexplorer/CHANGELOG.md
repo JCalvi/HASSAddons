@@ -1,5 +1,13 @@
 ## Changelog
 
+
+# 2026.7.5
+
+- Steering now uses only the verified LuCI-equivalent OpenWrt ubus command: `ubus call hostapd.<interface> del_client` with reason 5, deauth true and ban_time 3000.
+- Removed experimental steering fallbacks so Network Explorer uses the current AP/interface and one clear steering method.
+- Added explicit OpenWrt logger diagnostics for the ubus steering method.
+- Reworked the expanded device details into a card-based layout with stronger visual separation, section icons and cleaner Wi-Fi controls.
+
 # 2026.7.4
 
 - Rebuilt from the working 2026.7.2 base.
@@ -149,8 +157,6 @@
 - Removed the separate auto-refresh row from the filter card.
 - Summary chips are now clickable filters.
 - Wi-Fi summary chip filters all live Wi-Fi connections; Devices clears filters.
-
-# Changelog
 
 # 2026.6.08
 - Settings button now toggles to Hide Settings when open.
