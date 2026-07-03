@@ -62,3 +62,227 @@ input,select,button{background:#1a2330;border:1px solid var(--border);border-rad
 .detail td{white-space:normal;padding:0;background:#10161f}.details-card{margin:10px 16px 16px;padding:24px 28px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.01)),#16202b;box-shadow:0 18px 50px rgba(0,0,0,.22) inset,0 0 0 1px rgba(255,255,255,.02)}.details-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.device-title{font-size:1.45rem;font-weight:900;display:flex;align-items:center;gap:12px}.device-icon{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;background:#123b63;color:#5bc2ff}.close{background:transparent;border:0;color:#c6d0dc;font-size:34px;cursor:pointer;min-height:0;padding:0 4px}.actions-row{display:flex;gap:26px;align-items:flex-end;border-bottom:1px solid var(--border-soft);padding-bottom:18px;margin-bottom:18px}.action-group{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.group-label{width:100%;font-weight:800;margin-bottom:2px}.divider{height:58px;border-left:1px solid var(--border)}.btn.small,.detail-action{padding:10px 16px;min-height:40px;border-radius:10px}.btn.wide,.wide{width:100%}
 .details-grid{display:grid;grid-template-columns:1fr 1fr 1.25fr;grid-template-areas:"identity network wifi" "discovery history wifi";gap:14px;max-width:none}.info-card{border:1px solid var(--border-soft);border-radius:14px;background:linear-gradient(180deg,#172331,#131d28);padding:20px 22px;min-height:150px}.info-card h3{display:flex;gap:10px;align-items:center;margin:0 0 16px;font-size:1.25rem}.identity{grid-area:identity}.network{grid-area:network}.wifi{grid-area:wifi}.discovery{grid-area:discovery}.history{grid-area:history}.tailscale{grid-column:span 2}dl{display:grid;grid-template-columns:minmax(130px,.8fr) 1.2fr;gap:8px 18px;margin:0}dt{color:#d8e1ec}dd{margin:0;color:#fff}.field-label{display:block;margin-bottom:8px;color:#d8e1ec}.rule{border-top:1px solid var(--border-soft);margin:14px 0}.hint{color:var(--muted);margin:14px 0 0;max-width:520px}.badges{display:flex;gap:10px;flex-wrap:wrap}.badge{border:1px solid #2f6b4a;background:#11271c;color:#e9fff1;border-radius:999px;padding:4px 12px}.mini-copy{min-height:0;padding:1px 6px;border-radius:6px;margin-left:6px}
 @media(max-width:1100px){.page-header{flex-direction:column}.controls{grid-template-columns:1fr}.details-grid{grid-template-columns:1fr;grid-template-areas:"identity" "network" "wifi" "discovery" "history"}.thead,.row{grid-template-columns:1fr 1.5fr 1fr 1fr}.actions-row{flex-wrap:wrap}.divider{display:none}}
+
+/* 2026.7.10 user web override: light theme repair for mockup UI */
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --card2:#f0f4fa;
+  --head:#e8eef6;
+  --border:#cbd5e1;
+  --border-soft:#dce4ee;
+  --text:#0f172a;
+  --muted:#5b677a;
+  --blue:#0284c7;
+  --blue2:#0369a1;
+  --green:#15803d;
+  --yellow:#a16207;
+  --red:#dc2626;
+  --purple:#7e22ce;
+  --cyan:#0891b2;
+  --shadow:0 8px 24px rgba(15,23,42,.08);
+}
+:root[data-theme="light"] body{
+  background:radial-gradient(circle at top left,#ffffff 0,#f5f7fb 42%,#e9eef6 100%);
+  color:var(--text);
+}
+:root[data-theme="light"] .page{color:var(--text)}
+:root[data-theme="light"] .page-header h1{color:#0f172a}
+:root[data-theme="light"] .small,
+:root[data-theme="light"] .muted{color:var(--muted)}
+:root[data-theme="light"] .summary span{
+  background:#ffffff;
+  border-color:#cbd5e1;
+  color:#334155;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);
+}
+:root[data-theme="light"] .summary span:nth-child(1),
+:root[data-theme="light"] .summary span:nth-child(2){border-color:#86efac;color:#166534;background:#f0fdf4}
+:root[data-theme="light"] .summary span:nth-child(5),
+:root[data-theme="light"] .summary span:nth-child(7){border-color:#67e8f9;color:#0e7490;background:#ecfeff}
+:root[data-theme="light"] .summary span:nth-child(6){border-color:#d8b4fe;color:#7e22ce;background:#faf5ff}
+:root[data-theme="light"] button,
+:root[data-theme="light"] select,
+:root[data-theme="light"] input,
+:root[data-theme="light"] textarea{
+  background:#f8fafc;
+  color:#0f172a;
+  border-color:#cbd5e1;
+}
+:root[data-theme="light"] input::placeholder{color:#64748b}
+:root[data-theme="light"] .primary,
+:root[data-theme="light"] button.primary,
+:root[data-theme="light"] .btn.primary{
+  color:#fff;
+  background:linear-gradient(180deg,#0ea5e9,#0284c7);
+  border-color:#0284c7;
+  box-shadow:0 8px 22px rgba(14,165,233,.22);
+}
+:root[data-theme="light"] .card,
+:root[data-theme="light"] .controls-card{
+  background:rgba(255,255,255,.88);
+  border-color:#d2dbe8;
+  box-shadow:0 8px 24px rgba(15,23,42,.08);
+}
+:root[data-theme="light"] .table-wrap{
+  background:#ffffff;
+  border-color:#cbd5e1;
+  box-shadow:0 10px 28px rgba(15,23,42,.08);
+}
+:root[data-theme="light"] table{background:#ffffff;color:#0f172a}
+:root[data-theme="light"] th{
+  background:#e8eef6;
+  color:#0f172a;
+  border-bottom-color:#cbd5e1;
+}
+:root[data-theme="light"] td{border-bottom-color:#e2e8f0;color:#0f172a}
+:root[data-theme="light"] tr:hover{background:#f1f5f9}
+:root[data-theme="light"] .mainrow:hover{background:#f8fafc}
+:root[data-theme="light"] .detail td{background:#eef3f9;color:#0f172a}
+:root[data-theme="light"] .details-card{
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.96));
+  border-color:#cbd5e1;
+  box-shadow:0 18px 48px rgba(15,23,42,.12), inset 0 1px 0 rgba(255,255,255,.9);
+  color:#0f172a;
+}
+:root[data-theme="light"] .details-title,
+:root[data-theme="light"] .device-title,
+:root[data-theme="light"] .group-label,
+:root[data-theme="light"] .info-card h3{color:#0f172a}
+:root[data-theme="light"] .device-icon{
+  background:#dbeafe;
+  color:#0369a1;
+}
+:root[data-theme="light"] .close{
+  color:#64748b;
+  background:transparent;
+  border:0;
+}
+:root[data-theme="light"] .close:hover{color:#0f172a;background:transparent}
+:root[data-theme="light"] .actions-row{border-bottom-color:#d8e1ec}
+:root[data-theme="light"] .divider{border-left-color:#d8e1ec}
+:root[data-theme="light"] .detail-action,
+:root[data-theme="light"] .btn.small{
+  background:#f8fafc;
+  color:#0f172a;
+  border-color:#cbd5e1;
+}
+:root[data-theme="light"] .detail-action:hover,
+:root[data-theme="light"] .btn.small:hover{background:#eef4fb;border-color:#94a3b8}
+:root[data-theme="light"] .info-card{
+  background:linear-gradient(180deg,#ffffff,#f8fafc);
+  border-color:#d2dbe8;
+  box-shadow:0 8px 20px rgba(15,23,42,.06);
+  color:#0f172a;
+}
+:root[data-theme="light"] dl,
+:root[data-theme="light"] dt,
+:root[data-theme="light"] dd{color:#0f172a}
+:root[data-theme="light"] dt,
+:root[data-theme="light"] .field-label{color:#334155}
+:root[data-theme="light"] .rule{border-top-color:#d8e1ec}
+:root[data-theme="light"] .hint{color:#64748b}
+:root[data-theme="light"] .status-pill.online,
+:root[data-theme="light"] .pill.online{
+  background:#dcfce7;
+  color:#15803d;
+}
+:root[data-theme="light"] .status-pill.idle,
+:root[data-theme="light"] .pill.idle{
+  background:#fef3c7;
+  color:#92400e;
+}
+:root[data-theme="light"] .status-pill.offline,
+:root[data-theme="light"] .pill.offline{
+  background:#e5e7eb;
+  color:#475569;
+}
+:root[data-theme="light"] .badge,
+:root[data-theme="light"] .evidence-chip.present{
+  background:#ecfdf5;
+  border-color:#86efac;
+  color:#14532d;
+}
+:root[data-theme="light"] .evidence-chip,
+:root[data-theme="light"] .chip.unknown{
+  background:#f1f5f9;
+  border-color:#cbd5e1;
+  color:#475569;
+}
+:root[data-theme="light"] .rssi-bad,
+:root[data-theme="light"] .rssi-ok,
+:root[data-theme="light"] .rssi-good{font-weight:800}
+:root[data-theme="light"] .rssi-bad{color:#dc2626}
+:root[data-theme="light"] .rssi-ok{color:#a16207}
+:root[data-theme="light"] .rssi-good{color:#15803d}
+:root[data-theme="light"] .notice{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1e3a8a;
+}
+
+
+/* 2026.7.11 web-only consistency polish */
+:root{
+  --ui-control-h:40px;
+  --ui-control-py:8px;
+  --ui-control-px:14px;
+  --detail-font:14px;
+  --detail-small:13px;
+  --detail-title:20px;
+  --detail-heading:18px;
+}
+button,select,input,textarea,
+.btn,.detail-action{
+  min-height:var(--ui-control-h) !important;
+  padding:var(--ui-control-py) var(--ui-control-px) !important;
+  font-size:14px !important;
+  line-height:20px !important;
+  border-radius:10px !important;
+}
+.header-actions button,
+.header-actions select,
+.refresh-combo button,
+.refresh-combo select{
+  height:42px !important;
+  min-height:42px !important;
+  padding:8px 14px !important;
+  font-size:14px !important;
+}
+.primary,button.primary,.btn.primary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.status-pill,.pill,.summary span,.badge,.evidence-chip{
+  font-size:12px !important;
+  line-height:18px !important;
+}
+.details-card{font-size:var(--detail-font) !important}
+.device-title{font-size:var(--detail-title) !important;line-height:1.2 !important}
+.info-card h3{font-size:var(--detail-heading) !important;line-height:1.2 !important;margin-bottom:12px !important}
+dl{font-size:var(--detail-font) !important;gap:7px 16px !important}
+dt,dd,.field-label,.hint{font-size:var(--detail-font) !important}
+.hint,.small,.muted{font-size:var(--detail-small) !important}
+.action-group .group-label{font-size:14px !important}
+.action-group .btn.small,
+.action-group .detail-action,
+.btn.small{
+  height:36px !important;
+  min-height:36px !important;
+  padding:7px 12px !important;
+  font-size:13px !important;
+}
+.wifi .primary,
+.wifi-control .move-now{
+  width:100%;
+  height:42px !important;
+  min-height:42px !important;
+}
+:root[data-theme="light"] .refresh-combo select,
+:root[data-theme="dark"] .refresh-combo select{
+  border-left:0 !important;
+}
+/* Auto is resolved in JS to real light/dark so styling remains identical to explicit choices. */

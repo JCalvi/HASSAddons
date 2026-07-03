@@ -1,6 +1,10 @@
 ## Changelog
 
 
+# 2026.7.11
+
+- UI improvements.
+
 # 2026.7.10
 
 - Move all settings to /config/network_explorer

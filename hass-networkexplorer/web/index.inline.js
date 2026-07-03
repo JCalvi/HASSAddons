@@ -273,7 +273,32 @@ function render(){
 }
 async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=enrichSeen(data.devices||[]); fillFilters(); restoreView(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; updateRefreshButtonLabel();}
 function setSetupCollapsed(collapsed){$("setupPanel").classList.toggle("collapsed", collapsed);localStorage.setItem("networkExplorerSetupCollapsed", collapsed?"1":"0");renderSetupSummary();}
-function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem("networkExplorerTheme",theme);$("themeSelect").value=theme;}
+function resolveAutoTheme(){
+  try{
+    const p=window.parent && window.parent.document && window.parent.document.documentElement;
+    if(p){
+      const html=(p.className||" "+(p.dataset.theme||"")+" "+(p.getAttribute("data-color-mode")||"")).toLowerCase();
+      if(html.includes("dark")) return "dark";
+      if(html.includes("light")) return "light";
+      const cs=window.parent.getComputedStyle ? window.parent.getComputedStyle(p) : null;
+      if(cs){
+        const bg=cs.getPropertyValue("--primary-background-color")||cs.backgroundColor||"";
+        if(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/.test(bg)){
+          const m=bg.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/); const avg=(+m[1]+ +m[2]+ +m[3])/3;
+          return avg<128?"dark":"light";
+        }
+      }
+    }
+  }catch(e){}
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+function applyTheme(theme){
+  const chosen=theme||"auto";
+  document.documentElement.dataset.theme=chosen==="auto"?resolveAutoTheme():chosen;
+  document.documentElement.dataset.themeChoice=chosen;
+  localStorage.setItem("networkExplorerTheme",chosen);
+  if($("themeSelect"))$("themeSelect").value=chosen;
+}
 function refreshLabel(seconds){return seconds>0?`Refresh (${seconds>=60?seconds/60+"m":seconds+"s"})`:"Refresh";}
 function updateRefreshButtonLabel(){const seconds=parseInt($("autoRefreshSelect").value,10)||0;$("refreshBtn").textContent=refreshLabel(seconds);}
 function setupAutoRefresh(){
