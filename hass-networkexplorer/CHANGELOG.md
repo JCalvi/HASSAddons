@@ -1,9 +1,16 @@
 ## Changelog
 
+# 2026.7.4
+
+- Rebuilt from the working 2026.7.2 base.
+- Steering now explicitly runs LuCI-equivalent `hostapd_cli -i <interface> deauthenticate <mac>` first on the current AP/interface.
+- Added OpenWrt `logger` diagnostics so logread shows which steering method was attempted and whether it succeeded.
+- Added stronger visual separation, section icons and cleaner grouping in the expanded device details layout.
+
 
 # 2026.7.3
 
-- Improved device details layout some more.
+- Tried Claude to improve device details layout some more.
 - Try to get Steering to work better again.
 
 # 2026.7.2
