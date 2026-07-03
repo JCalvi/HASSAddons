@@ -4,13 +4,12 @@ from pathlib import Path
 # Persistent user-managed device/config store.
 # /data is removed when an add-on is uninstalled; /config is Home Assistant's
 # persistent configuration directory and survives add-on removal/reinstall.
-RUNTIME_CONFIG = Path("/config/networkexplorer/devices.json")
-SETTINGS_CONFIG = Path("/config/networkexplorer/settings.json")
-LEGACY_RUNTIME_CONFIG = Path("/data/networkexplorer_config.json")
+RUNTIME_CONFIG = Path("/config/network_explorer/devices.json")
+SETTINGS_CONFIG = Path("/config/network_explorer/settings.json")
 
 DEFAULTS = {
     # Devices/preferences are managed in the Network Explorer UI and persisted
-    # in /config/networkexplorer/devices.json.
+    # in /config/network_explorer/devices.json.
     # Runtime/performance/steering settings come from HA add-on options.
     "devices": [],
     "preferences": {},
@@ -53,31 +52,13 @@ def _write_json(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2))
 
-
-def migrate_legacy_runtime_config() -> None:
-    """Copy old /data runtime config into /config once.
-
-    Earlier builds stored managed devices in /data, which is removed when the
-    add-on is uninstalled. New builds store this in /config so device setup
-    survives remove/reinstall. During normal upgrades, copy the old file if the
-    new persistent file does not already exist.
-    """
-    if RUNTIME_CONFIG.exists() or not LEGACY_RUNTIME_CONFIG.exists():
-        return
-    data = _read_json(LEGACY_RUNTIME_CONFIG)
-    if data:
-        _write_json(RUNTIME_CONFIG, data)
-
-
 def load_config() -> dict:
-    migrate_legacy_runtime_config()
-
     cfg = DEFAULTS.copy()
 
     # 1) Read persistent Network Explorer UI data. Only device inventory and
     #    per-client preferences are accepted from this file. Older releases also
     #    stored global settings here; those are intentionally ignored so stale
-    #    values in /config/networkexplorer/devices.json cannot override the HA
+    #    values in /config/network_explorer/devices.json cannot override the HA
     #    Configuration page.
     runtime = _read_json(RUNTIME_CONFIG)
     devices = runtime.get("devices") if isinstance(runtime.get("devices"), list) else []
@@ -146,7 +127,6 @@ def load_config() -> dict:
     return cfg
 
 def save_runtime_config(updates: dict) -> dict:
-    migrate_legacy_runtime_config()
     cfg = _read_json(RUNTIME_CONFIG)
 
     # Only persist UI-owned state here. Global add-on settings live in
@@ -155,11 +135,6 @@ def save_runtime_config(updates: dict) -> dict:
     for key, value in updates.items():
         if key in allowed and value is not None:
             cfg[key] = value
-
-    # Clean legacy keys when writing so the file no longer appears to contain
-    # active global settings.
-    for key in ["ssh_key_path", "ssh_user", "piholes", "access_points", "settings", "steering_enabled", "steering_interval_minutes", "steering_cooldown_minutes", "ping_workers", "ping_timeout", "tcp_probe", "tcp_ports", "mqtt_enabled", "mqtt_host", "mqtt_port", "mqtt_username", "mqtt_password", "mqtt_topic_prefix"]:
-        cfg.pop(key, None)
 
     _write_json(RUNTIME_CONFIG, cfg)
     return cfg

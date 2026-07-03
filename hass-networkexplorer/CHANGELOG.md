@@ -1,5 +1,11 @@
 ## Changelog
 
+
+# 2026.7.10
+
+- Move all settings to /config/network_explorer
+- Remove legacy config settings.
+
 # 2026.7.9
 
 - Added developer/custom web override support.

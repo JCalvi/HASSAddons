@@ -7,7 +7,7 @@ from .config import load_config, save_runtime_config
 from .inventory import collect_inventory
 from .sshutil import ssh_cmd
 
-STATE_FILE = Path('/config/networkexplorer/steering_state.json')
+STATE_FILE = Path('/config/network_explorer/steering_state.json')
 
 
 def _read_state():
