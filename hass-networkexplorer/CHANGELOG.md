@@ -1,13 +1,9 @@
-# 2026.6.26
+## 2026.7.1
 
-- Emergency hotfix for 2026.6.25 frontend regression where refresh failed with `preferences is not defined`.
-- Restored Preferred AP preference state loading before refresh/render.
-
-## 2026.6.25
-
-- Removed MAC address from the main device table for readability.
-- MAC address remains searchable and is shown/copyable in device details.
-- Restored Preferred AP selector and Move Now button for live Wi-Fi devices.
+- Removed the MAC column from the main device table for a cleaner list.
+- MAC addresses remain searchable and visible/copyable from the device details pane.
+- Restored the Preferred AP selector in the Wi-Fi details section.
+- Restored the Move Now button for manually steering a Wi-Fi device to its Preferred AP.
 
 ## 2026.6.24
 

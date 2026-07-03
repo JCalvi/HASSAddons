@@ -48,3 +48,5 @@ h1{font-size:30px;margin:0 0 4px 0;font-weight:700}h2{font-size:20px;margin:0 0 
 .detail-actions.grouped{gap:22px;align-items:flex-start}
 .detail-actions.grouped>div>div{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .evidence-chip.present{color:var(--text);border-color:rgba(88,210,107,.35)}
+.pref-ap-control{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pref-ap-control select{min-width:220px}
