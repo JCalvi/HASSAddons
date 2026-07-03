@@ -159,7 +159,7 @@ tr:hover{background:var(--card2)}
 .detail-value{color:var(--text);word-break:break-word}
 .wifi-control{display:grid;gap:8px;margin-bottom:12px}.wifi-control label{font-weight:700;color:var(--text)}.wifi-control select{width:100%;min-width:0}.wifi-control .move-now{width:100%;min-height:42px;font-weight:700}
 .wifi-readonly{border-top:1px solid var(--border);padding-top:12px;margin-top:12px}
-.hint{color:var(--muted);font-size:12px;line-height:1.45;margin:12px 0 0}
+.hint{color:var(--muted);font-size:12px;line-height:1.45;margin:12px 0 0;font-style:italic}
 .mini-copy{margin-left:8px;min-height:0;padding:2px 6px;border-radius:6px;color:var(--muted)}
 .evidence-row{display:flex;flex-wrap:wrap;gap:8px}
 .evidence-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(88,210,107,.35);background:rgba(88,210,107,.08);border-radius:999px;padding:5px 10px;font-size:13px;color:var(--text)}

@@ -166,7 +166,7 @@ function fillFilters(){
   const cv=c.value, av=a.value;
   const conns=[...new Set(rows.map(x=>x.connection).filter(Boolean))].sort();
   const aps=[...new Set(rows.map(x=>x.ap).filter(Boolean))].sort();
-  c.innerHTML='<option value="">All Wi-Fi</option><option value="__wifi__">Wi-Fi only</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
+  c.innerHTML='<option value="__wifi__">All Wi-Fi</option><option value="">All connections</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
   a.innerHTML='<option value="">All APs</option>'+aps.map(x=>`<option>${esc(x)}</option>`).join("");
   c.value=[...c.options].some(o=>o.value===cv)?cv:"";
   a.value=[...a.options].some(o=>o.value===av)?av:"";
@@ -255,7 +255,7 @@ function detailHtml(x){
     const apOptions=["Auto", ...new Set(rows.map(r=>r.ap).filter(Boolean).sort())];
     const currentPref=x.preferred_ap||"Auto";
     const prefSelect=`<select class="preferred-ap-select" data-key="${esc(deviceKey(x))}">${apOptions.map(ap=>`<option value="${esc(ap)}" ${ap===currentPref?"selected":""}>${esc(ap)}</option>`).join("")}</select>`;
-    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>📶 Move now</button></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",rssiDetailValue(x.rssi))}${row("Channel",esc(x.channel||""))}${row("Interface",esc(x.wifi_interface||""))}</div><p class="hint"><em>Move now will disconnect this device from the current AP so it can reconnect to the preferred AP.</em></p>`;
+    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>📶 Move now</button></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",rssiDetailValue(x.rssi))}${row("Channel",esc(x.channel||""))}${row("Interface",esc(x.wifi_interface||""))}</div><p class="hint">Move now will disconnect this device from the current AP so it can reconnect to the preferred AP.</p>`;
   }else{
     const preferred=(x.preferred_ap && x.preferred_ap!=="Auto")?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:"";
     wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${preferred}`;

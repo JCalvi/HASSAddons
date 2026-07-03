@@ -166,7 +166,7 @@ tr:hover{background:var(--card2)}
 .detail-value{color:var(--text);word-break:break-word}
 .wifi-control{display:grid;gap:8px;margin-bottom:12px}.wifi-control label{font-weight:700;color:var(--text)}.wifi-control select{width:100%;min-width:0}.wifi-control .move-now{width:100%;min-height:42px;font-weight:700}
 .wifi-readonly{border-top:1px solid var(--border);padding-top:12px;margin-top:12px}
-.hint{color:var(--muted);font-size:12px;line-height:1.45;margin:12px 0 0}
+.hint{color:var(--muted);font-size:12px;line-height:1.45;margin:12px 0 0;font-style:italic}
 .mini-copy{margin-left:8px;min-height:0;padding:2px 6px;border-radius:6px;color:var(--muted)}
 .evidence-row{display:flex;flex-wrap:wrap;gap:8px}
 .evidence-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(88,210,107,.35);background:rgba(88,210,107,.08);border-radius:999px;padding:5px 10px;font-size:13px;color:var(--text)}
@@ -291,7 +291,7 @@ tr:hover{background:var(--card2)}
           <option value="idle">Idle only</option>
           <option value="offline">Offline only</option>
         </select>
-        <select id="connectionFilter"><option value="">All Wi-Fi</option></select>
+        <select id="connectionFilter"><option value="__wifi__">All Wi-Fi</option><option value="">All connections</option></select>
         <select id="apFilter"><option value="">All APs</option></select>
       </div>
     </section>
@@ -484,7 +484,7 @@ function fillFilters(){
   const cv=c.value, av=a.value;
   const conns=[...new Set(rows.map(x=>x.connection).filter(Boolean))].sort();
   const aps=[...new Set(rows.map(x=>x.ap).filter(Boolean))].sort();
-  c.innerHTML='<option value="">All Wi-Fi</option><option value="__wifi__">Wi-Fi only</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
+  c.innerHTML='<option value="__wifi__">All Wi-Fi</option><option value="">All connections</option>'+conns.map(x=>`<option>${esc(x)}</option>`).join("");
   a.innerHTML='<option value="">All APs</option>'+aps.map(x=>`<option>${esc(x)}</option>`).join("");
   c.value=[...c.options].some(o=>o.value===cv)?cv:"";
   a.value=[...a.options].some(o=>o.value===av)?av:"";
@@ -573,7 +573,7 @@ function detailHtml(x){
     const apOptions=["Auto", ...new Set(rows.map(r=>r.ap).filter(Boolean).sort())];
     const currentPref=x.preferred_ap||"Auto";
     const prefSelect=`<select class="preferred-ap-select" data-key="${esc(deviceKey(x))}">${apOptions.map(ap=>`<option value="${esc(ap)}" ${ap===currentPref?"selected":""}>${esc(ap)}</option>`).join("")}</select>`;
-    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>📶 Move now</button></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",rssiDetailValue(x.rssi))}${row("Channel",esc(x.channel||""))}${row("Interface",esc(x.wifi_interface||""))}</div><p class="hint"><em>Move now will disconnect this device from the current AP so it can reconnect to the preferred AP.</em></p>`;
+    wifiInner=`<div class="wifi-control"><label>Preferred AP</label>${prefSelect}<button class="primary move-now" type="button" data-device='${esc(JSON.stringify(x))}'>📶 Move now</button></div><div class="detail-grid wifi-readonly">${row("Current AP",esc(x.ap))}${row("Band",esc(x.band))}${row("RSSI",rssiDetailValue(x.rssi))}${row("Channel",esc(x.channel||""))}${row("Interface",esc(x.wifi_interface||""))}</div><p class="hint">Move now will disconnect this device from the current AP so it can reconnect to the preferred AP.</p>`;
   }else{
     const preferred=(x.preferred_ap && x.preferred_ap!=="Auto")?`<div class="detail-grid">${row("Preferred AP",esc(x.preferred_ap))}</div>`:"";
     wifiInner=`<div class="muted">Not a live Wi-Fi device</div>${preferred}`;
