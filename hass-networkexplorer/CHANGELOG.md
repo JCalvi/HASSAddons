@@ -1,6 +1,11 @@
 ## Changelog
 
 
+# 2026.7.3
+
+- Improved device details layout some more.
+- Try to get Steering to work better again.
+
 # 2026.7.2
 
 - Improved device details layout so Wi-Fi controls fit cleanly within the details pane.
