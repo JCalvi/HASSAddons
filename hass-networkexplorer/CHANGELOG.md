@@ -2,11 +2,11 @@
 
 # 2026.7.14
 
-- Maintenance cleanup only.
 - Removed unused `clean_host()` helper.
 - Consolidated duplicate/superseded CSS declarations in `web/style.css`.
 - Fixed Firefox table header truncation.
 - Improved iPad portrait/landscape layouts.
+- Tweaks to settings dropdown.
 
 # 2026.7.13
 

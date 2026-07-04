@@ -638,3 +638,324 @@ td.ap-cell{direction: ltr;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Setup table regression guard: keep configuration columns readable and let the wrapper scroll instead of squeezing fields. */
+.device-setup-wrap {
+  overflow-x: auto !important;
+  overflow-y: visible;
+}
+.device-setup-table {
+  table-layout: auto !important;
+  min-width: 1320px !important;
+}
+.device-setup-table th,
+.device-setup-table td {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+.device-setup-table .dev-type { min-width: 140px !important; }
+.device-setup-table .dev-name { min-width: 180px !important; }
+.device-setup-table .dev-ip { min-width: 140px !important; }
+.device-setup-table .dev-user { min-width: 78px !important; }
+.device-setup-table .dev-key-path { min-width: 280px !important; }
+.device-setup-table .dev-password { min-width: 180px !important; }
+.device-setup-table .ssh-status { min-width: 120px !important; }
+.device-setup-table .row-actions {
+  min-width: 260px !important;
+  display: flex !important;
+  gap: 6px !important;
+  overflow: visible !important;
+}
+.device-setup-table .row-actions button { flex: 0 0 auto !important; }
+
+/* Setup table compact sizing: let editable fields size closer to their contents while the wrapper still scrolls when needed. */
+.device-setup-table {
+  width: max-content !important;
+  min-width: 0 !important;
+}
+.device-setup-table input,
+.device-setup-table select {
+  width: auto !important;
+  max-width: 100% !important;
+}
+.device-setup-table .dev-type { min-width: 135px !important; }
+.device-setup-table .dev-name { min-width: 4.5em !important; }
+.device-setup-table .dev-ip { min-width: 11.5em !important; }
+.device-setup-table .dev-user { min-width: 4em !important; }
+.device-setup-table .dev-key-path { min-width: 22em !important; }
+.device-setup-table .dev-password { min-width: 10em !important; }
+.device-setup-table .ssh-status { min-width: 105px !important; }
+.device-setup-table .row-actions { min-width: 0 !important; }
+
+/* Setup table final compact pass: keep fields readable without wasting horizontal space. */
+.device-setup-table th:nth-child(3),
+.device-setup-table td:nth-child(3) { width: 9.5em !important; }
+.device-setup-table th:nth-child(5),
+.device-setup-table td:nth-child(5) { width: 18.5em !important; }
+.device-setup-table th:nth-child(6),
+.device-setup-table td:nth-child(6) { width: 8em !important; }
+.device-setup-table .dev-ip { min-width: 9em !important; width: 9em !important; }
+.device-setup-table .dev-key-path { min-width: 17.5em !important; width: 17.5em !important; }
+.device-setup-table .dev-password { min-width: 7.5em !important; width: 7.5em !important; }
+.device-setup-table .dev-user { min-width: 3.7em !important; width: 3.7em !important; }
+.device-setup-table .dev-name { min-width: 9em !important; width: auto !important; }
+.device-setup-table .dev-type { min-width: 10.5em !important; }
+.device-setup-table .ssh-status { min-width: 7em !important; }
+
+
+/* Setup table compact v3: keep scrolling, reduce wasted width, and prevent horizontal scrollbar clipping the last row. */
+.device-setup-wrap {
+  overflow: auto !important;
+  padding-bottom: 8px !important;
+  scrollbar-gutter: stable both-edges;
+}
+.device-setup-table {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 0 !important;
+}
+.device-setup-table th,
+.device-setup-table td {
+  padding: 7px 8px !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+.device-setup-table input,
+.device-setup-table select {
+  width: auto !important;
+  max-width: 100% !important;
+}
+.device-setup-table .dev-type { min-width: 10.5em !important; }
+.device-setup-table .dev-name { min-width: 9em !important; width: auto !important; }
+.device-setup-table .dev-ip { min-width: 9.4em !important; width: 9.4em !important; }
+.device-setup-table .dev-user { min-width: 4.6em !important; width: 4.6em !important; }
+.device-setup-table .dev-key-path { min-width: 14.4em !important; width: 14.4em !important; }
+.device-setup-table .dev-password { min-width: 6.4em !important; width: 6.4em !important; }
+.device-setup-table .ssh-status { min-width: 7em !important; }
+.device-setup-table .row-actions {
+  min-width: 13.5em !important;
+  display: flex !important;
+  gap: 6px !important;
+  overflow: visible !important;
+}
+.device-setup-table .row-actions button { flex: 0 0 auto !important; }
+
+/* Setup table compact v5: final spacing polish. */
+.device-setup-wrap {
+  /* Continue the header band across the full visible wrapper on wide screens. */
+  background: linear-gradient(to bottom, var(--head) 0 40px, transparent 40px) !important;
+}
+.device-setup-table {
+  width: max-content !important;
+  min-width: 0 !important;
+}
+.device-setup-table th:nth-child(3),
+.device-setup-table td:nth-child(3) { width: 10.8em !important; }
+.device-setup-table th:nth-child(4),
+.device-setup-table td:nth-child(4) { width: 5.1em !important; }
+.device-setup-table th:nth-child(5),
+.device-setup-table td:nth-child(5) { width: 13.2em !important; }
+.device-setup-table th:nth-child(6),
+.device-setup-table td:nth-child(6) { width: 6.8em !important; }
+.device-setup-table .dev-ip { min-width: 10.8em !important; width: 10.8em !important; }
+.device-setup-table .dev-user { min-width: 5.1em !important; width: 5.1em !important; }
+.device-setup-table .dev-key-path { min-width: 13.2em !important; width: 13.2em !important; }
+.device-setup-table .dev-password { min-width: 6.8em !important; width: 6.8em !important; }
+
+/* Setup table compact v6: remove the artificial header-band extension on wide screens. */
+.device-setup-wrap {
+  background: var(--card) !important;
+}
+.device-setup-table th {
+  background: var(--head) !important;
+}
+
+
+/* 2026-07 setup table v8:
+   Use a real full-width setup table instead of fake background extension.
+   This keeps the header band and row separators continuous across the setup card
+   while preserving sensible compact control widths and horizontal scrolling. */
+.device-setup-wrap {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+}
+
+/* Full width when there is room; scroll only when the viewport is narrower. */
+.device-setup-table {
+  width: 100% !important;
+  min-width: 1320px !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+/* Proper full-width header band and full-width row separators. */
+.device-setup-table th {
+  background: var(--head) !important;
+  border-bottom: 1px solid var(--border) !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.device-setup-table td {
+  border-bottom: 1px solid var(--border-soft) !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.device-setup-table tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+/* Column balance. */
+.device-setup-table th:nth-child(1),
+.device-setup-table td:nth-child(1) { width: 170px !important; } /* Type */
+
+.device-setup-table th:nth-child(2),
+.device-setup-table td:nth-child(2) { width: 190px !important; } /* Name */
+
+.device-setup-table th:nth-child(3),
+.device-setup-table td:nth-child(3) { width: 165px !important; } /* IP */
+
+.device-setup-table th:nth-child(4),
+.device-setup-table td:nth-child(4) { width: 95px !important; } /* User */
+
+.device-setup-table th:nth-child(5),
+.device-setup-table td:nth-child(5) { width: 230px !important; } /* SSH key path */
+
+.device-setup-table th:nth-child(6),
+.device-setup-table td:nth-child(6) { width: 120px !important; } /* OTP */
+
+.device-setup-table th:nth-child(7),
+.device-setup-table td:nth-child(7) { width: 120px !important; } /* SSH */
+
+.device-setup-table th:nth-child(8),
+.device-setup-table td:nth-child(8) { width: 230px !important; } /* Action */
+
+/* Keep form controls compact within their columns. */
+.device-setup-table input,
+.device-setup-table select {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.device-setup-table .row-actions {
+  display: flex !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+}
+
+.device-setup-table .row-actions button {
+  flex: 0 0 auto !important;
+}
+
+/* Do not draw any pseudo/fake extra band from earlier experiments. */
+.device-setup-wrap::after,
+.device-setup-wrap::before {
+  content: none !important;
+}
+
+
+/* 2026-07 setup table v10 final polish.
+   Based on confirmed-good v8 layout. Do not change wrapper/header/table mechanics. */
+
+/* Pull OTP closer to SSH key path without altering the full-width header behaviour. */
+.device-setup-table th:nth-child(5),
+.device-setup-table td:nth-child(5) { width: 205px !important; } /* SSH key path */
+
+.device-setup-table th:nth-child(6),
+.device-setup-table td:nth-child(6) { width: 105px !important; } /* OTP */
+
+/* Restore device type colours on the Type select only. */
+.device-setup-table tr.type-openwrt select.dev-type,
+.device-setup-table tr.type-openwrt .dev-type,
+.device-setup-table select.dev-type.type-openwrt {
+  background: #ecfdf5 !important;
+  border-color: #bbf7d0 !important;
+  color: #14532d !important;
+  box-shadow: inset 4px 0 0 #86efac !important;
+}
+
+.device-setup-table tr.type-pi-hole select.dev-type,
+.device-setup-table tr.type-pi-hole .dev-type,
+.device-setup-table select.dev-type.type-pi-hole {
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #7f1d1d !important;
+  box-shadow: inset 4px 0 0 #f87171 !important;
+}
+
+.device-setup-table tr.type-openwrt-wi-fi select.dev-type,
+.device-setup-table tr.type-openwrt-ap select.dev-type,
+.device-setup-table tr.type-openwrt-wi-fi .dev-type,
+.device-setup-table tr.type-openwrt-ap .dev-type,
+.device-setup-table select.dev-type.type-openwrt-wi-fi,
+.device-setup-table select.dev-type.type-openwrt-ap {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #075985 !important;
+  box-shadow: inset 4px 0 0 #60a5fa !important;
+}
+
+.device-setup-table tr.type-linux select.dev-type,
+.device-setup-table tr.type-host select.dev-type,
+.device-setup-table tr.type-auto select.dev-type,
+.device-setup-table tr.type-linux .dev-type,
+.device-setup-table tr.type-host .dev-type,
+.device-setup-table tr.type-auto .dev-type,
+.device-setup-table select.dev-type.type-linux,
+.device-setup-table select.dev-type.type-host,
+.device-setup-table select.dev-type.type-auto {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: inset 4px 0 0 #94a3b8 !important;
+}
+
+:root[data-theme="dark"] .device-setup-table tr.type-openwrt select.dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-openwrt select.dev-type,
+:root[data-theme="dark"] .device-setup-table tr.type-openwrt .dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-openwrt .dev-type,
+:root[data-theme="dark"] .device-setup-table select.dev-type.type-openwrt,
+:root[data-theme="auto"] .device-setup-table select.dev-type.type-openwrt {
+  background:#10291b !important;
+  border-color:#1d5c35 !important;
+  color:#86efac !important;
+  box-shadow: inset 4px 0 0 #22c55e !important;
+}
+
+:root[data-theme="dark"] .device-setup-table tr.type-pi-hole select.dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-pi-hole select.dev-type,
+:root[data-theme="dark"] .device-setup-table tr.type-pi-hole .dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-pi-hole .dev-type,
+:root[data-theme="dark"] .device-setup-table select.dev-type.type-pi-hole,
+:root[data-theme="auto"] .device-setup-table select.dev-type.type-pi-hole {
+  background:#331516 !important;
+  border-color:#7f1d1d !important;
+  color:#fecaca !important;
+  box-shadow: inset 4px 0 0 #ef4444 !important;
+}
+
+:root[data-theme="dark"] .device-setup-table tr.type-openwrt-wi-fi select.dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-openwrt-wi-fi select.dev-type,
+:root[data-theme="dark"] .device-setup-table tr.type-openwrt-ap select.dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-openwrt-ap select.dev-type,
+:root[data-theme="dark"] .device-setup-table tr.type-openwrt-wi-fi .dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-openwrt-wi-fi .dev-type,
+:root[data-theme="dark"] .device-setup-table tr.type-openwrt-ap .dev-type,
+:root[data-theme="auto"] .device-setup-table tr.type-openwrt-ap .dev-type,
+:root[data-theme="dark"] .device-setup-table select.dev-type.type-openwrt-wi-fi,
+:root[data-theme="auto"] .device-setup-table select.dev-type.type-openwrt-wi-fi,
+:root[data-theme="dark"] .device-setup-table select.dev-type.type-openwrt-ap,
+:root[data-theme="auto"] .device-setup-table select.dev-type.type-openwrt-ap {
+  background:#0b223d !important;
+  border-color:#1e40af !important;
+  color:#bfdbfe !important;
+  box-shadow: inset 4px 0 0 #3b82f6 !important;
+}

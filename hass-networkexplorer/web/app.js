@@ -96,6 +96,10 @@ function renderSetupSummary(){
   $("settingsBtn").textContent=hidden?"Settings":"Hide Settings";
   $("toggleSetupBtn").textContent="Hide Settings";
 }
+function fieldSize(value, fallback="", min=4, max=32){
+  const text=String((value!==undefined&&value!==null&&value!=="")?value:fallback);
+  return Math.max(min, Math.min(max, text.length+1));
+}
 function renderSetupDevices(){
   sortSetupDevices();
   $("setupDevices").innerHTML=setupDevices.map((d,i)=>{
@@ -103,13 +107,13 @@ function renderSetupDevices(){
     const detail=d.detail||d.message||"";
     return `<tr data-setup-index="${i}">
       <td><select class="dev-type type-${deviceTypeClass(d.type)}"><option ${d.type==="Auto"?"selected":""}>Auto</option><option ${d.type==="Pi-hole"?"selected":""}>Pi-hole</option><option ${d.type==="OpenWrt Wi-Fi"||d.type==="OpenWrt AP"?"selected":""}>OpenWrt Wi-Fi</option><option ${d.type==="OpenWrt"?"selected":""}>OpenWrt</option><option ${d.type==="Linux"||d.type==="Host"?"selected":""}>Linux</option></select></td>
-      <td><input class="dev-name" value="${esc(d.name)}" placeholder="auto"></td>
-      <td><input class="dev-ip" value="${esc(d.ip)}" placeholder="192.168.1.x"></td>
-      <td><input class="dev-user" value="${esc(d.user||"root")}" placeholder="root"></td>
-      <td><input class="dev-key-path" value="${esc(d.ssh_key_path||"/config/ssh/id_ed25519")}" placeholder="/config/ssh/id_ed25519"></td>
-      <td><input class="dev-password" type="password" value="${esc(d.password||"")}" placeholder="${installed?"installed":"not saved"}" ${installed?"disabled":""}></td>
+      <td><input class="dev-name" size="${fieldSize(d.name,"auto",4,18)}" value="${esc(d.name)}" placeholder="auto"></td>
+      <td><input class="dev-ip" size="${fieldSize(d.ip,"192.168.1.x",11,15)}" value="${esc(d.ip)}" placeholder="192.168.1.x"></td>
+      <td><input class="dev-user" size="${fieldSize(d.user,"root",4,8)}" value="${esc(d.user||"root")}" placeholder="root"></td>
+      <td><input class="dev-key-path" size="${fieldSize(d.ssh_key_path,"/config/ssh/id_ed25519",22,34)}" value="${esc(d.ssh_key_path||"/config/ssh/id_ed25519")}" placeholder="/config/ssh/id_ed25519"></td>
+      <td><input class="dev-password" size="${fieldSize(d.password,installed?"installed":"not saved",9,16)}" type="password" value="${esc(d.password||"")}" placeholder="${installed?"installed":"not saved"}" ${installed?"disabled":""}></td>
       <td class="ssh-status">${statusChip(d)}${d.detected_os?`<small>${esc(d.detected_os)}${d.install_path?` - ${esc(d.install_path)}`:""}</small>`:""}${d.ssh==="fail"&&detail?`<button class="link-button show-detail" type="button">Details</button>`:""}</td>
-      <td class="row-actions"><button class="secondary install-one" type="button">Install Key</button><button class="secondary test-one" type="button">Test</button><button class="danger remove-one" type="button">Remove</button></td>
+      <td class="row-actions"><button class="secondary install-one" type="button" title="Install SSH public key on this device">Install</button><button class="secondary test-one" type="button">Test</button><button class="danger remove-one" type="button">Remove</button></td>
     </tr>`;
   }).join("");
   document.querySelectorAll("#setupDevices tr").forEach(row=>{
