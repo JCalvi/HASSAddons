@@ -368,9 +368,11 @@ dt,dd,.field-label,.hint{font-size:var(--detail-font) !important;}
 .table-wrap th,
     .table-wrap td{padding-left: 8px !important;
       padding-right: 8px !important;
-      overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;}
+.table-wrap tbody td{overflow: hidden;
+      text-overflow: ellipsis;}
+.table-wrap thead th{overflow: visible !important;
+      text-overflow: clip !important;}
 /* Keep IPv4 addresses fully visible. Compression happens in Host/AP instead. */
 .table-wrap th:nth-child(1), .table-wrap td:nth-child(1){width: 152px;}
 /* IP */
@@ -458,12 +460,12 @@ td.ap-cell{direction: ltr;
       .table-wrap td{padding-left: 7px !important;
         padding-right: 7px !important;}
 .table-wrap th:nth-child(1), .table-wrap td:nth-child(1){width: 150px;}
-.table-wrap th:nth-child(2), .table-wrap td:nth-child(2){width: 190px;}
+.table-wrap th:nth-child(2), .table-wrap td:nth-child(2){width: 176px;}
 .table-wrap th:nth-child(3), .table-wrap td:nth-child(3){width: 88px;}
-.table-wrap th:nth-child(4), .table-wrap td:nth-child(4){width: 110px;}
+.table-wrap th:nth-child(4), .table-wrap td:nth-child(4){width: 124px;}
 .table-wrap th:nth-child(5), .table-wrap td:nth-child(5){min-width: 85px;}
 .table-wrap th:nth-child(6), .table-wrap td:nth-child(6){width: 60px;}
-.table-wrap th:nth-child(7), .table-wrap td:nth-child(7){width: 52px;}
+.table-wrap th:nth-child(7), .table-wrap td:nth-child(7){width: 60px;}
 }
 /* 2026-07 detail panel responsive fix: stop Wi-Fi card / AP selector overflow. */
 .details-card,
@@ -624,3 +626,15 @@ td.ap-cell{direction: ltr;
 :root[data-theme="auto"] .summary .chip-total{background:#101822 !important;
   color:#cbd7e6 !important;
   border-color:var(--border) !important;}
+
+
+/* Firefox/header regression guard: never ellipsize column headings. */
+.table-wrap thead th {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+.table-wrap tbody td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
