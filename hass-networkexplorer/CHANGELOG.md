@@ -1,5 +1,11 @@
 ## Changelog
 
+# 2026.7.14
+
+- Maintenance cleanup only.
+- Removed unused `clean_host()` helper.
+- Consolidated duplicate/superseded CSS declarations in `web/style.css`.
+
 # 2026.7.13
 
 - Discard unmatched IPv6 neighbour/history entries so IPv6-only artefacts no longer appear as separate devices.

@@ -71,10 +71,6 @@ def norm_mac(mac: str) -> str:
     return mac if re.match(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$", mac) else ""
 
 
-def clean_host(host: str) -> str:
-    short, _fqdn = split_fqdn(host)
-    return short
-
 
 def new_device(ip="", host="", mac="", source="") -> dict:
     short_host, fqdn = split_fqdn(host)
