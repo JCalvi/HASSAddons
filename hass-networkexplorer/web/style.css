@@ -286,3 +286,459 @@ dt,dd,.field-label,.hint{font-size:var(--detail-font) !important}
   border-left:0 !important;
 }
 /* Auto is resolved in JS to real light/dark so styling remains identical to explicit choices. */
+
+/* Consolidated from index.html responsive fixes. */
+/* 2026-07 iPad landscape table fit / RSSI visibility fix */
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    /* Scope layout changes to the main device table only, not the setup table. */
+    .table-wrap table {
+      table-layout: fixed;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .table-wrap th,
+    .table-wrap td {
+      padding-left: 8px !important;
+      padding-right: 8px !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Keep IPv4 addresses fully visible. Compression happens in Host/AP instead. */
+    .table-wrap th:nth-child(1), .table-wrap td:nth-child(1) { width: 152px; } /* IP */
+    .table-wrap th:nth-child(2), .table-wrap td:nth-child(2) { width: 220px; } /* Host */
+    .table-wrap th:nth-child(3), .table-wrap td:nth-child(3) { width: 96px; }  /* Status */
+    .table-wrap th:nth-child(4), .table-wrap td:nth-child(4) { width: 130px; } /* Connection / SSID */
+    .table-wrap th:nth-child(5), .table-wrap td:nth-child(5) { width: auto; min-width: 95px; } /* AP */
+    .table-wrap th:nth-child(6), .table-wrap td:nth-child(6) { width: 72px; }  /* Band */
+    .table-wrap th:nth-child(7), .table-wrap td:nth-child(7) { width: 58px; }  /* RSSI */
+
+    td.ap-cell {
+      direction: ltr;
+      unicode-bidi: plaintext;
+    }
+
+
+
+    /* Header layout: title left, controls beside it, Settings anchored to page right. */
+    .page {
+      container-type: inline-size;
+    }
+
+    .page-header {
+      display: grid !important;
+      grid-template-columns: auto auto 1fr auto;
+      align-items: start !important;
+      column-gap: 18px;
+      row-gap: 8px;
+    }
+
+    .page-title-block {
+      grid-column: 1;
+      min-width: 0;
+    }
+
+    .header-actions {
+      grid-column: 2;
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      width: auto !important;
+      flex: none !important;
+    }
+
+    .header-actions > select,
+    .header-actions > button,
+    .header-actions .refresh-combo {
+      flex: 0 0 auto;
+    }
+
+    .header-actions #themeSelect {
+      width: auto !important;
+      min-width: 132px;
+    }
+
+    .header-actions .refresh-combo {
+      display: inline-flex !important;
+      width: auto !important;
+      min-width: 0 !important;
+    }
+
+    .header-actions .refresh-combo button,
+    .header-actions .refresh-combo select {
+      flex: 0 0 auto;
+    }
+
+    .header-actions .refresh-combo select {
+      min-width: 96px;
+    }
+
+    /* Prevent Refresh / Refreshing... changing the toolbar width. */
+    #refreshBtn {
+      width: 122px !important;
+      min-width: 122px !important;
+      text-align: center;
+    }
+
+    #settingsBtn {
+      grid-column: 4;
+      justify-self: end;
+      align-self: start;
+      width: auto !important;
+      margin-left: 0 !important;
+    }
+
+    /* Use actual add-on panel width rather than viewport width. This avoids the
+       odd iPad portrait / collapsed-sidebar gap. */
+    @container (max-width: 840px) {
+      .page-header {
+        grid-template-columns: 1fr auto;
+      }
+      .page-title-block {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      #settingsBtn {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .header-actions {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .page-header {
+        grid-template-columns: 1fr auto;
+      }
+      .page-title-block {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      #settingsBtn {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .header-actions {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+    }
+
+    @container (max-width: 560px) {
+      .header-actions {
+        flex-wrap: wrap !important;
+      }
+      .header-actions > select,
+      .header-actions .refresh-combo {
+        flex: 1 1 auto;
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .table-wrap th,
+      .table-wrap td {
+        padding-left: 7px !important;
+        padding-right: 7px !important;
+      }
+      .table-wrap th:nth-child(1), .table-wrap td:nth-child(1) { width: 150px; }
+      .table-wrap th:nth-child(2), .table-wrap td:nth-child(2) { width: 190px; }
+      .table-wrap th:nth-child(3), .table-wrap td:nth-child(3) { width: 88px; }
+      .table-wrap th:nth-child(4), .table-wrap td:nth-child(4) { width: 110px; }
+      .table-wrap th:nth-child(5), .table-wrap td:nth-child(5) { min-width: 85px; }
+      .table-wrap th:nth-child(6), .table-wrap td:nth-child(6) { width: 60px; }
+      .table-wrap th:nth-child(7), .table-wrap td:nth-child(7) { width: 52px; }
+    }
+
+
+    /* 2026-07 detail panel responsive fix: stop Wi-Fi card / AP selector overflow. */
+    .details-card,
+    .details-card *,
+    .details-grid,
+    .info-card,
+    .wifi {
+      box-sizing: border-box;
+    }
+
+    .details-card,
+    .details-grid,
+    .info-card,
+    .wifi {
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
+
+    .details-card {
+      overflow: hidden !important;
+    }
+
+    .details-grid {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      grid-template-areas:
+        "identity network"
+        "wifi wifi"
+        "discovery history"
+        "tailscale tailscale" !important;
+      gap: 14px !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+
+    .identity { grid-area: identity; }
+    .network { grid-area: network; }
+    .wifi { grid-area: wifi; overflow: hidden !important; }
+    .discovery { grid-area: discovery; }
+    .history { grid-area: history; }
+    .tailscale { grid-area: tailscale; }
+
+    .wifi select,
+    .wifi .preferred-ap-select {
+      display: block !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+    }
+
+    .wifi-control,
+    .wifi .wifi-control,
+    .wifi .preferred-ap-row,
+    .wifi .preferred-ap-control {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 8px !important;
+      align-items: stretch !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    .wifi .move-now,
+    .wifi-control .move-now,
+    .wifi .primary {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      justify-content: center !important;
+    }
+
+    .wifi dl,
+    .info-card dl {
+      min-width: 0 !important;
+    }
+
+    .wifi dd,
+    .info-card dd {
+      min-width: 0 !important;
+      overflow-wrap: anywhere;
+    }
+
+    @container (min-width: 1500px) {
+      .details-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr) !important;
+        grid-template-areas:
+          "identity network wifi"
+          "discovery history wifi"
+          "tailscale tailscale wifi" !important;
+      }
+      .wifi-control,
+      .wifi .wifi-control,
+      .wifi .preferred-ap-row,
+      .wifi .preferred-ap-control {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        align-items: end !important;
+      }
+      .wifi .move-now,
+      .wifi-control .move-now,
+      .wifi .primary {
+        width: auto !important;
+      }
+    }
+
+    @container (max-width: 900px) {
+      .details-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-areas:
+          "identity"
+          "network"
+          "wifi"
+          "discovery"
+          "history"
+          "tailscale" !important;
+      }
+      .details-card {
+        margin-left: 8px !important;
+        margin-right: 8px !important;
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+      }
+      .actions-row {
+        flex-wrap: wrap !important;
+      }
+    }
+
+    @media (min-width: 1500px) {
+      .details-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr) !important;
+        grid-template-areas:
+          "identity network wifi"
+          "discovery history wifi"
+          "tailscale tailscale wifi" !important;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .details-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-areas:
+          "identity"
+          "network"
+          "wifi"
+          "discovery"
+          "history"
+          "tailscale" !important;
+      }
+    }
+
+
+/* Summary chip colours: use semantic classes instead of position-based nth-child rules. */
+.summary .summary-chip{
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--muted) !important;
+}
+.summary .chip-total{
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--muted) !important;
+}
+.summary .chip-online{
+  border-color: #86efac !important;
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+}
+.summary .chip-idle{
+  border-color: #fde68a !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
+}
+.summary .chip-offline{
+  border-color: #d1d5db !important;
+  background: #f3f4f6 !important;
+  color: #4b5563 !important;
+}
+.summary .chip-wifi{
+  border-color: #67e8f9 !important;
+  background: #ecfeff !important;
+  color: #0e7490 !important;
+}
+.summary .chip-ethernet{
+  border-color: #d8b4fe !important;
+  background: #faf5ff !important;
+  color: #7e22ce !important;
+}
+.summary .chip-tailscale{
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+:root[data-theme="dark"] .summary .summary-chip,
+:root[data-theme="auto"] .summary .summary-chip{
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  color: var(--muted) !important;
+}
+:root[data-theme="dark"] .summary .chip-online,
+:root[data-theme="auto"] .summary .chip-online{
+  border-color:#175c35 !important;
+  background:#0d2217 !important;
+  color:#69e694 !important;
+}
+:root[data-theme="dark"] .summary .chip-idle,
+:root[data-theme="auto"] .summary .chip-idle{
+  border-color:#7c5b12 !important;
+  background:#2f2508 !important;
+  color:#facc15 !important;
+}
+:root[data-theme="dark"] .summary .chip-offline,
+:root[data-theme="auto"] .summary .chip-offline{
+  border-color:#4b5563 !important;
+  background:#1f2937 !important;
+  color:#cbd5e1 !important;
+}
+:root[data-theme="dark"] .summary .chip-wifi,
+:root[data-theme="auto"] .summary .chip-wifi{
+  border-color:#126273 !important;
+  background:#08262e !important;
+  color:#58ddec !important;
+}
+:root[data-theme="dark"] .summary .chip-ethernet,
+:root[data-theme="auto"] .summary .chip-ethernet{
+  border-color:#633085 !important;
+  background:#251233 !important;
+  color:#d894ff !important;
+}
+:root[data-theme="dark"] .summary .chip-tailscale,
+:root[data-theme="auto"] .summary .chip-tailscale{
+  border-color:#1e40af !important;
+  background:#0b1f4d !important;
+  color:#93c5fd !important;
+}
+
+
+/* Match summary status chips to row status pills exactly. */
+.summary .chip-online{
+  background:#dcfce7 !important;
+  color:#15803d !important;
+  border-color:#dcfce7 !important;
+}
+.summary .chip-idle{
+  background:#fef3c7 !important;
+  color:#92400e !important;
+  border-color:#fef3c7 !important;
+}
+.summary .chip-offline{
+  background:#e5e7eb !important;
+  color:#475569 !important;
+  border-color:#e5e7eb !important;
+}
+.summary .chip-total{
+  background:#ffffff !important;
+  color:#334155 !important;
+  border-color:#cbd5e1 !important;
+}
+:root[data-theme="dark"] .summary .chip-online,
+:root[data-theme="auto"] .summary .chip-online{
+  background:#0e4d25 !important;
+  color:#56e681 !important;
+  border-color:#0e4d25 !important;
+}
+:root[data-theme="dark"] .summary .chip-idle,
+:root[data-theme="auto"] .summary .chip-idle{
+  background:#4b421c !important;
+  color:#e6c84f !important;
+  border-color:#4b421c !important;
+}
+:root[data-theme="dark"] .summary .chip-offline,
+:root[data-theme="auto"] .summary .chip-offline{
+  background:#333 !important;
+  color:#aaa !important;
+  border-color:#333 !important;
+}
+:root[data-theme="dark"] .summary .chip-total,
+:root[data-theme="auto"] .summary .chip-total{
+  background:#101822 !important;
+  color:#cbd7e6 !important;
+  border-color:var(--border) !important;
+}

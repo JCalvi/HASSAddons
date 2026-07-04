@@ -209,6 +209,11 @@ async function savePreferredAp(key,value){
 
 function detailHtml(x){
   const ip=esc(x.ip), host=esc(x.host), mac=esc(x.mac), fqdn=esc(x.fqdn);
+  const ipv6List = Array.isArray(x.ipv6_addresses) ? x.ipv6_addresses.filter(Boolean) : [];
+  const ipv6LinkLocal = Array.isArray(x.ipv6_link_local) ? x.ipv6_link_local.filter(Boolean) : [];
+  const ipv6Text = ipv6List.map(v => esc(v)).join("<br>");
+  const ipv6LinkText = ipv6LinkLocal.map(v => esc(v)).join("<br>");
+  const ipVersion = ip && ipv6List.length ? "IPv4 + IPv6" : (ip ? "IPv4" : (ipv6List.length ? "IPv6" : ""));
   const tsIp=esc(x.tailscale_ip||((x.connection==="Tailscale")?x.ip:""));
   const tsHost=esc(x.tailscale_host||((x.connection==="Tailscale")?x.host:""));
   const tsFqdn=esc(x.tailscale_fqdn||"");
@@ -220,6 +225,7 @@ function detailHtml(x){
     openButtons.push(actionButton('open-https','🔒 HTTPS',`data-ip="${ip}"`));
     copyButtons.push(actionButton('copy-value','▣ IPv4',`data-label="IPv4" data-copy="${ip}"`));
   }
+  if(ipv6List.length) copyButtons.push(actionButton('copy-value','▣ IPv6',`data-label="IPv6" data-copy="${esc(ipv6List[0])}"`));
   if(x.host) copyButtons.push(actionButton('copy-value','▭ Host',`data-label="Host" data-copy="${host}"`));
   if(x.mac) copyButtons.push(actionButton('copy-value','▤ MAC',`data-label="MAC" data-copy="${mac}"`));
   if(tsIp) copyButtons.push(actionButton('copy-value','◇ Tailscale IP',`data-label="Tailscale IP" data-copy="${tsIp}"`));
@@ -241,7 +247,7 @@ function detailHtml(x){
   const tailscaleLine = tsIp ? detailRow("Tailscale IP",`${tsIp} <button class="mini-copy copy-value" data-label="Tailscale IP" data-copy="${tsIp}" type="button">⧉</button>`) : "";
   const actions=`<div class="actions-row"><div class="action-group"><div class="group-label">Open</div>${openButtons.join("")}</div><div class="divider"></div><div class="action-group"><div class="group-label">Copy</div>${copyButtons.join("")}</div></div>`;
   const identity=`<section class="info-card identity"><h3><span>👤</span> Identity</h3><dl>${detailRow("Host",host)}${detailRow("MAC Address",mac)}${detailRow("FQDN",fqdn)}</dl></section>`;
-  const network=`<section class="info-card network"><h3><span>🖧</span> Network</h3><dl>${detailRow("IP Version",ip?"IPv4":"")}${detailRow("IP Address",ip)}${detailRow("Connection / SSID",esc(x.connection))}${detailRow("Status",statusPill(x))}${tailscaleLine}</dl></section>`;
+  const network=`<section class="info-card network"><h3><span>🖧</span> Network</h3><dl>${detailRow("IP Version",ipVersion)}${detailRow("IPv4 Address",ip)}${detailRow("IPv6 Address",ipv6Text)}${detailRow("IPv6 Link-local",ipv6LinkText)}${detailRow("Connection / SSID",esc(x.connection))}${detailRow("Status",statusPill(x))}${tailscaleLine}</dl></section>`;
   const wifi=`<section class="info-card wifi"><h3><span>📶</span> Wi-Fi</h3>${wifiContent}</section>`;
   const discovery=`<section class="info-card discovery"><h3><span>🔎</span> Discovery</h3><div class="badges">${sourceEvidence(x.source)}</div></section>`;
   const history=`<section class="info-card history"><h3><span>◷</span> History</h3><dl>${detailRow("First Seen",esc(seenText(x.first_seen)))}${detailRow("Last Seen",esc(seenText(x.last_seen)))}${detailRow("Neighbour State",esc(x.neighbour_state))}${detailRow("Last Wi-Fi Event",esc(x.wifi_last_event))}${detailRow("Last Wi-Fi Seen",esc(x.wifi_last_seen))}</dl></section>`;
@@ -250,6 +256,74 @@ function detailHtml(x){
   return `<tr class="detail"><td colspan="7"><article class="details-card"><div class="details-title"><div class="device-title"><span class="device-icon">▣</span> ${esc(x.host||x.ip||x.mac||"Unknown device")} ${statusPill(x)}</div><button class="close detail-close" type="button">×</button></div>${actions}<div class="details-grid">${identity}${network}${wifi}${discovery}${history}${tailscale}</div></article></td></tr>`;
 }
 
+
+
+/* Responsive table compaction.
+   Keeps RSSI visible on narrower Home Assistant panel widths and shortens AP
+   names by dropping left-hand hyphen groups only when the AP cell actually
+   needs it. Example: GL-MT6000-Downstairs -> Downstairs. */
+function measureTextWidth(text, font) {
+  const canvas = measureTextWidth.canvas || (measureTextWidth.canvas = document.createElement("canvas"));
+  const ctx = canvas.getContext("2d");
+  ctx.font = font || "14px Arial";
+  return ctx.measureText(String(text || "")).width;
+}
+function availableTextWidth(cell) {
+  const cs = getComputedStyle(cell);
+  const pad = parseFloat(cs.paddingLeft || 0) + parseFloat(cs.paddingRight || 0);
+  return Math.max(24, cell.clientWidth - pad - 2);
+}
+function shortenHyphenatedToFit(value, maxWidth, font) {
+  const original = String(value || "").trim();
+  if (!original) return "";
+  if (measureTextWidth(original, font) <= maxWidth) return original;
+  let candidate = original;
+  while (candidate.includes("-") && measureTextWidth(candidate, font) > maxWidth) {
+    candidate = candidate.substring(candidate.indexOf("-") + 1).trim();
+  }
+  if (measureTextWidth(candidate, font) <= maxWidth) return candidate;
+  const ellipsis = "…";
+  while (candidate.length > 1 && measureTextWidth(candidate + ellipsis, font) > maxWidth) {
+    candidate = candidate.slice(0, -1);
+  }
+  return candidate ? candidate + ellipsis : ellipsis;
+}
+function compactBandCell(cell) {
+  const full = cell.dataset.fullText || cell.textContent.trim();
+  cell.dataset.fullText = full;
+  cell.textContent = full.replace(/\s*GHz\b/i, "G").replace(/\.0G\b/i, "G");
+  if (full) cell.title = full;
+}
+function compactRssiCell(cell) {
+  const full = cell.dataset.fullText || cell.textContent.trim();
+  cell.dataset.fullText = full;
+  const m = full.match(/-?\d+/);
+  cell.textContent = m ? m[0] : full;
+  if (full) cell.title = full.match(/dBm/i) ? full : `${full} dBm`;
+}
+function applyTableCompaction() {
+  document.querySelectorAll("tr.mainrow").forEach(row => {
+    const cells = row.children;
+    if (cells.length < 7) return;
+    const apCell = cells[4], bandCell = cells[5], rssiCell = cells[6];
+    apCell.classList.add("ap-cell");
+    const fullAp = apCell.dataset.fullText || apCell.textContent.trim();
+    apCell.dataset.fullText = fullAp;
+    if (fullAp) apCell.title = fullAp;
+    const cs = getComputedStyle(apCell);
+    const font = cs.font || `${cs.fontSize} ${cs.fontFamily}`;
+    apCell.textContent = shortenHyphenatedToFit(fullAp, availableTextWidth(apCell), font);
+    compactBandCell(bandCell);
+    compactRssiCell(rssiCell);
+  });
+}
+function debounce(fn, ms) {
+  let t = null;
+  return function () {
+    clearTimeout(t);
+    t = setTimeout(fn, ms);
+  };
+}
 
 function clearFilters(){
   $("search").value="";
@@ -287,13 +361,14 @@ function render(){
   const wired=rows.filter(x=>x.status==="online"&&x.connection==="Ethernet").length;
   const tailscale=rows.filter(x=>x.status==="online"&&x.connection==="Tailscale").length;
   $("updated").textContent=`Updated ${new Date().toLocaleTimeString()} - ${out.length}/${rows.length} shown`;
-  $("summary").innerHTML=`<span class="summary-chip" data-filter="all">${rows.length} devices</span><span class="summary-chip" data-status="online">${online} online</span><span class="summary-chip" data-status="idle">${idle} idle</span><span class="summary-chip" data-status="offline">${offline} offline</span><span class="summary-chip" data-connection="__wifi__">Wi-Fi ${wifi}</span><span class="summary-chip" data-connection="Ethernet">Ethernet ${wired}</span><span class="summary-chip" data-connection="Tailscale">Tailscale ${tailscale}</span>`;
+  $("summary").innerHTML=`<span class="summary-chip chip-total" data-filter="all">${rows.length} devices</span><span class="summary-chip chip-online" data-status="online">${online} online</span><span class="summary-chip chip-idle" data-status="idle">${idle} idle</span><span class="summary-chip chip-offline" data-status="offline">${offline} offline</span><span class="summary-chip chip-wifi" data-connection="__wifi__">Wi-Fi ${wifi}</span><span class="summary-chip chip-ethernet" data-connection="Ethernet">Ethernet ${wired}</span><span class="summary-chip chip-tailscale" data-connection="Tailscale">Tailscale ${tailscale}</span>`;
   document.querySelectorAll(".summary-chip").forEach(chip=>chip.addEventListener("click",()=>{
     if(chip.dataset.filter==="all"){clearFilters();return;}
     if(chip.dataset.status){$("statusFilter").value=chip.dataset.status;$("connectionFilter").value="";$("apFilter").value="";}
     if(chip.dataset.connection){$("statusFilter").value="online";$("connectionFilter").value=chip.dataset.connection;$("apFilter").value="";}
     persistView();render();
   }));
+  requestAnimationFrame(applyTableCompaction);
 }
 async function load(){const btn=$("refreshBtn"); btn.disabled=true; btn.textContent="Refreshing..."; $("updated").textContent="Refreshing..."; try{const r=await fetch(apiPath("api/refresh?_="+Date.now()),{cache:"no-store"}); const data=await r.json(); if(!data.ok) throw new Error(data.error||"Refresh failed"); rows=enrichSeen(data.devices||[]); fillFilters(); restoreView(); render();}catch(e){$("updated").textContent="Refresh failed: "+e.message;} btn.disabled=false; updateRefreshButtonLabel();}
 function setSetupCollapsed(collapsed){$("setupPanel").classList.toggle("collapsed", collapsed);localStorage.setItem("networkExplorerSetupCollapsed", collapsed?"1":"0");renderSetupSummary();}
@@ -354,3 +429,4 @@ document.addEventListener("DOMContentLoaded",()=>{
   loadConfig();
   load();
 });
+window.addEventListener("resize", debounce(applyTableCompaction, 100));

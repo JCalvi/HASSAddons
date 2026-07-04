@@ -10,6 +10,30 @@ def is_ipv4(ip: str) -> bool:
     return bool(re.match(r"^\d+\.\d+\.\d+\.\d+$", ip or ""))
 
 
+def is_ipv6(ip: str) -> bool:
+    try:
+        return ipaddress.ip_address((ip or "").split("%", 1)[0]).version == 6
+    except Exception:
+        return False
+
+
+def is_link_local_ipv6(ip: str) -> bool:
+    try:
+        return ipaddress.ip_address((ip or "").split("%", 1)[0]).is_link_local
+    except Exception:
+        return False
+
+
+def add_ipv6_address(device: dict, ip: str) -> None:
+    ip = (ip or "").strip()
+    if not is_ipv6(ip):
+        return
+    key = "ipv6_link_local" if is_link_local_ipv6(ip) else "ipv6_addresses"
+    values = device.setdefault(key, [])
+    if ip not in values:
+        values.append(ip)
+
+
 def is_tailscale_ip(ip: str) -> bool:
     try:
         return ipaddress.ip_address(ip) in ipaddress.ip_network("100.64.0.0/10")
@@ -56,6 +80,8 @@ def new_device(ip="", host="", mac="", source="") -> dict:
     short_host, fqdn = split_fqdn(host)
     return {
         "ip": ip or "",
+        "ipv6_addresses": [],
+        "ipv6_link_local": [],
         "host": short_host,
         "fqdn": fqdn,
         "tailscale_ip": ip if is_tailscale_ip(ip or "") else "",
@@ -115,6 +141,8 @@ def merge_device(devices: dict, ip="", host="", mac="", source="") -> dict | Non
             d["connection"] = "Tailscale"
             d["tailscale_ip"] = ip
             add_source(d, "Tailscale")
+    elif is_ipv6(ip):
+        add_ipv6_address(d, ip)
     if host:
         rank = host_rank(source)
         if rank >= int(d.get("_host_rank") or 0) or not d.get("host"):

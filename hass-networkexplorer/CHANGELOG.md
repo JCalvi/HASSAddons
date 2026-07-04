@@ -1,5 +1,10 @@
 ## Changelog
 
+# 2026.7.12
+
+- ip6 in details.
+- UI improvements.
+
 
 # 2026.7.11
 

@@ -1,27 +1,27 @@
 <!doctype html>
-<html>
+<html lang="en" data-theme="auto">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Network Explorer</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="page">
     <header class="page-header">
-      <div>
+      <div class="page-title-block">
         <h1>Network Explorer</h1>
         <div id="updated" class="small">Ready</div>
       </div>
       <div class="header-actions">
-        <select id="themeSelect" title="Theme">
+        <select id="themeSelect" aria-label="Theme">
           <option value="auto">Theme: Auto</option>
           <option value="light">Theme: Light</option>
           <option value="dark">Theme: Dark</option>
         </select>
-        <div class="refresh-combo" title="Refresh and auto-refresh">
-          <button id="refreshBtn" type="button" class="primary">Refresh</button>
-          <select id="autoRefreshSelect" aria-label="Auto refresh interval">
+        <div class="refresh-combo">
+          <button id="refreshBtn" class="primary">Refresh</button>
+          <select id="autoRefreshSelect" aria-label="Auto refresh">
             <option value="0">Manual</option>
             <option value="15">15s</option>
             <option value="30">30s</option>
@@ -29,75 +29,63 @@
             <option value="300">5m</option>
           </select>
         </div>
-        <button id="settingsBtn" type="button" class="secondary">Settings</button>
       </div>
+      <button id="settingsBtn" class="secondary">Settings</button>
     </header>
 
     <div id="summary" class="summary"></div>
 
-    <section class="card setup-card" id="setupPanel">
+    <section id="setupPanel" class="card setup-card">
       <div class="card-head">
         <div>
           <h2>Setup</h2>
           <p id="setupIntro">Configure devices once. Each device can use its own username and one-time password.</p>
         </div>
-        <button id="toggleSetupBtn" type="button" class="secondary">Hide</button>
+        <button id="toggleSetupBtn" class="secondary">Hide Settings</button>
       </div>
 
-      <div class="setup-body">
-        <div class="setup-top">
-          <div class="setup-actions compact">
-            <button id="addDeviceBtn" type="button" class="secondary">Add Device</button>
-            <button id="saveConfigBtn" type="button" class="secondary">Save</button>
-            <button id="generateKeyBtn" type="button" class="secondary">Generate SSH Key</button>
-            <button id="installAllBtn" type="button" class="primary">Install All Keys</button>
-            <button id="testSshBtn" type="button" class="secondary">Test All</button>
-          </div>
-        </div>
-
-        <div class="device-setup-wrap">
-          <table class="device-setup-table">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th>Name</th>
-                <th>IP</th>
-                <th>User</th>
-                <th>SSH key path</th>
-                <th>One-time password</th>
-                <th>SSH</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="setupDevices"></tbody>
-          </table>
-        </div>
-
-        <div class="notice">
-          Private key stays inside Home Assistant config. Passwords are only sent to the add-on to install the public key and are not saved.
-        </div>
-
-        <div id="setupStatus" class="setup-status"></div>
-
-        <details class="diagnostics" id="diagnosticsPanel">
-          <summary>Diagnostics</summary>
-          <div id="keyInfo" class="key-info"></div>
-          <pre id="setupOutput" class="output"></pre>
-        </details>
+      <div class="setup-actions compact">
+        <button id="addDeviceBtn" class="secondary">Add Device</button>
+        <button id="saveConfigBtn" class="primary">Save</button>
+        <button id="generateKeyBtn" class="secondary">Generate SSH Key</button>
+        <button id="installAllBtn" class="secondary">Install All Keys</button>
+        <button id="testSshBtn" class="secondary">Test All</button>
       </div>
+
+      <div id="setupStatus" class="setup-status"></div>
+      <div class="device-setup-wrap">
+        <table class="device-setup-table">
+          <thead>
+            <tr>
+              <th>Type</th><th>Name</th><th>IP</th><th>User</th><th>SSH key path</th><th>One-time password</th><th>SSH</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="setupDevices"></tbody>
+        </table>
+      </div>
+      <p class="small">Private key stays inside Home Assistant config. Passwords are only sent to the add-on to install the public key and are not saved.</p>
+      <div id="keyInfo" class="key-info"></div>
+      <details id="diagnosticsPanel" class="diagnostics">
+        <summary>Diagnostics</summary>
+        <pre id="setupOutput" class="output"></pre>
+      </details>
     </section>
 
     <section class="card controls-card">
       <div class="controls">
-        <input id="search" placeholder="Search IP, host, MAC, SSID...">
-        <select id="statusFilter">
+        <input id="search" type="search" placeholder="Search IP, host, MAC, SSID...">
+        <select id="statusFilter" aria-label="Status filter">
           <option value="">All devices</option>
           <option value="online">Online only</option>
           <option value="idle">Idle only</option>
           <option value="offline">Offline only</option>
         </select>
-        <select id="connectionFilter"><option value="">All connections</option></select>
-        <select id="apFilter"><option value="">All APs</option></select>
+        <select id="connectionFilter" aria-label="Connection filter">
+          <option value="">All connections</option>
+        </select>
+        <select id="apFilter" aria-label="AP filter">
+          <option value="">All APs</option>
+        </select>
       </div>
     </section>
 

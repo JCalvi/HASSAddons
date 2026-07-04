@@ -1,5 +1,5 @@
 import re
-from .models import merge_device, is_ipv4, norm_mac
+from .models import merge_device, is_ipv4, is_ipv6, add_ipv6_address, norm_mac
 from .sshutil import ssh_cmd
 
 REMOTE_COLLECT = r'''
@@ -92,7 +92,7 @@ def _parse_leases(devices, txt: str):
 def _parse_neigh(devices, txt: str):
     for line in (txt or "").splitlines():
         parts = line.split()
-        if not parts or not is_ipv4(parts[0]):
+        if not parts or not (is_ipv4(parts[0]) or is_ipv6(parts[0])):
             continue
         ip = parts[0]
         mac = ""
@@ -108,9 +108,12 @@ def _parse_neigh(devices, txt: str):
                     d = existing
                     break
             if not d:
-                d = merge_device(devices, ip=ip, mac=mac, source="Neighbour")
+                d = merge_device(devices, ip=ip if is_ipv4(ip) else "", mac=mac, source="Neighbour")
             if d:
-                d["neighbour_state"] = state
+                if is_ipv6(ip):
+                    add_ipv6_address(d, ip)
+                else:
+                    d["neighbour_state"] = state
                 # Neighbour state is diagnostic only. Ping/Wi-Fi decides online.
                 from .models import add_source
                 add_source(d, "Neighbour")
@@ -125,6 +128,10 @@ def _parse_db(devices, txt: str):
             host = parts[2] if len(parts) > 2 else ""
             if ip and is_ipv4(ip):
                 merge_device(devices, ip=ip, host=host, mac=mac, source="Pi-hole Network")
+            elif ip and is_ipv6(ip) and norm_mac(mac):
+                d = merge_device(devices, ip="", host=host, mac=mac, source="Pi-hole Network")
+                if d:
+                    add_ipv6_address(d, ip)
 
 
 

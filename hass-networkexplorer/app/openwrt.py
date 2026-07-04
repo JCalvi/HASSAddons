@@ -1,4 +1,4 @@
-from .models import norm_mac, merge_device, add_source, is_ipv4
+from .models import norm_mac, merge_device, add_source, is_ipv4, is_ipv6, add_ipv6_address
 from .sshutil import ssh_cmd
 
 AP_CLIENTS = r'''
@@ -116,7 +116,7 @@ ip neigh show 2>/dev/null
 def _parse_openwrt_neigh(devices: dict, txt: str):
     for line in (txt or "").splitlines():
         parts = line.split()
-        if not parts or not is_ipv4(parts[0]):
+        if not parts or not (is_ipv4(parts[0]) or is_ipv6(parts[0])):
             continue
         ip = parts[0]
         mac = ""
@@ -132,9 +132,12 @@ def _parse_openwrt_neigh(devices: dict, txt: str):
                     d = existing
                     break
             if not d:
-                d = merge_device(devices, ip=ip, mac=mac, source="OpenWrt Neighbour")
+                d = merge_device(devices, ip=ip if is_ipv4(ip) else "", mac=mac, source="OpenWrt Neighbour")
             if d:
-                d["neighbour_state"] = state
+                if is_ipv6(ip):
+                    add_ipv6_address(d, ip)
+                else:
+                    d["neighbour_state"] = state
                 add_source(d, "OpenWrt Neighbour")
 
 
