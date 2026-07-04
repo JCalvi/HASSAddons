@@ -1,5 +1,10 @@
 ## Changelog
 
+# 2026.7.13
+
+- Discard unmatched IPv6 neighbour/history entries so IPv6-only artefacts no longer appear as separate devices.
+- IPv6 addresses are still merged into existing known devices by MAC.
+
 # 2026.7.12
 
 - ip6 in details.

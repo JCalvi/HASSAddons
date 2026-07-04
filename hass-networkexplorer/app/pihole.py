@@ -107,13 +107,21 @@ def _parse_neigh(devices, txt: str):
                 if existing.get("mac") == mac or existing.get("ip") == ip:
                     d = existing
                     break
-            if not d:
-                d = merge_device(devices, ip=ip if is_ipv4(ip) else "", mac=mac, source="Neighbour")
-            if d:
-                if is_ipv6(ip):
+
+            if is_ipv6(ip):
+                # IPv6 neighbours are useful as attributes of known devices,
+                # but should not create standalone rows. Unmatched IPv6
+                # neighbours are usually SLAAC/privacy/cache artefacts.
+                if d:
                     add_ipv6_address(d, ip)
-                else:
-                    d["neighbour_state"] = state
+                    from .models import add_source
+                    add_source(d, "Neighbour")
+                continue
+
+            if not d:
+                d = merge_device(devices, ip=ip, mac=mac, source="Neighbour")
+            if d:
+                d["neighbour_state"] = state
                 # Neighbour state is diagnostic only. Ping/Wi-Fi decides online.
                 from .models import add_source
                 add_source(d, "Neighbour")
@@ -129,8 +137,13 @@ def _parse_db(devices, txt: str):
             if ip and is_ipv4(ip):
                 merge_device(devices, ip=ip, host=host, mac=mac, source="Pi-hole Network")
             elif ip and is_ipv6(ip) and norm_mac(mac):
-                d = merge_device(devices, ip="", host=host, mac=mac, source="Pi-hole Network")
+                # Merge IPv6 rows only into devices that already exist by MAC.
+                # Do not create IPv6-only device rows from Pi-hole history.
+                mac_norm = norm_mac(mac)
+                d = next((existing for existing in devices.values() if existing.get("mac") == mac_norm), None)
                 if d:
+                    if host and not d.get("host"):
+                        d["host"] = host
                     add_ipv6_address(d, ip)
 
 

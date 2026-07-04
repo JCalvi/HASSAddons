@@ -131,13 +131,20 @@ def _parse_openwrt_neigh(devices: dict, txt: str):
                 if existing.get("mac") == mac or existing.get("ip") == ip:
                     d = existing
                     break
-            if not d:
-                d = merge_device(devices, ip=ip if is_ipv4(ip) else "", mac=mac, source="OpenWrt Neighbour")
-            if d:
-                if is_ipv6(ip):
+
+            if is_ipv6(ip):
+                # IPv6 neighbours are useful as attributes of known devices,
+                # but should not create standalone rows. Unmatched IPv6
+                # neighbours are usually SLAAC/privacy/cache artefacts.
+                if d:
                     add_ipv6_address(d, ip)
-                else:
-                    d["neighbour_state"] = state
+                    add_source(d, "OpenWrt Neighbour")
+                continue
+
+            if not d:
+                d = merge_device(devices, ip=ip, mac=mac, source="OpenWrt Neighbour")
+            if d:
+                d["neighbour_state"] = state
                 add_source(d, "OpenWrt Neighbour")
 
 
