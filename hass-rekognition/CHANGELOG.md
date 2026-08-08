@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.8.1] - 2026-08-08
+
+### Changed
+
+- Home Assistant API access now uses the Supervisor Core API proxy instead of a manually configured Home Assistant IP address and port.
+- Removed the `ha_url` and `ha_token` add-on configuration options.
+- Home Assistant authentication now uses the automatically supplied `SUPERVISOR_TOKEN`.
+- Home Assistant connectivity is now independent of changes to the Home Assistant IP address, port, external hostname, HTTP/HTTPS configuration, or reverse proxy setup.
+- Updated documentation to clarify that `api_token` protects the Rekognition Bridge `/match` endpoint and remains separate from Home Assistant API authentication.
+
+
 ## [2026.3.10] - 2026-03-10
 
 ### Changed
