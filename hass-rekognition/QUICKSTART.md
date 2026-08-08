@@ -225,12 +225,9 @@ aws rekognition list-faces \
   "s3_prefix": "snapshots/",
   "default_threshold": 95,
   "delete_after_match": true,
-  "ha_url": "http://172.30.32.1:8123",
-  "ha_token": "<your Home Assistant long-lived token>",
   "helper_person_name": "input_text.rekognition_person_name",
   "helper_person_similarity": "input_number.rekognition_person_similarity",
   "helper_person_status": "input_text.rekognition_person_status",
-
   "worker_timeout": 60,
   "log_worker_stderr": false,
   "api_token": "<your-long-random-token>"
@@ -294,7 +291,6 @@ Check the add-on log (**Settings → Add-ons → Rekognition Bridge → Log**) i
 | `status: error` – `AccessDenied` | IAM policy missing a permission or wrong resource ARN | Re-check the policy in Step 3 and confirm the bucket/collection names match |
 | `status: no_face` | Image quality too low, face too small, or not front-facing | Use a higher-resolution image; face should be ≥ 100 px wide |
 | `status: no_match` | Face not in collection, or threshold too high | Enrol the face (Step 4) or lower `default_threshold` |
-| Add-on won't start | Wrong `ha_url` or `ha_token` | Verify the URL is reachable from within the add-on container and the token is valid |
 | `FileNotFoundError` | Snapshot path not accessible | Ensure the path is under `/media` (the add-on maps `media:ro`) |
 
 ---
