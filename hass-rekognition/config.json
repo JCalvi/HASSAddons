@@ -1,6 +1,6 @@
 {
   "name": "Rekognition Bridge",
-  "version": "2026.3.10",
+  "version": "2026.8.1",
   "slug": "hass-rekognition",
   "init": false,
   "description": "Bridges local snapshots to AWS Rekognition for facial recognition and exposes an HTTP API returning match results.",
@@ -9,6 +9,7 @@
   "arch": ["aarch64", "amd64"],
   "startup": "application",
   "boot": "auto",
+  "homeassistant_api": true,
   "ports": {
     "8080/tcp": 8080
   },
@@ -22,8 +23,6 @@
     "s3_prefix": "snapshots/",
     "default_threshold": 95,
     "delete_after_match": true,
-    "ha_url": "http://172.30.32.1:8123",
-    "ha_token": "",
     "helper_person_name": "",
     "helper_person_similarity": "",
     "helper_person_status": "",
@@ -41,8 +40,6 @@
     "s3_prefix": "str",
     "default_threshold": "int(1,100)",
     "delete_after_match": "bool",
-    "ha_url": "str",
-    "ha_token": "str",
     "helper_person_name": "str",
     "helper_person_similarity": "str",
     "helper_person_status": "str",

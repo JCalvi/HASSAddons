@@ -31,8 +31,6 @@ eg: homeassistant:
   "s3_prefix": "snapshots/",
   "default_threshold": 95,
   "delete_after_match": true,
-  "ha_url": "http://172.30.32.1:8123",
-  "ha_token": "your_long_lived_token",
   "helper_person_name": "input_text.rekognition_person_name",
   "helper_person_similarity": "input_number.rekognition_person_similarity",
   "helper_person_status": "input_text.rekognition_person_status",
@@ -53,8 +51,6 @@ eg: homeassistant:
 | `s3_prefix` | S3 key prefix for uploaded snapshots |
 | `default_threshold` | Minimum similarity (1–100) for a match |
 | `delete_after_match` | Delete the S3 object after processing |
-| `ha_url` | Internal Home Assistant URL |
-| `ha_token` | Long-lived access token |
 | `helper_person_name` | `input_text` entity to receive matched name |
 | `helper_person_similarity` | `input_number` entity to receive similarity % |
 | `helper_person_status` | `input_text` entity to receive status |
@@ -63,7 +59,10 @@ eg: homeassistant:
 | `api_token` | *(optional)* If set, `POST /match` requires header `X-Rekognition-Token` to match this value |
 | `log_level` | *(optional)* Logging verbosity for the add-on (TRACE/DEBUG/INFO/WARNING/ERROR/CRITICAL). Default: `INFO`. |
 
-## Security: API token (recommended)
+## Security: Rekognition API token (recommended)
+
+This token protects the Rekognition Bridge's own HTTP API and is separate
+from Home Assistant authentication.
 
 If you set `api_token` in the add-on configuration, the add-on will require this HTTP header on `POST /match`:
 

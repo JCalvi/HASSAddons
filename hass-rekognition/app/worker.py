@@ -38,8 +38,8 @@ S3_PREFIX = os.environ.get("S3_PREFIX", "snapshots/").rstrip("/") + "/"
 DEFAULT_THRESHOLD = int(os.environ.get("DEFAULT_THRESHOLD", "95"))
 DELETE_AFTER_MATCH = os.environ.get("DELETE_AFTER_MATCH", "true").lower() in ("true", "1", "yes")
 
-HA_URL = os.environ.get("HA_URL", "").rstrip("/")
-HA_TOKEN = os.environ.get("HA_TOKEN", "")
+HA_URL = "http://supervisor/core/api"
+HA_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
 
 HELPER_PERSON_NAME = os.environ.get("HELPER_PERSON_NAME", "")
 HELPER_PERSON_SIMILARITY = os.environ.get("HELPER_PERSON_SIMILARITY", "")
@@ -58,7 +58,7 @@ rekognition_client = boto3.client("rekognition", region_name=AWS_REGION, config=
 # ---------------------------------------------------------------------------
 def _update_ha_helper(entity_id: str, value) -> None:
     """Updates HA helpers. Sends numbers as floats to fix the 9.84% bug."""
-    if not entity_id or not HA_URL or not HA_TOKEN:
+    if not entity_id or not HA_TOKEN:
         return
 
     parts = entity_id.split(".")
@@ -75,7 +75,7 @@ def _update_ha_helper(entity_id: str, value) -> None:
         service = "input_text/set_value"
         payload = {"entity_id": entity_id, "value": str(value)}
 
-    url = f"{HA_URL}/api/services/{service}"
+    url = f"{HA_URL}/services/{service}"
     headers = {"Authorization": f"Bearer {HA_TOKEN}"}
 
     try:
