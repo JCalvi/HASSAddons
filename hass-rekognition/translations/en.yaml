@@ -46,18 +46,6 @@ configuration:
       If enabled, the uploaded snapshot object is deleted from S3 after processing (best-effort).
       Recommended to reduce S3 storage usage.
 
-  ha_url:
-    name: Home Assistant URL
-    description: >
-      Home Assistant base URL reachable from inside the add-on container.
-      Typically: http://172.30.32.1:8123
-
-  ha_token:
-    name: Home Assistant Long-Lived Access Token
-    description: >
-      Long-lived access token used to update helper entities (input_text/input_number).
-      Leave blank to disable helper updates.
-
   helper_person_name:
     name: Helper Entity - Person Name
     description: >
@@ -99,5 +87,5 @@ configuration:
     name: Log level
     description: >
       Logging verbosity for the add-on (and uvicorn).
-      Valid values: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+      Valid values: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL.
       Default is INFO.
