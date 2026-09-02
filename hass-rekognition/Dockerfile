@@ -11,7 +11,6 @@ RUN apk add --no-cache \
     build-base \
     python3-dev \
     libffi-dev \
-    openssl-dev \
     libuv-dev
 
 WORKDIR /app
