@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [2026.9.1] - 2026-09-02
+
+### Changed
+- Updated Home Assistant Community Add-ons base image from 20.0.1 to 21.0.2.
+- Updated Alpine base environment to resolve package dependency conflicts during container builds.
+- Builds are now published using GitHub Actions for both amd64 and aarch64.
+
 ## [2026.8.1] - 2026-08-08
 
 ### Changed
