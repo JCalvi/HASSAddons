@@ -47,7 +47,8 @@ RUN set -eux; \
 FROM ${BUILD_FROM}
 
 # python3 runtime only (no py3-pip)
-RUN apk add --no-cache python3
+RUN apk add --no-cache python3 \
+    && python3 -c "import ssl; print('Python SSL:', ssl.OPENSSL_VERSION)"
 
 WORKDIR /app
 
