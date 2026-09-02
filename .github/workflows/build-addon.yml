@@ -1,0 +1,124 @@
+name: Build Home Assistant Add-on
+
+on:
+  workflow_dispatch:
+    inputs:
+      addon:
+        description: Add-on to build
+        required: true
+        type: choice
+        options:
+          - actronque
+          - networkexplorer
+          - rekognition
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ inputs.addon }} / ${{ matrix.ha_arch }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ha_arch: amd64
+            platform: linux/amd64
+          - ha_arch: aarch64
+            platform: linux/arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Select add-on and version
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${{ inputs.addon }}" in
+            actronque)
+              ADDON_PATH="hass-actronque"
+              IMAGE_NAME="hass-actronque"
+              CONFIG_FILE="hass-actronque/config.json"
+              VERSION="$(jq -r '.version' "$CONFIG_FILE")"
+              BUILD_ARGS=""
+              ;;
+
+            networkexplorer)
+              ADDON_PATH="hass-networkexplorer"
+              IMAGE_NAME="hass-networkexplorer"
+              CONFIG_FILE="hass-networkexplorer/config.yaml"
+              VERSION="$(grep -m1 '^version:' "$CONFIG_FILE" | cut -d: -f2- | xargs | tr -d '"')"
+
+              if [ "${{ matrix.ha_arch }}" = "amd64" ]; then
+                BUILD_FROM="ghcr.io/home-assistant/amd64-base:latest"
+              else
+                BUILD_FROM="ghcr.io/home-assistant/aarch64-base:latest"
+              fi
+
+              BUILD_ARGS="BUILD_FROM=${BUILD_FROM}"
+              ;;
+
+            rekognition)
+              ADDON_PATH="hass-rekognition"
+              IMAGE_NAME="hass-rekognition"
+              CONFIG_FILE="hass-rekognition/config.json"
+              VERSION="$(jq -r '.version' "$CONFIG_FILE")"
+              BUILD_ARGS=""
+              ;;
+
+            *)
+              echo "Unknown add-on: ${{ inputs.addon }}"
+              exit 1
+              ;;
+          esac
+
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Could not determine version from $CONFIG_FILE"
+            exit 1
+          fi
+
+          echo "path=$ADDON_PATH" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_args=$BUILD_ARGS" >> "$GITHUB_OUTPUT"
+
+          echo "Building $IMAGE_NAME version $VERSION for ${{ matrix.ha_arch }}"
+
+      - name: Set ActronQue build date
+        if: inputs.addon == 'actronque'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_DATE_FILE="hass-actronque/hass-actronque/Resources/BuildDate.txt"
+          date '+%a %d/%m/%Y' > "$BUILD_DATE_FILE"
+          echo "Updated $BUILD_DATE_FILE"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: jcrfc
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ steps.meta.outputs.path }}
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: ${{ steps.meta.outputs.build_args }}
+          tags: |
+            jcrfc/${{ steps.meta.outputs.image }}-${{ matrix.ha_arch }}:latest
+            jcrfc/${{ steps.meta.outputs.image }}-${{ matrix.ha_arch }}:${{ steps.meta.outputs.version }}
+          cache-from: type=gha,scope=${{ inputs.addon }}-${{ matrix.ha_arch }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.addon }}-${{ matrix.ha_arch }}
