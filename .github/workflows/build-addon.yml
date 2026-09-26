@@ -99,11 +99,11 @@ jobs:
           echo "Building $IMAGE_NAME version $VERSION for ${{ matrix.ha_arch }}"
 
       - name: Set ActronQue build date
-        if: inputs.addon == 'actronque'
+        if: inputs.addon == 'actronque-cloud'
         shell: bash
         run: |
           set -euo pipefail
-          BUILD_DATE_FILE="hass-actronque-cloud/hass-actronque/Resources/BuildDate.txt"
+          BUILD_DATE_FILE="hass-actronque-cloud/hass-actronque-cloud/Resources/BuildDate.txt"
           date '+%a %d/%m/%Y' > "$BUILD_DATE_FILE"
           echo "Updated $BUILD_DATE_FILE"
 
