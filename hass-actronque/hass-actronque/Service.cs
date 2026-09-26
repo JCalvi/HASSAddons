@@ -24,7 +24,7 @@ namespace HMX.HASSActronQue
 		}
 
 		public static void Start()
-        {
+		{
 			IConfigurationRoot configuration;
 			IHost webHost;
 			string strMQTTUser, strMQTTPassword, strMQTTBroker;
@@ -33,7 +33,6 @@ namespace HMX.HASSActronQue
 
 			Logging.WriteDebugLog("Service.Start() Build Date: {0}", Properties.Resources.BuildDate);
 
-			// Load Configuration
 			try
 			{
 				configuration = new ConfigurationBuilder().AddJsonFile(_strConfigFile, false, true).Build();
@@ -47,7 +46,6 @@ namespace HMX.HASSActronQue
 			Configuration.GetOptionalConfiguration(configuration, "MQTTUser", out strMQTTUser);
 			Configuration.GetPrivateOptionalConfiguration(configuration, "MQTTPassword", out strMQTTPassword);
 
-			// Better error messages for required config
 			if (!Configuration.GetConfiguration(configuration, "MQTTBroker", out strMQTTBroker))
 			{
 				Logging.WriteDebugLogError("Service.Start()", "REQUIRED configuration missing: MQTTBroker. Please add this to your config file.");
@@ -77,10 +75,10 @@ namespace HMX.HASSActronQue
 
 			Configuration.GetOptionalConfiguration(configuration, "QueLogs", out bQueLogging, true);
 			Configuration.GetOptionalConfiguration(configuration, "QueSerial", out strQueSerial);
-
 			Configuration.GetOptionalConfiguration(configuration, "SeparateHeatCoolTargets", out bSeparateHeatCool);
 			Configuration.GetOptionalConfiguration(configuration, "ShowBatterySensors", out bShowBatterySensors, true);
 			Configuration.GetOptionalConfiguration(configuration, "DeviceName", out strDeviceName);
+
 			if (strDeviceName == "")
 			{
 				Logging.WriteDebugLog("Service.Start() Device Name not specified, defaulting to HASSActronQue.");
@@ -90,11 +88,12 @@ namespace HMX.HASSActronQue
 			{
 				strDeviceName = strDeviceName.Trim();
 			}
+
 			try
 			{
 				webHost = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
 				{
-					webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration); 
+					webBuilder.UseStartup<ASPNETCoreStartup>().UseConfiguration(configuration);
 				}).Build();
 			}
 			catch (Exception eException)
@@ -105,12 +104,9 @@ namespace HMX.HASSActronQue
 
 			MQTT.StartMQTT(strMQTTBroker, bMQTTLogging, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor);
 
-			// Ensure HTTP clients and token provider are initialized before starting Que.
 			Que.InitializeHttpClients();
-
-			// Que.Initialise is async; wait synchronously so startup failures are observed (removes CS4014).
 			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, bQueLogging, bPerZoneControls, bSeparateHeatCool, bShowBatterySensors, _eventStop)
-			   .GetAwaiter().GetResult();
+				.GetAwaiter().GetResult();
 
 			webHost.Run();
 		}
@@ -119,6 +115,154 @@ namespace HMX.HASSActronQue
 		{
 			Logging.WriteDebugLog("Service.Stop()");
 			_eventStop.Set();
+			MQTT.StopMQTT();
+		}
+
+		private static bool ParseBoolPayload(string value)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+				return false;
+
+			value = value.Trim();
+
+			if (string.Equals(value, "ON", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(value, "1", StringComparison.OrdinalIgnoreCase))
+				return true;
+
+			if (string.Equals(value, "OFF", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
+				string.Equals(value, "0", StringComparison.OrdinalIgnoreCase))
+				return false;
+
+			return false;
+		}
+
+		private static void MQTTProcessor(string strTopic, string strPayload)
+		{
+			long lRequestId = RequestManager.GetRequestId();
+			int iZone = 0;
+			double dblTemperature = 0;
+			string strUnit, strUnitHeader;
+
+			Logging.WriteDebugLog("Service.MQTTProcessor() [0x{0}] {1}", lRequestId.ToString("X8"), strTopic);
+
+			strUnit = strTopic.Substring(9, strTopic.IndexOf("/") - 9);
+			strUnitHeader = strTopic.Substring(0, strTopic.IndexOf("/"));
+
+			if (!Que.Units.ContainsKey(strUnit))
+			{
+				Logging.WriteDebugLog("Service.MQTTProcessor() [0x{0}] Can not locate unit: {1}", lRequestId.ToString("X8"), strTopic, strUnit);
+				return;
+			}
+
+			if (strTopic.StartsWith(strUnitHeader + "/zone") && strTopic.Contains("/temperature/"))
+			{
+				iZone = int.Parse(strTopic.Substring(strUnitHeader.Length + 5, 1));
+
+				if (strTopic.EndsWith("/temperature/set"))
+				{
+					if (double.TryParse(strPayload, out dblTemperature))
+						Que.ChangeTemperature(lRequestId, Que.Units[strUnit], dblTemperature, iZone, Que.TemperatureSetType.Default);
+				}
+				else if (strTopic.EndsWith("/high/set"))
+				{
+					if (double.TryParse(strPayload, out dblTemperature))
+						Que.ChangeTemperature(lRequestId, Que.Units[strUnit], dblTemperature, iZone, Que.TemperatureSetType.High);
+				}
+				else if (strTopic.EndsWith("/low/set"))
+				{
+					if (double.TryParse(strPayload, out dblTemperature))
+						Que.ChangeTemperature(lRequestId, Que.Units[strUnit], dblTemperature, iZone, Que.TemperatureSetType.Low);
+				}
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/zone") && strTopic.EndsWith("/mode/set"))
+			{
+				iZone = int.Parse(strTopic.Substring(strUnitHeader.Length + 5, 1));
+
+				switch (strPayload)
+				{
+					case "off":
+						Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, false);
+						break;
+					case "auto":
+						Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, true);
+						Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Automatic);
+						break;
+					case "cool":
+						Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, true);
+						Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Cool);
+						break;
+					case "heat":
+						Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, true);
+						Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Heat);
+						break;
+					case "fan_only":
+						Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, true);
+						Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Fan_Only);
+						break;
+				}
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/zone") && strTopic.EndsWith("/set"))
+			{
+				iZone = int.Parse(strTopic.Substring(strUnitHeader.Length + 5, 1));
+				Que.ChangeZone(lRequestId, Que.Units[strUnit], iZone, ParseBoolPayload(strPayload));
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/mode/set"))
+			{
+				switch (strPayload)
+				{
+					case "off": Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Off); break;
+					case "auto": Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Automatic); break;
+					case "cool": Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Cool); break;
+					case "heat": Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Heat); break;
+					case "fan_only": Que.ChangeMode(lRequestId, Que.Units[strUnit], AirConditionerMode.Fan_Only); break;
+				}
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/controlallzones/set"))
+			{
+				Que.ChangeControlAllZones(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/awaymode/set"))
+			{
+				Que.AwayMode(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/quietmode/set"))
+			{
+				Que.QuietMode(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/constantfanmode/set"))
+			{
+				Que.ConstantFanMode(lRequestId, Que.Units[strUnit], ParseBoolPayload(strPayload));
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/fan/set"))
+			{
+				switch (strPayload)
+				{
+					case "auto": Que.ChangeFanMode(lRequestId, Que.Units[strUnit], FanMode.Automatic); break;
+					case "low": Que.ChangeFanMode(lRequestId, Que.Units[strUnit], FanMode.Low); break;
+					case "medium": Que.ChangeFanMode(lRequestId, Que.Units[strUnit], FanMode.Medium); break;
+					case "high": Que.ChangeFanMode(lRequestId, Que.Units[strUnit], FanMode.High); break;
+				}
+			}
+			else if (strTopic.StartsWith(strUnitHeader + "/temperature"))
+			{
+				if (strTopic.EndsWith("/temperature/set"))
+				{
+					if (double.TryParse(strPayload, out dblTemperature))
+						Que.ChangeTemperature(lRequestId, Que.Units[strUnit], dblTemperature, 0, Que.TemperatureSetType.Default);
+				}
+				else if (strTopic.EndsWith("/high/set"))
+				{
+					if (double.TryParse(strPayload, out dblTemperature))
+						Que.ChangeTemperature(lRequestId, Que.Units[strUnit], dblTemperature, 0, Que.TemperatureSetType.High);
+				}
+				else if (strTopic.EndsWith("/low/set"))
+				{
+					if (double.TryParse(strPayload, out dblTemperature))
+						Que.ChangeTemperature(lRequestId, Que.Units[strUnit], dblTemperature, 0, Que.TemperatureSetType.Low);
+				}
+			}
 		}
 	}
 }
