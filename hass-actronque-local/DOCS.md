@@ -31,7 +31,7 @@ needs to be entered in the app configuration.
    - `MQTT connected`
    - `Connecting WallLink to 192.168.1.218:19296 as FA000001`
    - `WallLink accepted by master 18A01392`
-   - `Initial Data_All received`
+   - `Initial/refresh Data_All received`
    - `WallLink online`
 
 4. Home Assistant MQTT Discovery should create a device named
@@ -39,13 +39,13 @@ needs to be entered in the app configuration.
 
 ## MQTT topics
 
-Default prefix: `actronque_local`
+Default prefix: `hass-actronque-local`
 
-- `actronque_local/status` — WallLink `online` / `offline`
-- `actronque_local/bridge/status` — app MQTT status
-- `actronque_local/raw/state` — complete current QUE state when enabled
-- `actronque_local/event/change` — latest incoming WallLink Data_Change
-- `actronque_local/quiet_mode/set` — command topic for Quiet Mode
+- `hass-actronque-local/status` — WallLink `online` / `offline`
+- `hass-actronque-local/bridge/status` — app MQTT status
+- `hass-actronque-local/raw/state` — complete current QUE state when enabled
+- `hass-actronque-local/event/change` — latest incoming WallLink Data_Change
+- `hass-actronque-local/quiet_mode/set` — command topic for Quiet Mode
 
 ## Safety
 
