@@ -27,7 +27,7 @@ class LocalActronQueBridge(main.ActronQueBridge):
 
         return {
             "identifiers": [f"actronque_local_{identifier_serial.lower()}"],
-            "name": f"Actron QUE Local {self.system_name}",
+            "name": f"Actron QUE Local ({self.system_name})",
             "manufacturer": "ActronAir",
             "model": "QUE Local",
             "sw_version": self.master_fw,
