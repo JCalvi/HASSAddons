@@ -8,7 +8,7 @@ on:
         required: true
         type: choice
         options:
-          - actronque
+          - actronque-cloud
           - actronque-local
           - networkexplorer
           - rekognition
@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
 
           case "${{ inputs.addon }}" in
-            actronque)
+            actronque-cloud)
               ADDON_PATH="hass-actronque-cloud"
               IMAGE_NAME="hass-actronque"
               CONFIG_FILE="hass-actronque-cloud/config.json"
