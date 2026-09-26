@@ -4,10 +4,31 @@ import copy
 
 import main
 from full_bridge import FullActronQueBridge, _as_bool, _as_number
+from secondary_setup import SecondarySetupManager
 
 
 class ActronQueLocalBridge(FullActronQueBridge):
     """Polished Home Assistant UI for the local QUE bridge."""
+
+    def __init__(self):
+        super().__init__()
+        self._setup_started = False
+        self.secondary_setup = SecondarySetupManager(
+            main.OPTIONS,
+            status_callback=self._publish_setup_status,
+            is_walllink_online=lambda: self.walllink_online,
+            set_max_on_live_link=self._set_max_secondary_controllers,
+        )
+
+    def _publish_setup_status(self, status: str) -> None:
+        self.mqtt_publish(
+            f"{self.topic_prefix}/secondary_setup/status",
+            status,
+            retain=True,
+        )
+
+    def _set_max_secondary_controllers(self, value: int) -> None:
+        self._send_changes({"NV_SystemSettings.MaxSecondaryControllers": int(value)})
 
     def on_mqtt_connect(self, client, userdata, flags, reason_code, properties):
         super().on_mqtt_connect(client, userdata, flags, reason_code, properties)
@@ -15,11 +36,22 @@ class ActronQueLocalBridge(FullActronQueBridge):
             return
 
         self.mqtt.subscribe(f"{self.topic_prefix}/zone/+/mode/set", qos=1)
+        self.mqtt.subscribe(f"{self.topic_prefix}/secondary_setup/redo", qos=1)
         self._clear_separate_setpoint_numbers()
+        self._publish_setup_status(self.secondary_setup.status)
+
+        if not self._setup_started:
+            self._setup_started = True
+            self.secondary_setup.start()
 
     def on_mqtt_message(self, client, userdata, msg):
         topic = msg.topic
         payload = msg.payload.decode("utf-8", "replace").strip().lower()
+
+        if topic == f"{self.topic_prefix}/secondary_setup/redo":
+            main.LOG.info("Redo Secondary Controller Setup requested from Home Assistant")
+            self.secondary_setup.request_redo()
+            return
 
         prefix = f"{self.topic_prefix}/zone/"
         if topic.startswith(prefix) and topic.endswith("/mode/set"):
@@ -32,8 +64,6 @@ class ActronQueLocalBridge(FullActronQueBridge):
                 if payload == "off":
                     enabled = False
                 elif payload in ("auto", "cool", "heat", "fan_only", "on"):
-                    # QUE zones follow the system HVAC mode. Selecting any active
-                    # climate mode means enable this zone, exactly as the cloud add-on.
                     enabled = True
                 else:
                     main.LOG.warning("Ignoring invalid zone HVAC mode: %r", payload)
@@ -57,9 +87,6 @@ class ActronQueLocalBridge(FullActronQueBridge):
         self.mqtt_publish(topic, b"", retain=True)
 
     def _clear_separate_setpoint_numbers(self) -> None:
-        # v0.2.0 exposed heat/cool setpoints as separate Number entities.
-        # The climate entity already supports a proper lower/upper target range,
-        # so remove those retained discoveries to match the cloud add-on UI.
         self._clear_discovery("number", "heating_setpoint")
         self._clear_discovery("number", "cooling_setpoint")
 
@@ -72,18 +99,15 @@ class ActronQueLocalBridge(FullActronQueBridge):
         if not self.mqtt_connected or not self.state:
             return
 
-        # Remove v0.2.0's standalone setpoint controls after the base discovery
-        # has run, then expose one range-style climate entity per real zone.
         self._clear_separate_setpoint_numbers()
         self._publish_zone_climates()
 
-        # Give the main climate entity the same useful display name as the device.
         p = self.topic_prefix
         self.publish_discovery_entity(
             "climate",
             "climate",
             {
-                "name": f"Actron QUE Local ({self.system_name})",
+                "name": f"Actron QUE ({self.system_name})",
                 "mode_command_topic": f"{p}/climate/mode/set",
                 "mode_state_topic": f"{p}/climate/mode/state",
                 "fan_mode_command_topic": f"{p}/climate/fan/set",
@@ -103,6 +127,31 @@ class ActronQueLocalBridge(FullActronQueBridge):
                 **self._availability(),
             },
         )
+
+        self.publish_discovery_entity(
+            "sensor",
+            "secondary_setup_status",
+            {
+                "name": "Secondary Controller Setup Status",
+                "state_topic": f"{p}/secondary_setup/status",
+                "entity_category": "diagnostic",
+                "icon": "mdi:link-variant",
+                **self._availability(),
+            },
+        )
+        self.publish_discovery_entity(
+            "button",
+            "redo_secondary_controller_setup",
+            {
+                "name": "Redo Secondary Controller Setup",
+                "command_topic": f"{p}/secondary_setup/redo",
+                "payload_press": "PRESS",
+                "entity_category": "config",
+                "icon": "mdi:link-variant-plus",
+                **self._availability(),
+            },
+        )
+        self._publish_setup_status(self.secondary_setup.status)
 
     def _publish_zone_climates(self) -> None:
         with self.state_lock:
@@ -142,7 +191,6 @@ class ActronQueLocalBridge(FullActronQueBridge):
             )
 
     def _publish_value(self, topic: str, value):
-        """Round live numeric values to match the cloud add-on presentation."""
         number = _as_number(value)
         if number is not None:
             integer_topics = (
@@ -214,6 +262,12 @@ class ActronQueLocalBridge(FullActronQueBridge):
 
             self._publish_value(f"{p}/zone/{number}/mode/state", zone_mode)
             self._publish_value(f"{p}/zone/{number}/action/state", zone_action)
+
+    def run(self):
+        try:
+            super().run()
+        finally:
+            self.secondary_setup.stop()
 
 
 if __name__ == "__main__":

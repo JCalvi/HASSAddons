@@ -1,5 +1,5 @@
 name: "Actron QUE Local"
-version: "0.2.2"
+version: "0.3.0"
 slug: "hass-actronque-local"
 description: "Direct local control of ActronAir QUE via the native WallLink protocol"
 url: "https://github.com/JCalvi/HASSAddons/tree/master/hass-actronque-local"
@@ -20,6 +20,10 @@ options:
   master_port: 19296
   serial: "FA000001"
   firmware: "1.456.1.598"
+  auto_secondary_setup: true
+  existing_secondary_serial: ""
+  max_secondary_controllers: 2
+  setup_retry_delay: 5
   topic_prefix: "hass-actronque-local"
   discovery_prefix: "homeassistant"
   reconnect_delay: 5
@@ -33,6 +37,10 @@ schema:
   master_port: int
   serial: str
   firmware: str
+  auto_secondary_setup: bool
+  existing_secondary_serial: str?
+  max_secondary_controllers: int(2,8)
+  setup_retry_delay: int(2,60)
   topic_prefix: str
   discovery_prefix: str
   reconnect_delay: int

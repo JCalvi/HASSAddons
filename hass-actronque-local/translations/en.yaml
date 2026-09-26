@@ -7,13 +7,25 @@ configuration:
     description: Native QUE WallLink TCP port. Normally 19296.
   serial:
     name: Synthetic secondary serial
-    description: Serial already paired as the Home Assistant secondary controller.
+    description: Serial used by Home Assistant as the synthetic secondary controller.
   firmware:
     name: Wall controller firmware
     description: Firmware version presented to the QUE master.
+  auto_secondary_setup:
+    name: Automatic secondary setup
+    description: Automatically guide and perform the one-time synthetic secondary pairing process when required.
+  existing_secondary_serial:
+    name: Existing secondary serial
+    description: Optional serial of the real secondary controller. Leave blank to detect it automatically before setup.
+  max_secondary_controllers:
+    name: Maximum secondary controllers
+    description: Value written to NV_SystemSettings.MaxSecondaryControllers. Use 2 for one real secondary plus Home Assistant.
+  setup_retry_delay:
+    name: Setup retry delay
+    description: Seconds between guided setup retry attempts while waiting for the physical controller steps.
   topic_prefix:
     name: MQTT topic prefix
-    description: Root MQTT topic used by this app.
+    description: Root MQTT topic used internally by this app.
   discovery_prefix:
     name: MQTT discovery prefix
     description: Home Assistant MQTT Discovery prefix.
