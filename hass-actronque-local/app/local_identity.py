@@ -168,6 +168,13 @@ class LocalActronQueBridge(main.ActronQueBridge):
         config = dict(config)
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
 
+        # RemoteTemperatures_oC contains the same physical zone reading already
+        # exposed as zone_<n>_temperature. Suppress the hardware-ID copy and
+        # clear any retained discovery created by earlier versions.
+        if domain == "sensor" and re.fullmatch(r"zone_\d+_sensor_.+_temperature", object_id):
+            self.mqtt_publish(topic, b"", retain=True)
+            return
+
         # Wired QUE sensors report Battery_pc=255. That is a sentinel meaning
         # battery is not applicable, so don't create a bogus battery entity.
         # Publishing an empty retained discovery config also removes an entity
