@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - actronque
+          - actronque-local
           - networkexplorer
           - rekognition
 
@@ -45,6 +46,14 @@ jobs:
               IMAGE_NAME="hass-actronque"
               CONFIG_FILE="hass-actronque/config.json"
               VERSION="$(jq -r '.version' "$CONFIG_FILE")"
+              BUILD_ARGS=""
+              ;;
+
+            actronque-local)
+              ADDON_PATH="hass-actronque-local"
+              IMAGE_NAME="hass-actronque-local"
+              CONFIG_FILE="hass-actronque-local/config.yaml"
+              VERSION="$(grep -m1 '^version:' "$CONFIG_FILE" | cut -d: -f2- | xargs | tr -d '"')"
               BUILD_ARGS=""
               ;;
 
