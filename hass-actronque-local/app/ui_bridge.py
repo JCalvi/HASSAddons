@@ -342,6 +342,17 @@ class ActronQueLocalBridge(FullActronQueBridge):
         action = self._climate_action(system_on, live.get("CompressorMode"))
 
         p = self.topic_prefix
+
+        # QUE uses 255 as an out-of-range sentinel for percentage-like values
+        # when the related hardware is inactive. Never expose that as 255%.
+        compressor_capacity = _as_number(live.get("CompressorCapacity"))
+        if compressor_capacity is not None and not 0.0 <= compressor_capacity <= 100.0:
+            self._publish_value(f"{p}/compressor_capacity/state", 0)
+
+        fan_pwm = _as_number(live.get("FanPWM"))
+        if fan_pwm is not None and not 0.0 <= fan_pwm <= 100.0:
+            self._publish_value(f"{p}/fan_pwm/state", 0)
+
         for index, zone in enumerate(zones):
             if not isinstance(zone, dict) or not _as_bool(zone.get("NV_Exists")):
                 continue
