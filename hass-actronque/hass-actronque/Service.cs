@@ -102,7 +102,7 @@ namespace HMX.HASSActronQue
 				return;
 			}
 
-			MQTT.StartMQTT(strMQTTBroker, bMQTTLogging, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor);
+			MQTT.StartMQTT(strMQTTBroker, bMQTTLogging, bMQTTTLS, _strServiceName, strMQTTUser, strMQTTPassword, MQTTProcessor, bPerZoneControls);
 
 			Que.InitializeHttpClients();
 			Que.Initialise(strQueUser, strQuePassword, strQueSerial, strDeviceName, bQueLogging, bPerZoneControls, bSeparateHeatCool, bShowBatterySensors, _eventStop)
