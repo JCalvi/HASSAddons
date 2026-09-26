@@ -1,40 +1,53 @@
-# hass-actronque
-Actron Que Air Conditioner Add-On for Home Assistant - Cloud.
+# Actron QUE Cloud
 
-This add-on for Home Assistant enables you to control an Actron QUE Air Conditioner via the Actron Cloud Service. 
+Cloud-based ActronAir QUE integration for Home Assistant.
 
-The add-on requires you to use the Mosquitto MQTT broker on your Home Assistant device, with authentication enabled and a valid credential supplied. You'll also need to ensure that MQTT discovery is enabled with the default prefix 'homeassistant' for HA to discover the climate device and zone switches.
+This add-on controls an Actron QUE air conditioner through the Actron Cloud Service. It is the cloud-based counterpart to **Actron QUE Local**, which communicates directly with the QUE wall controller over the local network.
 
-Home Assistant AddOn Repository: https://github.com/JCalvi/HASSAddons
+The add-on requires an MQTT broker, normally the Home Assistant Mosquitto add-on, with MQTT discovery enabled using the default `homeassistant` prefix.
 
-Note: This add-on has been forked from Mike McGuire:  (https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/), refer to the change log for changes made.
-(https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/)
+Home Assistant Add-on Repository: https://github.com/JCalvi/HASSAddons
+
+This add-on was originally forked from work by Mike McGuire:
+https://blog.mikejmcguire.com/2021/02/11/actron-neo-and-home-assistant/
 
 ## Configuration
-### MQTTBroker: string
-Set this field to core-mosquitto to use the HA Mosquitto MQTT add-on. Otherwise, specify a host or host:port for an alternative MQTT server.
 
-### MQTTLogs: true/false
-Setting this option to false will reduce the amount of MQTT logging.
+### MQTTBroker
+Set this to `core-mosquitto` to use the Home Assistant Mosquitto MQTT add-on. Otherwise, specify the host or `host:port` of another MQTT broker.
 
-### MQTTTLS: true/false
-Setting this option to true will force the MQTT client to attempt a TLS connection to the MQTT broker.
+### MQTTLogs
+Set to `false` to reduce MQTT logging.
 
-### PerZoneControls: true/false
-If your Actron has controllers in each zone, setting this option to true will create an air conditioner controller in HA for each zone.
+### MQTTTLS
+Set to `true` to require TLS when connecting to the MQTT broker.
 
-### QueSerial: string
-If you have multiple AC units connected to your Que, you can add this optional configuration to specify the serial number of the AC you want the add-on to use. You can find the discovered serial numbers in the log for the add-on when the add-on is starting. If you leave this field blank, the add-on will add all detected AC units.
+### PerZoneControls
+If your Actron system has controllers in individual zones, enable this to create a climate entity for each zone.
 
-### SeparateHeatCoolTargets: bool
-This option specifies if you wish to use the new independently set target heating and cooling temperature settings introduced in HA 2023.9. This disables the single temperature set option that may impact existing automations.
+### QueSerial
+If multiple QUE systems are associated with the same Actron account, set this optional field to the serial number of the system this add-on instance should use. Leave blank to use all detected systems.
 
-### ShowBatterySensors: bool
-This option controls whether battery level sensors are created for zone temperature sensors. When set to true (default), battery sensors will be created for each zone sensor when PerZoneControls is enabled. Set to false to hide these sensors if you don't need to monitor battery levels.
+### SeparateHeatCoolTargets
+Uses independent heating and cooling targets introduced in Home Assistant 2023.9 instead of a single target temperature.
 
-### DeviceName: string
-This option specifies a custom device name to authorise against the Actron cloud. If not specified this defaults to "HASSActronQue".
+### ShowBatterySensors
+Controls whether battery level entities are created for zone temperature sensors when `PerZoneControls` is enabled.
+
+### DeviceName
+Custom device name used when authorising against the Actron cloud. Defaults to `HASSActronQue`.
 
 ## Events
+
 ### Command Failed
-In the event that a command you send (e.g. temperature change) is not accepted by the Que cloud service (e.g. it is unavailable), an MQTT message will be sent indicating the ID number of the failed command. This can then be captured to trigger a follow on automation. All commands will be retried generally around 3 times before the failure event will be sent. The event will be sent to the MQTT topic of actronqueXXXX/lastfailedcommand (XXXX is the serial number of the unit).
+If a command is not accepted by the Actron cloud service, an MQTT message is sent after the configured retries are exhausted. The event is published to:
+
+`actronqueXXXX/lastfailedcommand`
+
+where `XXXX` is the QUE serial number.
+
+## Cloud vs Local
+
+Use **Actron QUE Cloud** when you want to retain cloud-based control through Actron's service.
+
+Use **Actron QUE Local** when you want direct local WallLink control without depending on the Actron cloud service.
