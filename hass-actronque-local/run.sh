@@ -8,4 +8,4 @@ export MQTT_PORT="$(bashio::services mqtt 'port')"
 export MQTT_USERNAME="$(bashio::services mqtt 'username')"
 export MQTT_PASSWORD="$(bashio::services mqtt 'password')"
 
-exec python3 /app/local_identity.py
+exec python3 /app/full_bridge.py
