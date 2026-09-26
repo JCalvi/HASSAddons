@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.2
+
+- Round Home Assistant sensor values for cleaner display.
+- Temperature, humidity, capacity, power, damper position and runtime values now publish with sensible precision.
+- Coil inlet temperature publishes to 2 decimal places.
+- Fan PWM/RPM, battery and RSSI publish as whole numbers.
+
+## 0.2.1
+
+- Present master and zone heat/cool targets as combined lower/upper climate ranges, matching the cloud add-on UI.
+- Remove the separate heating/cooling Number entities introduced in v0.2.0.
+- Add a proper climate entity for each existing zone.
+- Rename the device to `Actron QUE Local (<SystemName>)` for consistency with the cloud add-on.
+
 ## 0.2.0
 
 - Add full local HVAC climate control using native WallLink writes.
