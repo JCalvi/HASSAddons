@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Remove standalone per-zone temperature sensor entities because each zone climate entity already exposes the same `LiveTemp_oC` reading as `current_temperature`.
+- Clear retained MQTT discovery for the old `sensor.actronque_<serial>_zone_<n>_<zone>_temperature` entities so they disappear automatically after upgrade/restart.
+- Keep zone climate entities as the single place for zone temperature, enable/disable state and heat/cool target control.
+
 ## 0.3.4
 
 - Remove duplicate hardware-sensor temperature entities such as `sensor.actronque_<serial>_zone_4_sensor_<sensor-id>_temperature` when the same physical reading is already exposed as the zone temperature.
