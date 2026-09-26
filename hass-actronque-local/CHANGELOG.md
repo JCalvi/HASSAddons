@@ -4,6 +4,8 @@
 
 - Remove duplicate hardware-sensor temperature entities such as `sensor.actronque_<serial>_zone_4_sensor_<sensor-id>_temperature` when the same physical reading is already exposed as the zone temperature.
 - Clear retained MQTT discovery for those duplicate sensor-ID temperature entities so they disappear automatically after upgrade/restart.
+- Remove redundant per-zone **Enabled** switches because the zone climate entity already controls the same `EnabledZones[]` state (`Off` disables the zone; an active HVAC mode enables it).
+- Clear retained MQTT discovery for the old zone Enabled switches so they disappear automatically after upgrade/restart.
 - Keep the raw per-sensor temperature data internally available for future diagnostics without cluttering the Home Assistant device.
 
 ## 0.3.3
