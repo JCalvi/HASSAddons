@@ -9,5 +9,5 @@ HASS-NetworkExplorer - Written by J.Calvi.
 HASS-Rekognition - Written by J.Calvi.  
 
 
-HASS-Actronque, Forked from: https://blog.mikejmcguire.com/  
+HASS-Actronque (Cloud), Forked from: https://blog.mikejmcguire.com/  
 
