@@ -3,7 +3,7 @@
 import copy
 
 import main
-from full_bridge import FullActronQueBridge, _as_bool
+from full_bridge import FullActronQueBridge, _as_bool, _as_number
 
 
 class ActronQueLocalBridge(FullActronQueBridge):
@@ -140,6 +140,38 @@ class ActronQueLocalBridge(FullActronQueBridge):
                     **self._availability(),
                 },
             )
+
+    def _publish_value(self, topic: str, value):
+        """Round live numeric values to match the cloud add-on presentation."""
+        number = _as_number(value)
+        if number is not None:
+            integer_topics = (
+                "/fan_pwm/state",
+                "/fan_rpm/state",
+                "/battery/state",
+                "/rssi/state",
+            )
+            one_decimal_topics = (
+                "/temperature/state",
+                "/temperature/low/state",
+                "/temperature/high/state",
+                "/indoor_temperature/state",
+                "/outdoor_temperature/state",
+                "/humidity/state",
+                "/compressor_capacity/state",
+                "/compressor_power/state",
+                "/filter_runtime/state",
+                "/position/state",
+            )
+
+            if topic.endswith(integer_topics):
+                value = int(round(number))
+            elif topic.endswith("/coil_inlet_temperature/state"):
+                value = round(number, 2)
+            elif topic.endswith(one_decimal_topics):
+                value = round(number, 1)
+
+        super()._publish_value(topic, value)
 
     def publish_current_state(self):
         super().publish_current_state()
