@@ -20,11 +20,11 @@ Version 0.1.0 intentionally starts conservatively.
 
 The full QUE state can also be published to the MQTT topic:
 
-`actronque_local/raw/state`
+`hass-actronque-local/raw/state`
 
 and each incoming `Data_Change` is published to:
 
-`actronque_local/event/change`
+`hass-actronque-local/event/change`
 
 These will be used to add the remaining controls after their exact WallLink
 variable paths have been verified.
