@@ -45,8 +45,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
     def device_info(self):
         serial = self._serial_raw()
         return {
-            # Match hass-actronque exactly. Home Assistant uses this identifier
-            # to decide whether MQTT entities belong to the existing QUE device.
             "identifiers": [f"actronque_{serial}"],
             "name": f"Actron QUE ({self.system_name})",
             "manufacturer": "Actron",
@@ -74,6 +72,11 @@ class LocalActronQueBridge(main.ActronQueBridge):
         if match:
             title = re.sub(r"\s+Temperature$", "", str(config.get("name", "")), flags=re.I)
             return f"{base}_zone_{match.group(1)}_{_slug(title)}_temperature"
+
+        match = re.fullmatch(r"zone_(\d+)_position", object_id)
+        if match:
+            title = re.sub(r"\s+Damper Position$", "", str(config.get("name", "")), flags=re.I)
+            return f"{base}_zone_{match.group(1)}_{_slug(title)}_damper_position"
 
         match = re.fullmatch(r"zone_(\d+)_sensor_(.+)_(temperature|battery|rssi)", object_id)
         if match:
@@ -123,11 +126,14 @@ class LocalActronQueBridge(main.ActronQueBridge):
         if domain == "sensor" and match:
             return f"{serial}-z{match.group(1)}t"
 
+        match = re.fullmatch(r"zone_(\d+)_position", object_id)
+        if domain == "sensor" and match:
+            return f"{serial}-z{match.group(1)}-position"
+
         match = re.fullmatch(r"zone_(\d+)_climate", object_id)
         if domain == "climate" and match:
             return f"{serial}-z{match.group(1)}-climate"
 
-        # Diagnostics and local-only entities intentionally retain a local ID.
         return f"{serial}-local-{object_id}"
 
     def publish_discovery_entity(self, domain: str, object_id: str, config: Dict[str, Any]):
@@ -139,9 +145,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
             config.setdefault("icon", icon)
         config.setdefault("device", self.device_info())
 
-        # Keep the discovery topic itself local. The registry identity above is
-        # what performs the seamless takeover; separate topics prevent the local
-        # publisher from overwriting retained cloud discovery configs.
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
         self.mqtt_publish(topic, config, retain=True)
 
