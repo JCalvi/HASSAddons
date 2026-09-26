@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+- Add full local HVAC climate control using native WallLink writes.
+- Add main HVAC mode, fan mode, heating and cooling setpoint controls.
+- Add Away Mode, Control All Zones and Constant Fan switches.
+- Add indoor temperature, outdoor temperature, humidity, compressor mode/capacity/power, coil inlet temperature, fan PWM/RPM and filter status/runtime sensors.
+- Dynamically discover existing zones from `RemoteZoneInfo`.
+- Add per-zone enable control, live temperature, heating/cooling setpoints and damper position.
+- Add per-zone wireless sensor temperature, battery and RSSI entities when present.
+- Keep v0.1.x Quiet Mode control and diagnostics.
+
 ## 0.1.1
 
 - Give the local integration its own Home Assistant MQTT device identity.
