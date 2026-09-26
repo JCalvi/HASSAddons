@@ -8,9 +8,6 @@ configuration:
   serial:
     name: Synthetic secondary serial
     description: Serial used by Home Assistant as the synthetic secondary controller.
-  firmware:
-    name: Wall controller firmware
-    description: Firmware version presented to the QUE master.
   auto_secondary_setup:
     name: Automatic secondary setup
     description: Automatically guide and perform the one-time synthetic secondary pairing process when required.
