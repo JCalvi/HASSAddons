@@ -1,8 +1,8 @@
 {
-  "name": "Actron Que Air Conditioner",
-  "version": "2026.2.5",
+  "name": "Actron QUE Cloud",
+  "version": "2026.9.1",
   "slug": "hass-actronque",
-  "description": "An add-on for Actron QUE Air Conditioners",
+  "description": "Cloud-based control of ActronAir QUE via the Actron Cloud Service",
   "url": "https://github.com/JCalvi/HASSAddons",
   "startup": "application",
   "boot": "auto",
@@ -11,33 +11,33 @@
     "amd64",
     "aarch64"
   ],
-	"options": {
-		"MQTTUser": "",
-		"MQTTPassword": "",
-		"MQTTBroker": "core-mosquitto",
-		"MQTTLogs": true,
-		"MQTTTLS": false,
-		"PerZoneControls": false,
-		"QueUser": "queuser",
-		"QuePassword": "quepassword",
-		"QueLogs": true,
-		"SeparateHeatCoolTargets": false,
-		"ShowBatterySensors": true,
-		"DeviceName": "HASSActronQue"
-	},
-	"schema": {
-		"MQTTUser": "str?",
-		"MQTTPassword": "str?",
-		"MQTTBroker": "str",
-		"MQTTLogs": "bool?",
-		"MQTTTLS": "bool?",
-		"PerZoneControls": "bool",
-		"QueUser": "str",
-		"QuePassword": "str",
-		"QueSerial": "str?",
-		"QueLogs": "bool?",
-		"SeparateHeatCoolTargets": "bool?",
-		"ShowBatterySensors": "bool?",
-		"DeviceName": "str?"
-	}
+  "options": {
+    "MQTTUser": "",
+    "MQTTPassword": "",
+    "MQTTBroker": "core-mosquitto",
+    "MQTTLogs": true,
+    "MQTTTLS": false,
+    "PerZoneControls": false,
+    "QueUser": "queuser",
+    "QuePassword": "quepassword",
+    "QueLogs": true,
+    "SeparateHeatCoolTargets": false,
+    "ShowBatterySensors": true,
+    "DeviceName": "HASSActronQue"
+  },
+  "schema": {
+    "MQTTUser": "str?",
+    "MQTTPassword": "str?",
+    "MQTTBroker": "str",
+    "MQTTLogs": "bool?",
+    "MQTTTLS": "bool?",
+    "PerZoneControls": "bool",
+    "QueUser": "str",
+    "QuePassword": "str",
+    "QueSerial": "str?",
+    "QueLogs": "bool?",
+    "SeparateHeatCoolTargets": "bool?",
+    "ShowBatterySensors": "bool?",
+    "DeviceName": "str?"
+  }
 }
