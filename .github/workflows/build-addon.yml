@@ -42,9 +42,9 @@ jobs:
 
           case "${{ inputs.addon }}" in
             actronque)
-              ADDON_PATH="hass-actronque"
+              ADDON_PATH="hass-actronque-cloud"
               IMAGE_NAME="hass-actronque"
-              CONFIG_FILE="hass-actronque/config.json"
+              CONFIG_FILE="hass-actronque-cloud/config.json"
               VERSION="$(jq -r '.version' "$CONFIG_FILE")"
               BUILD_ARGS=""
               ;;
@@ -103,7 +103,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BUILD_DATE_FILE="hass-actronque/hass-actronque/Resources/BuildDate.txt"
+          BUILD_DATE_FILE="hass-actronque-cloud/hass-actronque/Resources/BuildDate.txt"
           date '+%a %d/%m/%Y' > "$BUILD_DATE_FILE"
           echo "Updated $BUILD_DATE_FILE"
 
