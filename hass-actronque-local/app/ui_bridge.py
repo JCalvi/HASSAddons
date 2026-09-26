@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import copy
+import json
+import re
 
 import main
 from full_bridge import FullActronQueBridge, _as_bool, _as_number
@@ -10,9 +12,47 @@ from secondary_setup import SecondarySetupManager
 class ActronQueLocalBridge(FullActronQueBridge):
     """Polished Home Assistant UI for the local QUE bridge."""
 
+    _EXPOSED_EXACT = {
+        "UserAirconSettings.isOn",
+        "UserAirconSettings.Mode",
+        "UserAirconSettings.FanMode",
+        "UserAirconSettings.AwayMode",
+        "UserAirconSettings.QuietMode",
+        "UserAirconSettings.TemperatureSetpoint_Cool_oC",
+        "UserAirconSettings.TemperatureSetpoint_Heat_oC",
+        "MasterInfo.ControlAllZones",
+        "MasterInfo.LiveTemp_oC",
+        "MasterInfo.LiveOutdoorTemp_oC",
+        "MasterInfo.LiveHumidity_pc",
+        "LiveAircon.CompressorMode",
+        "LiveAircon.CompressorCapacity",
+        "LiveAircon.OutdoorUnit.CompPower",
+        "LiveAircon.CoilInlet",
+        "LiveAircon.FanPWM",
+        "LiveAircon.FanRPM",
+        "Alerts.CleanFilter",
+        "ACStats.NV_FanRunTime_10m",
+        "NV_SystemSettings.SystemName",
+        "NV_SystemSettings.MaxSecondaryControllers",
+    }
+
+    _EXPOSED_PATTERNS = (
+        re.compile(r"UserAirconSettings\.EnabledZones\[\d+\]$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.NV_Exists$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.NV_Title$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.LiveTemp_oC$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.TemperatureSetpoint_Cool_oC$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.TemperatureSetpoint_Heat_oC$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.ZonePosition$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.RemoteTemperatures_oC\..+$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.Sensors\..+\.Battery_pc$"),
+        re.compile(r"RemoteZoneInfo\[\d+\]\.Sensors\..+\.lastRssi$"),
+    )
+
     def __init__(self):
         super().__init__()
         self._setup_started = False
+        self._unexposed_logged = False
         self.secondary_setup = SecondarySetupManager(
             main.OPTIONS,
             status_callback=self._publish_setup_status,
@@ -220,6 +260,57 @@ class ActronQueLocalBridge(FullActronQueBridge):
                 value = round(number, 1)
 
         super()._publish_value(topic, value)
+
+    def handle_walllink_message(self, obj):
+        super().handle_walllink_message(obj)
+        data_all = obj.get("Data_All") if isinstance(obj, dict) else None
+        if not self._unexposed_logged and isinstance(data_all, dict):
+            self._unexposed_logged = True
+            self._log_unexposed_fields(data_all)
+
+    def _log_unexposed_fields(self, state):
+        leaves = []
+
+        def walk(value, path=""):
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    walk(child, f"{path}.{key}" if path else str(key))
+                return
+            if isinstance(value, list):
+                for index, child in enumerate(value):
+                    walk(child, f"{path}[{index}]")
+                return
+            leaves.append((path, value))
+
+        walk(state)
+
+        unexposed = []
+        for path, value in leaves:
+            if path in self._EXPOSED_EXACT:
+                continue
+            if any(pattern.fullmatch(path) for pattern in self._EXPOSED_PATTERNS):
+                continue
+            unexposed.append((path, value))
+
+        if not unexposed:
+            main.LOG.info("QUE field scan: no unexposed Data_All leaf fields found")
+            return
+
+        main.LOG.info(
+            "QUE field scan: %d unexposed Data_All leaf field(s) found",
+            len(unexposed),
+        )
+        for path, value in unexposed[:100]:
+            main.LOG.info(
+                "Unexposed QUE field: %s = %s",
+                path,
+                json.dumps(value, ensure_ascii=False, default=str),
+            )
+        if len(unexposed) > 100:
+            main.LOG.info(
+                "QUE field scan: %d additional field(s) omitted",
+                len(unexposed) - 100,
+            )
 
     def publish_current_state(self):
         super().publish_current_state()
