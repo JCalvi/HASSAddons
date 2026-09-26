@@ -136,8 +136,46 @@ class LocalActronQueBridge(main.ActronQueBridge):
 
         return f"{serial}-local-{object_id}"
 
+    def _battery_is_real(self, object_id: str) -> bool:
+        """Return True only when the zone sensor reports a real 0-100% battery."""
+        match = re.fullmatch(r"zone_(\d+)_sensor_(.+)_battery", object_id)
+        if not match:
+            return True
+
+        zone_index = int(match.group(1)) - 1
+        sensor_slug = match.group(2)
+        zones = self.state.get("RemoteZoneInfo", []) if isinstance(self.state, dict) else []
+        if not isinstance(zones, list) or zone_index < 0 or zone_index >= len(zones):
+            return False
+
+        zone = zones[zone_index]
+        sensors = zone.get("Sensors", {}) if isinstance(zone, dict) else {}
+        if not isinstance(sensors, dict):
+            return False
+
+        for sensor_id, info in sensors.items():
+            if _slug(sensor_id) != sensor_slug or not isinstance(info, dict):
+                continue
+            try:
+                battery = float(info.get("Battery_pc"))
+            except (TypeError, ValueError):
+                return False
+            return 0.0 <= battery <= 100.0
+
+        return False
+
     def publish_discovery_entity(self, domain: str, object_id: str, config: Dict[str, Any]):
         config = dict(config)
+        topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
+
+        # Wired QUE sensors report Battery_pc=255. That is a sentinel meaning
+        # battery is not applicable, so don't create a bogus battery entity.
+        # Publishing an empty retained discovery config also removes an entity
+        # created by an earlier version of the add-on.
+        if domain == "sensor" and object_id.endswith("_battery") and not self._battery_is_real(object_id):
+            self.mqtt_publish(topic, b"", retain=True)
+            return
+
         config.setdefault("unique_id", self._cloud_unique_id(domain, object_id))
         config.setdefault("default_entity_id", self._default_entity_id(domain, object_id, config))
 
@@ -145,19 +183,7 @@ class LocalActronQueBridge(main.ActronQueBridge):
         if icon:
             config.setdefault("icon", icon)
 
-        # QUE uses 255 as an invalid/unknown sentinel for some wireless sensor
-        # battery values. Keep the raw MQTT state intact, but present only valid
-        # 0-100 percentages to Home Assistant so 255% cannot appear in the
-        # device header.
-        if domain == "sensor" and config.get("device_class") == "battery":
-            config.setdefault(
-                "value_template",
-                "{% set v = value | float(-1) %}{{ v | round(0) | int if 0 <= v <= 100 else 'unknown' }}",
-            )
-
         config.setdefault("device", self.device_info())
-
-        topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
         self.mqtt_publish(topic, config, retain=True)
 
     def clear_legacy_discovery(self):
