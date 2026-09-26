@@ -1,10 +1,14 @@
 ﻿using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Security.Authentication;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,8 +24,18 @@ namespace HMX.HASSActronQue
 		private static MessageHandler _messageHandler = null;
 		private static int _iLastUpdateThreshold = 5; // Minutes
 		private static bool _bMQTTLogging = true;
+		private static bool _bPerZoneControls = false;
 
-		public static async void StartMQTT(string strMQTTServer, bool bMQTTLogging, bool bMQTTTLS, string strClientId, string strUser, string strPassword, MessageHandler messageHandler)
+		private sealed class BatteryDiscovery
+		{
+			public string DiscoveryTopic { get; set; }
+			public string Payload { get; set; }
+		}
+
+		private static readonly Dictionary<string, BatteryDiscovery> _batteryDiscoveryByStateTopic = new Dictionary<string, BatteryDiscovery>();
+		private static readonly HashSet<string> _hiddenBatteryStateTopics = new HashSet<string>();
+
+		public static async void StartMQTT(string strMQTTServer, bool bMQTTLogging, bool bMQTTTLS, string strClientId, string strUser, string strPassword, MessageHandler messageHandler, bool bPerZoneControls = false)
 		{
 			ManagedMqttClientOptions options;
 			MqttClientOptionsBuilder clientOptions;
@@ -39,6 +53,7 @@ namespace HMX.HASSActronQue
 			_strClientId = strClientId;
 			_messageHandler = messageHandler;
 			_bMQTTLogging = bMQTTLogging;
+			_bPerZoneControls = bPerZoneControls;
 
 			if (strMQTTServer.Contains(":"))
 			{
@@ -62,13 +77,11 @@ namespace HMX.HASSActronQue
 				}
 
 				strMQTTBroker = strMQTTServerArray[0];
-
 				Logging.WriteDebugLog("MQTT.StartMQTT() Host: {0}, Port: {1}", strMQTTBroker, iPort);
 			}
 			else
 			{
 				strMQTTBroker = strMQTTServer;
-
 				Logging.WriteDebugLog("MQTT.StartMQTT() Host: {0}", strMQTTBroker);
 			}
 
@@ -84,14 +97,13 @@ namespace HMX.HASSActronQue
 						o.WithCertificateValidationHandler(_ => true);
 						o.WithIgnoreCertificateChainErrors(true);
 						o.WithIgnoreCertificateRevocationErrors(true);
-						o.WithSslProtocols(System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13);
+						o.WithSslProtocols(SslProtocols.Tls12 | SslProtocols.Tls13);
 					});
 			}
 
 			options = new ManagedMqttClientOptionsBuilder().WithAutoReconnectDelay(TimeSpan.FromSeconds(5)).WithClientOptions(clientOptions.Build()).Build();
 
 			_mqtt = new MqttFactory().CreateManagedMqttClient();
-
 			_mqtt.ApplicationMessageReceivedAsync += new Func<MqttApplicationMessageReceivedEventArgs, Task>(MessageProcessor);
 			_mqtt.ConnectingFailedAsync += new Func<ConnectingFailedEventArgs, Task>(ConnectionProcessor);
 			_mqtt.ConnectedAsync += new Func<MqttClientConnectedEventArgs, Task>(ConnectedProcessor);
@@ -111,7 +123,6 @@ namespace HMX.HASSActronQue
 			}
 			catch (Exception ex)
 			{
-				// Log exception instead of silent catch
 				Logging.WriteDebugLogError("MQTT.MessageProcessor()", ex, "Failed to process message from topic {0}", e.ApplicationMessage.Topic);
 			}
 
@@ -170,20 +181,101 @@ namespace HMX.HASSActronQue
 		{
 			Logging.WriteDebugLog("MQTT.StopMQTT()");
 
-			_timerMQTT.Dispose();
+			_timerMQTT?.Dispose();
 
 			foreach (AirConditionerUnit unit in Que.Units.Values)
 				SendMessage(string.Format("{0}{1}/status", _strClientId.ToLower(), unit.Serial), "offline");
 
 			Thread.Sleep(500);
 
-			await _mqtt.StopAsync();
+			if (_mqtt != null)
+			{
+				await _mqtt.StopAsync();
+				Thread.Sleep(50);
+				_mqtt.Dispose();
+				_mqtt = null;
+			}
+		}
 
-			Thread.Sleep(50);
+		private static bool IsRedundantZoneDiscovery(string topic)
+		{
+			if (!_bPerZoneControls)
+				return false;
 
-			_mqtt.Dispose();
+			return Regex.IsMatch(topic, @"^homeassistant/switch/actronque\d*/airconzone\d+/config$", RegexOptions.IgnoreCase)
+				|| Regex.IsMatch(topic, @"^homeassistant/sensor/actronque\d*/airconzone\d+/config$", RegexOptions.IgnoreCase)
+				|| Regex.IsMatch(topic, @"^homeassistant/sensor/actronque\d*/zone\d+sensor.+temperature/config$", RegexOptions.IgnoreCase);
+		}
 
-			_mqtt = null;
+		private static string NormalizeDiscoveryPayload(string topic, string payload)
+		{
+			if (string.IsNullOrWhiteSpace(payload) || !topic.StartsWith("homeassistant/", StringComparison.OrdinalIgnoreCase))
+				return payload;
+
+			try
+			{
+				JObject config = JObject.Parse(payload);
+
+				if (Regex.IsMatch(topic, @"^homeassistant/climate/actronque\d*/config$", RegexOptions.IgnoreCase))
+				{
+					string deviceName = (string)config["device"]?["name"];
+					if (!string.IsNullOrWhiteSpace(deviceName))
+						config["name"] = deviceName.Replace("Actron QUE Cloud", "Actron QUE", StringComparison.Ordinal);
+				}
+
+				return config.ToString(Formatting.None);
+			}
+			catch (Exception ex)
+			{
+				Logging.WriteDebugLogError("MQTT.NormalizeDiscoveryPayload()", ex, "Unable to normalize discovery topic {0}", topic);
+				return payload;
+			}
+		}
+
+		private static void CacheBatteryDiscovery(string topic, string payload)
+		{
+			if (!Regex.IsMatch(topic, @"^homeassistant/sensor/actronque\d*/zone\d+sensor.+battery/config$", RegexOptions.IgnoreCase)
+				|| string.IsNullOrWhiteSpace(payload))
+				return;
+
+			try
+			{
+				JObject config = JObject.Parse(payload);
+				string stateTopic = (string)config["state_topic"];
+				if (!string.IsNullOrWhiteSpace(stateTopic))
+				{
+					_batteryDiscoveryByStateTopic[stateTopic] = new BatteryDiscovery
+					{
+						DiscoveryTopic = topic,
+						Payload = payload
+					};
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.WriteDebugLogError("MQTT.CacheBatteryDiscovery()", ex, "Unable to cache battery discovery topic {0}", topic);
+			}
+		}
+
+		private static bool TryParseNumber(string value, out double number)
+		{
+			return double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out number)
+				|| double.TryParse(value, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out number);
+		}
+
+		private static async Task EnqueueRetainedAsync(string topic, string payload)
+		{
+			if (_mqtt == null)
+				return;
+
+			MqttApplicationMessage message = new MqttApplicationMessageBuilder()
+				.WithTopic(topic)
+				.WithPayload(payload ?? "")
+				.WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
+				.WithRetainFlag()
+				.Build();
+
+			await _mqtt.EnqueueAsync(message);
 		}
 
 		public static async void SendMessage(string strTopic, string strPayloadFormat, params object[] strParams)
@@ -195,21 +287,36 @@ namespace HMX.HASSActronQue
 			{
 				try
 				{
-					// Only format when parameters are provided; otherwise treat payload as raw literal.
 					string payload;
 					if (strParams != null && strParams.Length > 0)
 						payload = string.Format(strPayloadFormat, strParams);
 					else
 						payload = strPayloadFormat;
 
-					MqttApplicationMessage message = new MqttApplicationMessageBuilder()
-						.WithTopic(strTopic)
-						.WithPayload(payload)
-						.WithQualityOfServiceLevel(MQTTnet.Protocol.MqttQualityOfServiceLevel.AtLeastOnce)
-						.WithRetainFlag()
-						.Build();
+					if (IsRedundantZoneDiscovery(strTopic))
+					{
+						await EnqueueRetainedAsync(strTopic, "");
+						return;
+					}
 
-					await _mqtt.EnqueueAsync(message);
+					payload = NormalizeDiscoveryPayload(strTopic, payload);
+					CacheBatteryDiscovery(strTopic, payload);
+
+					if (_batteryDiscoveryByStateTopic.TryGetValue(strTopic, out BatteryDiscovery batteryDiscovery)
+						&& TryParseNumber(payload, out double batteryValue))
+					{
+						if (batteryValue < 0 || batteryValue > 100)
+						{
+							if (_hiddenBatteryStateTopics.Add(strTopic))
+								await EnqueueRetainedAsync(batteryDiscovery.DiscoveryTopic, "");
+							return;
+						}
+
+						if (_hiddenBatteryStateTopics.Remove(strTopic))
+							await EnqueueRetainedAsync(batteryDiscovery.DiscoveryTopic, batteryDiscovery.Payload);
+					}
+
+					await EnqueueRetainedAsync(strTopic, payload);
 				}
 				catch (Exception eException)
 				{
