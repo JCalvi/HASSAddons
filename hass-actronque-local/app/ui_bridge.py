@@ -293,21 +293,21 @@ class ActronQueLocalBridge(FullActronQueBridge):
             unexposed.append((path, value))
 
         if not unexposed:
-            main.LOG.info("QUE field scan: no unexposed Data_All leaf fields found")
+            main.LOG.debug("QUE field scan: no unexposed Data_All leaf fields found")
             return
 
-        main.LOG.info(
+        main.LOG.debug(
             "QUE field scan: %d unexposed Data_All leaf field(s) found",
             len(unexposed),
         )
         for path, value in unexposed[:100]:
-            main.LOG.info(
+            main.LOG.debug(
                 "Unexposed QUE field: %s = %s",
                 path,
                 json.dumps(value, ensure_ascii=False, default=str),
             )
         if len(unexposed) > 100:
-            main.LOG.info(
+            main.LOG.debug(
                 "QUE field scan: %d additional field(s) omitted",
                 len(unexposed) - 100,
             )
@@ -343,8 +343,6 @@ class ActronQueLocalBridge(FullActronQueBridge):
 
         p = self.topic_prefix
 
-        # QUE uses 255 as an out-of-range sentinel for percentage-like values
-        # when the related hardware is inactive. Never expose that as 255%.
         compressor_capacity = _as_number(live.get("CompressorCapacity"))
         if compressor_capacity is not None and not 0.0 <= compressor_capacity <= 100.0:
             self._publish_value(f"{p}/compressor_capacity/state", 0)
