@@ -1,5 +1,5 @@
 name: "Actron QUE Local"
-version: "0.3.1"
+version: "0.3.2"
 slug: "hass-actronque-local"
 description: "Direct local control of ActronAir QUE via the native WallLink protocol"
 url: "https://github.com/JCalvi/HASSAddons/tree/master/hass-actronque-local"
@@ -19,7 +19,6 @@ options:
   master_ip: "192.168.1.218"
   master_port: 19296
   serial: "FA000001"
-  firmware: "1.456.1.598"
   auto_secondary_setup: true
   existing_secondary_serial: ""
   max_secondary_controllers: 2
@@ -36,7 +35,6 @@ schema:
   master_ip: str
   master_port: int
   serial: str
-  firmware: str
   auto_secondary_setup: bool
   existing_secondary_serial: str?
   max_secondary_controllers: int(2,8)
