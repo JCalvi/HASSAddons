@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.3
+
+- Treat QUE wireless-sensor `Battery_pc=255` as “battery not applicable” rather than a real 255% battery reading.
+- Do not create battery entities for sensors whose battery value is outside the valid 0-100% range, and clear any retained MQTT discovery from earlier versions so bogus battery entities disappear automatically.
+- Restore cloud-compatible damper-position entity IDs and matching cloud `unique_id` values so existing dashboards and automations continue to work after migration.
+- Normalize out-of-range QUE percentage sentinels so invalid compressor-capacity and Fan PWM values are not exposed as 255%.
+- Automatically learn and persist controller firmware during secondary-controller discovery; keep only an internal fallback for recovery rather than exposing firmware as a normal add-on option.
+- Improve Home Assistant icons for Quiet Mode, Compressor Mode, Fan Mode, operating Mode, Master Serial and System Name.
+- Keep the one-time unexposed `Data_All` field scan available for troubleshooting, but move it to DEBUG logging after confirming the additional telemetry is mostly low-value controller diagnostics.
+
 ## 0.3.2
 
 - Remove the firmware field from normal add-on options and automatically learn/persist the controller firmware during secondary-controller discovery, with an internal fallback retained for recovery.
