@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- Remove duplicate hardware-sensor temperature entities such as `sensor.actronque_<serial>_zone_4_sensor_<sensor-id>_temperature` when the same physical reading is already exposed as the zone temperature.
+- Clear retained MQTT discovery for those duplicate sensor-ID temperature entities so they disappear automatically after upgrade/restart.
+- Keep the raw per-sensor temperature data internally available for future diagnostics without cluttering the Home Assistant device.
+
 ## 0.3.3
 
 - Treat QUE wireless-sensor `Battery_pc=255` as “battery not applicable” rather than a real 255% battery reading.
