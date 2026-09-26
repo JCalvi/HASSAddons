@@ -140,9 +140,21 @@ class LocalActronQueBridge(main.ActronQueBridge):
         config = dict(config)
         config.setdefault("unique_id", self._cloud_unique_id(domain, object_id))
         config.setdefault("default_entity_id", self._default_entity_id(domain, object_id, config))
+
         icon = self.ENTITY_ICONS.get((domain, object_id))
         if icon:
             config.setdefault("icon", icon)
+
+        # QUE uses 255 as an invalid/unknown sentinel for some wireless sensor
+        # battery values. Keep the raw MQTT state intact, but present only valid
+        # 0-100 percentages to Home Assistant so 255% cannot appear in the
+        # device header.
+        if domain == "sensor" and config.get("device_class") == "battery":
+            config.setdefault(
+                "value_template",
+                "{% set v = value | float(-1) %}{{ v | round(0) | int if 0 <= v <= 100 else 'unknown' }}",
+            )
+
         config.setdefault("device", self.device_info())
 
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
