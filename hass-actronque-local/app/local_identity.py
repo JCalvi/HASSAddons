@@ -168,6 +168,13 @@ class LocalActronQueBridge(main.ActronQueBridge):
         config = dict(config)
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
 
+        # Zone climate entities already expose the same EnabledZones[] control
+        # through HVAC mode (Off = disabled; any active mode = enabled). Remove
+        # the redundant per-zone Enabled switch and clear retained discovery.
+        if domain == "switch" and re.fullmatch(r"zone_\d+_enabled", object_id):
+            self.mqtt_publish(topic, b"", retain=True)
+            return
+
         # RemoteTemperatures_oC contains the same physical zone reading already
         # exposed as zone_<n>_temperature. Suppress the hardware-ID copy and
         # clear any retained discovery created by earlier versions.
