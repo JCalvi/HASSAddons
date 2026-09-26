@@ -12,6 +12,7 @@ import main
 
 STATE_FILE = Path("/data/secondary_setup.json")
 UDP_PORT = 19295
+FALLBACK_FIRMWARE = "1.456.1.598"
 
 
 class SecondarySetupManager:
@@ -27,7 +28,6 @@ class SecondarySetupManager:
         self.master_ip = str(options.get("master_ip", "")).strip()
         self.master_port = int(options.get("master_port", 19296))
         self.synthetic_serial = str(options.get("serial", "FA000001")).strip()
-        self.firmware = str(options.get("firmware", "1.456.1.598")).strip()
         self.configured_existing_serial = str(
             options.get("existing_secondary_serial", "")
         ).strip()
@@ -44,6 +44,12 @@ class SecondarySetupManager:
         self._thread: Optional[threading.Thread] = None
         self._status = "Not started"
         self._state = self._load_state()
+        self.firmware = str(
+            self._state.get("firmware")
+            or options.get("firmware")
+            or main.OPTIONS.get("firmware")
+            or FALLBACK_FIRMWARE
+        ).strip()
 
     @property
     def status(self) -> str:
@@ -131,8 +137,6 @@ class SecondarySetupManager:
                     self._wake.set()
 
     def _perform_setup(self):
-        # Existing installs should complete immediately. Also enforce the raised
-        # controller limit again so the redo button is useful as a repair action.
         if self.is_walllink_online():
             self._set_status("Synthetic controller already paired; checking limit")
             self.set_max_on_live_link(self.target_max)
@@ -141,14 +145,10 @@ class SecondarySetupManager:
 
         existing = self.existing_secondary_serial
         if not existing:
-            self._set_status(
-                "Detecting existing secondary; leave it powered on"
-            )
+            self._set_status("Detecting existing secondary; leave it powered on")
             existing = self._detect_existing_secondary()
             if not existing:
-                self._set_status(
-                    "Waiting to detect existing secondary controller"
-                )
+                self._set_status("Waiting to detect existing secondary controller")
                 if not self._stop.wait(self.retry_delay):
                     self._wake.set()
                 return
@@ -156,31 +156,20 @@ class SecondarySetupManager:
             self._save_state()
             main.LOG.info("Detected existing secondary serial %s", existing)
 
-        self._set_status(
-            f"Power off secondary {existing}, then reboot the QUE master"
-        )
+        self._set_status(f"Power off secondary {existing}, then reboot the QUE master")
 
-        # The real secondary remains paired in the master. Once it is powered
-        # off, we can temporarily present the same serial and perform the one
-        # verified settings write used during reverse engineering.
         if not self._set_limit_via_existing_secondary(existing):
             if not self._stop.wait(self.retry_delay):
                 self._wake.set()
             return
 
-        self._set_status(
-            "Limit raised. On the master select 'Connect another controller'"
-        )
+        self._set_status("Limit raised. On the master select 'Connect another controller'")
 
-        # Announce exactly like a real secondary. The master only reacts while
-        # its internal listenForNewSecondaries flag is armed by that UI action.
         if self._pair_synthetic_controller():
             self._mark_complete()
             return
 
-        self._set_status(
-            "Waiting for 'Connect another controller' on the QUE master"
-        )
+        self._set_status("Waiting for 'Connect another controller' on the QUE master")
         if not self._stop.wait(self.retry_delay):
             self._wake.set()
 
@@ -188,10 +177,9 @@ class SecondarySetupManager:
         self._state["completed"] = True
         self._state["synthetic_serial"] = self.synthetic_serial
         self._state["max_secondary_controllers"] = self.target_max
+        self._state["firmware"] = self.firmware
         self._save_state()
-        self._set_status(
-            "Setup complete; power the original secondary back on"
-        )
+        self._set_status("Setup complete; power the original secondary back on")
 
     def _connect_as(self, serial: str, timeout: float = 5.0) -> Tuple[socket.socket, dict]:
         sock = socket.create_connection((self.master_ip, self.master_port), timeout=timeout)
@@ -294,6 +282,20 @@ class SecondarySetupManager:
                     and serial
                     and serial != self.synthetic_serial
                 ):
+                    firmware = str(
+                        obj.get("id", {}).get("fw_version")
+                        or obj.get("wcFirmwareVer")
+                        or ""
+                    ).strip()
+                    if firmware:
+                        self.firmware = firmware
+                        self._state["firmware"] = firmware
+                        self._save_state()
+                        main.LOG.info(
+                            "Detected secondary firmware %s from %s",
+                            firmware,
+                            serial,
+                        )
                     return serial
         except OSError as exc:
             main.LOG.warning("Could not listen for QUE UDP discovery: %s", exc)
@@ -321,8 +323,6 @@ class SecondarySetupManager:
 
             deadline = time.monotonic() + 20.0
             while time.monotonic() < deadline and not self._stop.is_set():
-                # Unicast makes the setup reliable across Docker/network layouts;
-                # broadcast preserves the behaviour observed from the real secondary.
                 for destination in (self.master_ip, "255.255.255.255"):
                     try:
                         udp.sendto(payload, (destination, UDP_PORT))
