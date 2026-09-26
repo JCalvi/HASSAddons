@@ -23,14 +23,21 @@ class LocalActronQueBridge(main.ActronQueBridge):
         ("sensor", "master_serial"),
     )
 
-    def _serial(self) -> str:
-        return str(self.master_serial if self.master_serial != "unknown" else main.OPTIONS["serial"]).lower()
+    def _serial_raw(self) -> str:
+        return str(
+            self.master_serial
+            if self.master_serial != "unknown"
+            else main.OPTIONS["serial"]
+        )
+
+    def _serial_entity(self) -> str:
+        return self._serial_raw().lower()
 
     def device_info(self):
-        serial = self._serial()
+        serial = self._serial_raw()
         return {
-            # Deliberately identical to hass-actronque so the local add-on can
-            # replace it without requiring dashboard/automation entity changes.
+            # Match hass-actronque exactly. Home Assistant uses this identifier
+            # to decide whether MQTT entities belong to the existing QUE device.
             "identifiers": [f"actronque_{serial}"],
             "name": f"Actron QUE ({self.system_name})",
             "manufacturer": "Actron",
@@ -39,7 +46,7 @@ class LocalActronQueBridge(main.ActronQueBridge):
         }
 
     def _default_entity_id(self, domain: str, object_id: str, config: Dict[str, Any]) -> str:
-        serial = self._serial()
+        serial = self._serial_entity()
         base = f"{domain}.actronque_{serial}"
 
         if domain == "climate" and object_id == "climate":
@@ -69,23 +76,64 @@ class LocalActronQueBridge(main.ActronQueBridge):
             "compressor_mode": "compressor",
             "filter_runtime": "fan_time_since_filter_cleaned",
             "clean_filter": "clean_filter",
+            "constant_fan": "constant_fan_mode",
         }
         suffix = aliases.get(object_id, object_id)
         return f"{base}_{suffix}"
 
+    def _cloud_unique_id(self, domain: str, object_id: str) -> str:
+        """Return hass-actronque's unique_id where a cloud equivalent exists."""
+        serial = self._serial_raw()
+
+        fixed = {
+            ("climate", "climate"): "AC",
+            ("sensor", "humidity"): "Humidity",
+            ("sensor", "indoor_temperature"): "Temperature",
+            ("sensor", "outdoor_temperature"): "OutdoorTemperature",
+            ("sensor", "compressor_capacity"): "CompressorCapacity",
+            ("sensor", "compressor_power"): "CompressorPower",
+            ("sensor", "coil_inlet_temperature"): "CoilInletTemperature",
+            ("binary_sensor", "clean_filter"): "CleanFilter",
+            ("sensor", "filter_runtime"): "FanTSFC",
+            ("sensor", "fan_pwm"): "FanPWM",
+            ("sensor", "fan_rpm"): "FanRPM",
+            ("switch", "control_all_zones"): "ControlAllZones",
+            ("switch", "away_mode"): "AwayMode",
+            ("switch", "constant_fan"): "ConstantFanMode",
+            ("switch", "quiet_mode"): "QuietMode",
+        }
+        suffix = fixed.get((domain, object_id))
+        if suffix:
+            return f"{serial}-{suffix}"
+
+        match = re.fullmatch(r"zone_(\d+)_enabled", object_id)
+        if domain == "switch" and match:
+            return f"{serial}-z{match.group(1)}s"
+
+        match = re.fullmatch(r"zone_(\d+)_temperature", object_id)
+        if domain == "sensor" and match:
+            return f"{serial}-z{match.group(1)}t"
+
+        match = re.fullmatch(r"zone_(\d+)_climate", object_id)
+        if domain == "climate" and match:
+            return f"{serial}-z{match.group(1)}-climate"
+
+        # Diagnostics and local-only entities intentionally retain a local ID.
+        return f"{serial}-local-{object_id}"
+
     def publish_discovery_entity(self, domain: str, object_id: str, config: Dict[str, Any]):
         config = dict(config)
-        config.setdefault("unique_id", f"{self._serial()}-local-{object_id}")
+        config.setdefault("unique_id", self._cloud_unique_id(domain, object_id))
         config.setdefault("default_entity_id", self._default_entity_id(domain, object_id, config))
         config.setdefault("device", self.device_info())
 
+        # Keep the discovery topic itself local. The registry identity above is
+        # what performs the seamless takeover; separate topics prevent the local
+        # publisher from overwriting retained cloud discovery configs.
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
         self.mqtt_publish(topic, config, retain=True)
 
     def clear_legacy_discovery(self):
-        # Remove discovery retained by earlier local versions. The new payloads
-        # use cloud-compatible entity IDs, but their discovery topics remain
-        # local so two publishers cannot overwrite each other's configs.
         for domain, object_id in self.LEGACY_LOCAL_DISCOVERY_ENTITIES:
             for prefix in ("actronque_local", "hass_actronque_local"):
                 topic = f"{self.discovery_prefix}/{domain}/{prefix}/{object_id}/config"
