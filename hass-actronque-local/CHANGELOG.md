@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- Fix duplicate MQTT devices when migrating from `hass-actronque`.
+- Reuse the cloud add-on's MQTT device identifier exactly, including the master serial's original case.
+- Reuse cloud-compatible MQTT `unique_id` values for the main climate, zones, switches and common sensors so Home Assistant can recreate or adopt the expected entities cleanly.
+- Keep local MQTT transport/discovery topics separate while preserving the established Home Assistant device and entity identities.
+
 ## 0.3.0
 
 - Promote Actron QUE Local to stable/production status.
