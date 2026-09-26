@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2026.9.1] - 2026-09-26
+
+### Changed
+- Renamed the add-on from **Actron Que Air Conditioner** to **Actron QUE Cloud** for clear differentiation from the new local QUE add-on.
+- Updated the default MQTT device label to **Actron QUE Cloud**.
+- Updated add-on documentation to use the new cloud-specific name.
+
+### Fixed
+- Restored the missing `MQTTProcessor()` command handler that had been accidentally removed from `Service.cs` in an earlier refactor.
+- Restored `ParseBoolPayload()` used by MQTT switch commands.
+- Restored `MQTT.StopMQTT()` during service shutdown.
+- Fixed the .NET build failure: `CS0103: The name 'MQTTProcessor' does not exist in the current context`.
+
 ## [2026.2.5] - 2026-02-17
 
 ### Fixed
