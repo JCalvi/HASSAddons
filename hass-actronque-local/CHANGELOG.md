@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+- Promote Actron QUE Local to stable/production status.
+- Add guided one-time synthetic secondary-controller setup.
+- Detect an existing physical secondary automatically when possible, or allow its serial to be entered manually.
+- Raise `NV_SystemSettings.MaxSecondaryControllers` during setup so a physical secondary and Home Assistant can coexist.
+- Add secondary-style UDP pairing announcements on port `19295` and WallLink acceptance on TCP `19296`.
+- Persist setup completion under `/data` so normal restarts do not repeat pairing.
+- Add a **Secondary Controller Setup Status** diagnostic entity.
+- Add a **Redo Secondary Controller Setup** Home Assistant button.
+- Make Home Assistant device/entity IDs compatible with `hass-actronque`, using the actual QUE master serial so existing dashboards and automations can be retained during migration.
+- Keep local MQTT discovery topics separate from the cloud add-on while advertising cloud-compatible entity IDs.
+- Keep Paho MQTT 2.1.0 and reduce the runtime image by moving pip into a builder stage.
+- Rewrite README and configuration documentation for the current full local-control feature set and migration workflow.
+
 ## 0.2.2
 
 - Round Home Assistant sensor values for cleaner display.
