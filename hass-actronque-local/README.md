@@ -85,8 +85,8 @@ With the default topic prefix:
 - `hass-actronque-local/bridge/status` — application/MQTT status.
 - `hass-actronque-local/raw/state` — full current QUE state when enabled.
 - `hass-actronque-local/event/change` — latest incoming WallLink `Data_Change`.
-- `hass-actronque-local/setup/status` — secondary-controller setup state.
-- `hass-actronque-local/setup/redo` — command topic used by the redo button.
+- `hass-actronque-local/secondary_setup/status` — secondary-controller setup state.
+- `hass-actronque-local/secondary_setup/redo` — command topic used by the redo button.
 
 ## Requirements
 
