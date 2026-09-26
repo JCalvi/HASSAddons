@@ -1,0 +1,40 @@
+name: "Actron QUE Local"
+version: "0.1.0"
+slug: "hass-actronque-local"
+description: "Direct local control of ActronAir QUE via the native WallLink protocol"
+stage: experimental
+startup: application
+boot: auto
+init: false
+arch:
+  - aarch64
+  - amd64
+
+services:
+  - mqtt:need
+
+options:
+  master_ip: "192.168.1.218"
+  master_port: 19296
+  serial: "FA000001"
+  firmware: "1.456.1.598"
+  topic_prefix: "hass-actronque-local"
+  discovery_prefix: "homeassistant"
+  reconnect_delay: 5
+  socket_timeout: 60
+  log_data_changes: true
+  publish_raw_state: true
+  log_level: "INFO"
+
+schema:
+  master_ip: str
+  master_port: int
+  serial: str
+  firmware: str
+  topic_prefix: str
+  discovery_prefix: str
+  reconnect_delay: int
+  socket_timeout: int
+  log_data_changes: bool
+  publish_raw_state: bool
+  log_level: list(DEBUG|INFO|WARNING|ERROR)

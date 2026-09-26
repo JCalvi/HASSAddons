@@ -1,0 +1,34 @@
+configuration:
+  master_ip:
+    name: QUE master IP
+    description: IP address of the QUE master wall controller.
+  master_port:
+    name: WallLink TCP port
+    description: Native QUE WallLink TCP port. Normally 19296.
+  serial:
+    name: Synthetic secondary serial
+    description: Serial already paired as the Home Assistant secondary controller.
+  firmware:
+    name: Wall controller firmware
+    description: Firmware version presented to the QUE master.
+  topic_prefix:
+    name: MQTT topic prefix
+    description: Root MQTT topic used by this app.
+  discovery_prefix:
+    name: MQTT discovery prefix
+    description: Home Assistant MQTT Discovery prefix.
+  reconnect_delay:
+    name: Reconnect delay
+    description: Seconds between WallLink reconnect attempts.
+  socket_timeout:
+    name: WallLink receive timeout
+    description: Seconds without WallLink traffic before reconnecting.
+  log_data_changes:
+    name: Log Data_Change messages
+    description: Log incoming WallLink Data_Change payloads.
+  publish_raw_state:
+    name: Publish complete state
+    description: Publish the full current QUE state to MQTT.
+  log_level:
+    name: Log level
+    description: App logging verbosity.
