@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2
+
+- Remove the firmware field from normal add-on options and automatically learn/persist the controller firmware during secondary-controller discovery, with an internal fallback retained for recovery.
+- Improve Home Assistant icons for Quiet Mode, Compressor Mode, Fan Mode, operating Mode, Master Serial and System Name.
+- Restore cloud-compatible damper-position entity IDs such as `sensor.actronque_<serial>_zone_6_downstairs_damper_position` and the matching cloud `unique_id` values.
+- Normalize QUE out-of-range percentage sentinels so values such as compressor capacity `255` are not exposed as `255%`; inactive compressor capacity and invalid Fan PWM now publish as `0`.
+- Add a one-time first-connection scan that logs unexposed `Data_All` leaf fields to help identify useful QUE telemetry for future entities without repeatedly spamming logs.
+
 ## 0.3.1
 
 - Fix duplicate MQTT devices when migrating from `hass-actronque`.
