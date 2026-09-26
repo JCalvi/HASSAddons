@@ -46,7 +46,7 @@ class LocalActronQueBridge(main.ActronQueBridge):
         serial = self._serial_raw()
         return {
             "identifiers": [f"actronque_{serial}"],
-            "name": f"Actron QUE ({self.system_name})",
+            "name": f"Actron QUE Local ({self.system_name})",
             "manufacturer": "Actron",
             "model": "Actron Que",
             "sw_version": self.master_fw,
@@ -137,7 +137,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
         return f"{serial}-local-{object_id}"
 
     def _battery_is_real(self, object_id: str) -> bool:
-        """Return True only when the zone sensor reports a real 0-100% battery."""
         match = re.fullmatch(r"zone_(\d+)_sensor_(.+)_battery", object_id)
         if not match:
             return True
@@ -168,16 +167,10 @@ class LocalActronQueBridge(main.ActronQueBridge):
         config = dict(config)
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
 
-        # Zone climate entities already expose EnabledZones[] through HVAC mode
-        # (Off = disabled; any active mode = enabled). Remove the redundant
-        # per-zone Enabled switch and clear retained discovery.
         if domain == "switch" and re.fullmatch(r"zone_\d+_enabled", object_id):
             self.mqtt_publish(topic, b"", retain=True)
             return
 
-        # Zone climate entities already expose LiveTemp_oC as current_temperature.
-        # Remove both standalone copies: the named zone-temperature sensor and
-        # the hardware-ID RemoteTemperatures_oC sensor.
         if domain == "sensor" and (
             re.fullmatch(r"zone_\d+_temperature", object_id)
             or re.fullmatch(r"zone_\d+_sensor_.+_temperature", object_id)
@@ -185,10 +178,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
             self.mqtt_publish(topic, b"", retain=True)
             return
 
-        # Wired QUE sensors report Battery_pc=255. That is a sentinel meaning
-        # battery is not applicable, so don't create a bogus battery entity.
-        # Publishing an empty retained discovery config also removes an entity
-        # created by an earlier version of the add-on.
         if domain == "sensor" and object_id.endswith("_battery") and not self._battery_is_real(object_id):
             self.mqtt_publish(topic, b"", retain=True)
             return
