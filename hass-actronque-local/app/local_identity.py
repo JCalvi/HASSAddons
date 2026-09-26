@@ -23,6 +23,15 @@ class LocalActronQueBridge(main.ActronQueBridge):
         ("sensor", "master_serial"),
     )
 
+    ENTITY_ICONS = {
+        ("switch", "quiet_mode"): "mdi:volume-off",
+        ("sensor", "compressor_mode"): "mdi:engine-outline",
+        ("sensor", "fan_mode"): "mdi:fan",
+        ("sensor", "mode"): "mdi:thermostat",
+        ("sensor", "master_serial"): "mdi:identifier",
+        ("sensor", "system_name"): "mdi:home-outline",
+    }
+
     def _serial_raw(self) -> str:
         return str(
             self.master_serial
@@ -125,6 +134,9 @@ class LocalActronQueBridge(main.ActronQueBridge):
         config = dict(config)
         config.setdefault("unique_id", self._cloud_unique_id(domain, object_id))
         config.setdefault("default_entity_id", self._default_entity_id(domain, object_id, config))
+        icon = self.ENTITY_ICONS.get((domain, object_id))
+        if icon:
+            config.setdefault("icon", icon)
         config.setdefault("device", self.device_info())
 
         # Keep the discovery topic itself local. The registry identity above is
