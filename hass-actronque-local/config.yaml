@@ -2,10 +2,12 @@ name: "Actron QUE Local"
 version: "0.1.0"
 slug: "hass-actronque-local"
 description: "Direct local control of ActronAir QUE via the native WallLink protocol"
+url: "https://github.com/JCalvi/HASSAddons/tree/master/hass-actronque-local"
 stage: experimental
 startup: application
 boot: auto
 init: false
+image: "jcrfc/hass-actronque-local-{arch}"
 arch:
   - aarch64
   - amd64
