@@ -3,7 +3,7 @@
   "version": "2026.9.1",
   "slug": "hass-actronque",
   "description": "Cloud-based control of ActronAir QUE via the Actron Cloud Service",
-  "url": "https://github.com/JCalvi/HASSAddons",
+  "url": "https://github.com/JCalvi/HASSAddons/tree/master/hass-actronque-cloud",
   "startup": "application",
   "boot": "auto",
   "image": "jcrfc/hass-actronque-{arch}",
