@@ -1,4 +1,3 @@
-\
 #!/usr/bin/env python3
 
 import base64
@@ -30,7 +29,7 @@ def load_options() -> Dict[str, Any]:
         "master_port": 19296,
         "serial": "FA000001",
         "firmware": "1.456.1.598",
-        "topic_prefix": "actronque_local",
+        "topic_prefix": "hass-actronque-local",
         "discovery_prefix": "homeassistant",
         "reconnect_delay": 5,
         "socket_timeout": 60,
@@ -587,8 +586,6 @@ class ActronQueBridge:
         if not self.mqtt_connected:
             return
 
-        # MQTT can call this before the first WallLink Data_All. Re-publish after
-        # master identity is known so all entities share the final device ID.
         availability = {
             "availability_topic": f"{self.topic_prefix}/status",
             "payload_available": "online",
