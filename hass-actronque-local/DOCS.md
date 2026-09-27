@@ -2,7 +2,7 @@
 
 Actron QUE Local connects directly to the QUE master wall controller using the native WallLink protocol. It does not require the Actron cloud for operation.
 
-Version 0.3.0 can also perform the one-time synthetic-secondary setup that previously had to be done manually.
+The add-on includes a guided one-time synthetic-secondary setup for both master-only systems and systems that already have a physical secondary controller.
 
 ## Requirements
 
@@ -18,10 +18,9 @@ The add-on obtains MQTT credentials from Supervisor automatically.
 - `master_ip` — IP address of the QUE master wall controller.
 - `master_port` — native WallLink TCP port; normally `19296`.
 - `serial` — serial presented by the synthetic Home Assistant secondary controller.
-- `firmware` — firmware version presented by the synthetic controller.
 - `auto_secondary_setup` — enables the guided secondary-controller setup workflow.
-- `existing_secondary_serial` — optional serial of an existing physical secondary. Leave blank to detect it automatically.
-- `max_secondary_controllers` — target value for `NV_SystemSettings.MaxSecondaryControllers`; normally `2` for one real secondary plus Home Assistant.
+- `existing_secondary_serial` — optional serial of an existing physical secondary. Leave blank to detect one automatically; if none exists, the add-on uses the master-only direct-pairing path.
+- `max_secondary_controllers` — target value for `NV_SystemSettings.MaxSecondaryControllers`; normally `2`, allowing Home Assistant and one physical secondary to coexist.
 - `setup_retry_delay` — seconds between setup retries while waiting for physical actions.
 - `topic_prefix` — internal MQTT topic prefix.
 - `discovery_prefix` — Home Assistant MQTT Discovery prefix.
@@ -50,9 +49,23 @@ If the configured synthetic serial is already accepted by the QUE master, startu
 
 The setup-status entity will settle on `Setup complete`.
 
+## First start on a master-only system
+
+If there is no physical secondary controller, leave `existing_secondary_serial` blank.
+
+With automatic setup enabled:
+
+1. The add-on briefly checks for an existing physical secondary.
+2. If none is found, the setup status asks you to select **Connect another controller** on the QUE master.
+3. The add-on sends the secondary-style UDP announcement on port `19295` and waits for the master to accept the synthetic controller on WallLink TCP port `19296`.
+4. Once accepted, the add-on raises `NV_SystemSettings.MaxSecondaryControllers` to the configured target value through the new synthetic-controller connection.
+5. Setup is saved as complete and normal local operation begins.
+
+No controller needs to be powered off, and no existing-secondary impersonation is required on a master-only system.
+
 ## First start when a physical secondary already occupies the available slot
 
-A common QUE installation has one master and one physical secondary, with `MaxSecondaryControllers` initially set to `1`.
+A common QUE installation has one master and one physical secondary, with the existing slot already occupied.
 
 With automatic setup enabled:
 
