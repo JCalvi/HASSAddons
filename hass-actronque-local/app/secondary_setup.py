@@ -145,13 +145,28 @@ class SecondarySetupManager:
 
         existing = self.existing_secondary_serial
         if not existing:
-            self._set_status("Detecting existing secondary; leave it powered on")
+            self._set_status("Checking for an existing physical secondary")
             existing = self._detect_existing_secondary()
             if not existing:
-                self._set_status("Waiting to detect existing secondary controller")
+                self._set_status(
+                    "No physical secondary detected. On the master select 'Connect another controller'"
+                )
+                if self._pair_synthetic_controller():
+                    # A master-only system has a free slot, so pair directly first.
+                    # Once accepted, raise the configured limit through the new
+                    # synthetic controller so another physical secondary can still
+                    # be added later if desired.
+                    self._set_limit_via_existing_secondary(self.synthetic_serial)
+                    self._mark_complete()
+                    return
+
+                self._set_status(
+                    "No free slot detected; checking again for an existing secondary"
+                )
                 if not self._stop.wait(self.retry_delay):
                     self._wake.set()
                 return
+
             self._state["existing_secondary_serial"] = existing
             self._save_state()
             main.LOG.info("Detected existing secondary serial %s", existing)
@@ -166,20 +181,23 @@ class SecondarySetupManager:
         self._set_status("Limit raised. On the master select 'Connect another controller'")
 
         if self._pair_synthetic_controller():
-            self._mark_complete()
+            self._mark_complete(restore_secondary=True)
             return
 
         self._set_status("Waiting for 'Connect another controller' on the QUE master")
         if not self._stop.wait(self.retry_delay):
             self._wake.set()
 
-    def _mark_complete(self):
+    def _mark_complete(self, restore_secondary: bool = False):
         self._state["completed"] = True
         self._state["synthetic_serial"] = self.synthetic_serial
         self._state["max_secondary_controllers"] = self.target_max
         self._state["firmware"] = self.firmware
         self._save_state()
-        self._set_status("Setup complete; power the original secondary back on")
+        if restore_secondary:
+            self._set_status("Setup complete; power the original secondary back on")
+        else:
+            self._set_status("Setup complete")
 
     def _connect_as(self, serial: str, timeout: float = 5.0) -> Tuple[socket.socket, dict]:
         sock = socket.create_connection((self.master_ip, self.master_port), timeout=timeout)
