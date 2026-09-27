@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026.9.1
+
+- Promote Actron QUE Local to the final calendar-versioned release line.
+- Add a complete master-only setup path for systems with no physical secondary controller: when none is detected, Home Assistant pairs directly into the available secondary slot after **Connect another controller** is selected on the QUE master.
+- After master-only pairing, automatically raise `NV_SystemSettings.MaxSecondaryControllers` through the new synthetic-controller connection so a physical secondary can still be added later if required.
+- Keep the existing physical-secondary workflow for systems where the available secondary slot is already occupied.
+- Rename the MQTT device to `Actron QUE Local (<SystemName>)` while keeping the main climate entity name neutral as `Actron QUE (<SystemName>)`.
+- Preserve existing Home Assistant entity IDs and cloud-compatible unique IDs for seamless migration from the cloud add-on.
+- Remove redundant standalone zone temperature sensors, duplicate hardware-sensor temperatures and per-zone Enabled switches when the zone climate entity already provides the same function.
+- Suppress invalid battery readings such as `255%` and clear stale retained MQTT discovery for entities that are no longer exposed.
+- Refresh README and configuration documentation for both master-only and physical-secondary installations.
+
 ## 0.3.6
 
 - Rename the MQTT device to `Actron QUE Local (<SystemName>)` so the local and cloud add-ons are clearly differentiated at the device level.
