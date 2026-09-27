@@ -11,9 +11,9 @@ This add-on is designed as a local replacement for `hass-actronque`: it keeps th
 - Zone climate entities with enable/disable and per-zone heat/cool targets.
 - Away Mode, Control All Zones, Constant Fan and Quiet Mode controls.
 - Indoor and outdoor temperature, humidity, compressor mode/capacity/power, coil inlet temperature, fan PWM/RPM and filter diagnostics.
-- Wireless zone-sensor temperature, battery and RSSI where available.
+- Wireless zone-sensor battery and RSSI where available.
 - Automatic reconnect and MQTT Discovery.
-- Guided synthetic-secondary setup for systems that do not already have the Home Assistant controller paired.
+- Guided synthetic-secondary setup for both master-only systems and systems that already have a physical secondary controller.
 - Home Assistant setup-status sensor and **Redo Secondary Controller Setup** button.
 - Optional raw WallLink state and Data_Change event topics for diagnostics.
 
@@ -50,6 +50,21 @@ The QUE master treats the Home Assistant add-on as a synthetic secondary wall co
 
 If the synthetic controller is already paired, the add-on connects normally and setup completes automatically.
 
+### Master-only system — no physical secondary
+
+If the installation has only the QUE master controller, leave `existing_secondary_serial` blank.
+
+1. Start the add-on with **Automatic secondary setup** enabled.
+2. The add-on checks for an existing physical secondary.
+3. If none is detected, the setup status will ask you to select **Connect another controller** on the QUE master.
+4. The add-on announces its synthetic secondary controller and pairs directly into the available secondary slot.
+5. After pairing, the add-on raises `NV_SystemSettings.MaxSecondaryControllers` to the configured value (normally `2`) through the new local connection.
+6. Setup is marked complete and normal local control starts.
+
+No controller needs to be powered off or impersonated in a master-only installation.
+
+### System with an existing physical secondary
+
 For a typical system with one master and one physical secondary already paired:
 
 1. Start the add-on with **Automatic secondary setup** enabled.
@@ -69,10 +84,9 @@ If setup needs to be repeated later, press **Redo Secondary Controller Setup** i
 - `master_ip` — IP address of the QUE master wall controller.
 - `master_port` — WallLink TCP port, normally `19296`.
 - `serial` — synthetic Home Assistant secondary-controller serial.
-- `firmware` — firmware version presented by the synthetic controller.
 - `auto_secondary_setup` — enables the guided one-time setup workflow.
-- `existing_secondary_serial` — optional known physical-secondary serial; blank allows automatic detection.
-- `max_secondary_controllers` — controller limit written during setup; normally `2` for one physical secondary plus Home Assistant.
+- `existing_secondary_serial` — optional known physical-secondary serial. Leave blank for automatic detection; if no physical secondary exists, the add-on uses the master-only direct-pairing path.
+- `max_secondary_controllers` — controller limit used during setup; normally `2`, allowing Home Assistant and one physical secondary to coexist.
 - `setup_retry_delay` — delay between setup retries while waiting for physical steps.
 - `topic_prefix` — internal MQTT topic prefix.
 - `publish_raw_state` — publishes the full current QUE state for diagnostics.
@@ -94,7 +108,3 @@ With the default topic prefix:
 - MQTT service available to the add-on.
 - Network access from Home Assistant to the QUE master.
 - The QUE master IP should be stable, preferably via DHCP reservation.
-
-## Status
-
-Version 0.3.0 is tagged as a stable/production add-on. It is intended for normal use while retaining diagnostic logging and raw-state options for troubleshooting.
