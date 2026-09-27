@@ -13,13 +13,13 @@ configuration:
     description: Automatically guide and perform the one-time synthetic secondary pairing process when required.
   existing_secondary_serial:
     name: Existing secondary serial
-    description: Optional serial of the real secondary controller. Leave blank to detect it automatically before setup.
+    description: Optional serial of a real secondary controller. Leave blank to detect one automatically; master-only systems pair directly if none is found.
   max_secondary_controllers:
     name: Maximum secondary controllers
-    description: Value written to NV_SystemSettings.MaxSecondaryControllers. Use 2 for one real secondary plus Home Assistant.
+    description: Value used for NV_SystemSettings.MaxSecondaryControllers. Normally 2 so Home Assistant and one physical secondary can coexist.
   setup_retry_delay:
     name: Setup retry delay
-    description: Seconds between guided setup retry attempts while waiting for the physical controller steps.
+    description: Seconds between guided setup retry attempts while waiting for controller setup steps.
   topic_prefix:
     name: MQTT topic prefix
     description: Root MQTT topic used internally by this app.
