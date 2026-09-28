@@ -1,19 +1,16 @@
 configuration:
   master_ip:
-    name: QUE master IP
-    description: IP address of the QUE master wall controller. For multiple independent QUE systems, enter the master IP addresses as a comma-separated list.
-  master_port:
-    name: WallLink TCP port
-    description: Native QUE WallLink TCP port. Normally 19296.
+    name: QUE master address
+    description: QUE master address as IP:port. For multiple independent QUE systems, enter comma-separated addresses. The port may be omitted and defaults to 19296.
   serial:
     name: Synthetic secondary serial
-    description: Serial used by Home Assistant as the synthetic secondary controller. For multiple QUE systems, enter matching synthetic serials as a comma-separated list in the same order as the master IPs. Missing additional serials are generated automatically.
+    description: Serial used by Home Assistant as the synthetic secondary controller. For multiple QUE systems, enter matching synthetic serials as a comma-separated list in the same order as the master addresses. Missing additional serials are generated automatically.
   auto_secondary_setup:
     name: Automatic secondary setup
     description: Automatically guide and perform the one-time synthetic secondary pairing process when required.
   existing_secondary_serial:
     name: Existing secondary serial
-    description: Optional serial of a real secondary controller. For multiple QUE systems, enter matching serials as a comma-separated list in the same order as the master IPs. Leave blank where automatic detection should be used.
+    description: Optional serial of a real secondary controller. For multiple QUE systems, enter matching serials as a comma-separated list in the same order as the master addresses. Leave blank where automatic detection should be used.
   max_secondary_controllers:
     name: Maximum secondary controllers
     description: Value used for NV_SystemSettings.MaxSecondaryControllers. Normally 2 so Home Assistant and one physical secondary can coexist.
