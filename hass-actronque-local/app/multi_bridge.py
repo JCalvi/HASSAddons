@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 OPTIONS_FILE = Path("/data/options.json")
+DEFAULT_WALLLINK_PORT = 19296
 
 
 def _options():
@@ -33,8 +34,28 @@ def _list(value):
     return result
 
 
+def _parse_endpoint(value):
+    """Return (host, port); old host-only values remain valid on port 19296."""
+    value = str(value or "").strip()
+    if not value:
+        raise ValueError("empty QUE master address")
+    if value.count(":") == 1:
+        host, port_text = value.rsplit(":", 1)
+        host = host.strip()
+        if not host:
+            raise ValueError(f"invalid QUE master address: {value!r}")
+        try:
+            port = int(port_text)
+        except ValueError as exc:
+            raise ValueError(f"invalid WallLink port in {value!r}") from exc
+        if not 1 <= port <= 65535:
+            raise ValueError(f"WallLink port out of range in {value!r}")
+        return host, port
+    return value, DEFAULT_WALLLINK_PORT
+
+
 def _masters(options):
-    return _list(options.get("master_ip", ""))
+    return [_parse_endpoint(value) for value in _list(options.get("master_ip", ""))]
 
 
 def _value_for(values, index, default=""):
@@ -43,9 +64,6 @@ def _value_for(values, index, default=""):
     return default
 
 
-# This wrapper deliberately imports main first, then overrides that process's
-# in-memory OPTIONS before ui_bridge is imported. This keeps each bridge fully
-# isolated without changing the proven single-unit bridge classes.
 CHILD_CODE = r'''
 import os
 from pathlib import Path
@@ -53,6 +71,7 @@ import main
 
 index = int(os.environ["ACTRONQUE_INSTANCE_INDEX"])
 main.OPTIONS["master_ip"] = os.environ["ACTRONQUE_MASTER_IP"]
+main.OPTIONS["master_port"] = int(os.environ["ACTRONQUE_MASTER_PORT"])
 main.OPTIONS["topic_prefix"] = os.environ["ACTRONQUE_TOPIC_PREFIX"]
 main.OPTIONS["serial"] = os.environ["ACTRONQUE_SYNTHETIC_SERIAL"]
 main.OPTIONS["existing_secondary_serial"] = os.environ.get("ACTRONQUE_EXISTING_SECONDARY_SERIAL", "")
@@ -64,9 +83,6 @@ from ui_bridge import ActronQueLocalBridge
 bridge = ActronQueLocalBridge()
 
 if index > 0:
-    # MQTT Discovery config topics must be unique per QUE. Entity/device IDs
-    # remain cloud-compatible because those are derived from the real master
-    # serial after WallLink connects.
     original_publish = bridge.mqtt_publish
     marker = os.environ["ACTRONQUE_DISCOVERY_MARKER"]
     discovery_prefix = bridge.discovery_prefix + "/"
@@ -85,7 +101,11 @@ bridge.run()
 
 def main_entry():
     options = _options()
-    masters = _masters(options)
+    try:
+        masters = _masters(options)
+    except ValueError as exc:
+        print(f"Invalid QUE master configuration: {exc}", flush=True)
+        return 1
     if not masters:
         print("No QUE master IP configured", flush=True)
         return 1
@@ -97,70 +117,52 @@ def main_entry():
     children = []
 
     if len(synthetic_serials) > len(masters):
-        print("Warning: more synthetic secondary serials than QUE master IPs; extras will be ignored", flush=True)
+        print("Warning: more synthetic secondary serials than QUE masters; extras will be ignored", flush=True)
     if len(existing_secondaries) > len(masters):
-        print("Warning: more existing secondary serials than QUE master IPs; extras will be ignored", flush=True)
+        print("Warning: more existing secondary serials than QUE masters; extras will be ignored", flush=True)
 
-    for index, master_ip in enumerate(masters):
+    for index, (master_ip, master_port) in enumerate(masters):
         env = os.environ.copy()
+        endpoint = f"{master_ip}:{master_port}"
         suffix = re.sub(r"[^A-Za-z0-9]", "", master_ip)[-8:] or str(index + 1)
         env["ACTRONQUE_MASTER_IP"] = master_ip
+        env["ACTRONQUE_MASTER_PORT"] = str(master_port)
         env["ACTRONQUE_INSTANCE_INDEX"] = str(index)
         env["ACTRONQUE_DISCOVERY_MARKER"] = suffix.lower()
-        if index == 0:
-            env["ACTRONQUE_TOPIC_PREFIX"] = base_topic
-        else:
-            env["ACTRONQUE_TOPIC_PREFIX"] = f"{base_topic}/{suffix.lower()}"
+        env["ACTRONQUE_TOPIC_PREFIX"] = base_topic if index == 0 else f"{base_topic}/{suffix.lower()}"
 
-        # Serial lists map positionally to master_ip. For backwards
-        # compatibility a single serial still works exactly as before. If a
-        # multi-master installation supplies fewer synthetic serials than
-        # masters, deterministic unique serials are generated for the rest.
         synthetic = _value_for(synthetic_serials, index)
         if not synthetic:
             synthetic = f"{base_serial[:6]}{index + 1:02d}"
         env["ACTRONQUE_SYNTHETIC_SERIAL"] = synthetic
         env["ACTRONQUE_EXISTING_SECONDARY_SERIAL"] = _value_for(existing_secondaries, index)
 
-        print(
-            f"Starting QUE instance {index + 1}: {master_ip} "
-            f"(synthetic secondary {synthetic})",
-            flush=True,
-        )
+        print(f"Starting QUE instance {index + 1}: {endpoint} (synthetic secondary {synthetic})", flush=True)
         children.append(subprocess.Popen([sys.executable, "-c", CHILD_CODE], env=env))
 
     stopping = False
 
     def stop_children(*_):
         nonlocal stopping
-        if stopping:
-            return
+        if stopping: return
         stopping = True
         for child in children:
-            if child.poll() is None:
-                child.terminate()
+            if child.poll() is None: child.terminate()
 
-    signal.signal(signal.SIGTERM, stop_children)
-    signal.signal(signal.SIGINT, stop_children)
-
+    signal.signal(signal.SIGTERM, stop_children); signal.signal(signal.SIGINT, stop_children)
     try:
         while not stopping:
             for child in children:
                 rc = child.poll()
                 if rc is not None:
-                    print(f"QUE bridge process exited unexpectedly with code {rc}", flush=True)
-                    stop_children()
-                    return rc or 1
+                    print(f"QUE bridge process exited unexpectedly with code {rc}", flush=True); stop_children(); return rc or 1
             time.sleep(1)
     finally:
-        stop_children()
-        deadline = time.monotonic() + 10
+        stop_children(); deadline = time.monotonic() + 10
         for child in children:
             remaining = max(0, deadline - time.monotonic())
-            try:
-                child.wait(timeout=remaining)
-            except subprocess.TimeoutExpired:
-                child.kill()
+            try: child.wait(timeout=remaining)
+            except subprocess.TimeoutExpired: child.kill()
     return 0
 
 
