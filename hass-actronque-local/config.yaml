@@ -16,8 +16,7 @@ services:
   - mqtt:need
 
 options:
-  master_ip: "192.168.1.218"
-  master_port: 19296
+  master_ip: "192.168.1.218:19296"
   serial: "FA000001"
   auto_secondary_setup: true
   existing_secondary_serial: ""
@@ -34,7 +33,6 @@ options:
 
 schema:
   master_ip: str
-  master_port: int
   serial: str
   auto_secondary_setup: bool
   existing_secondary_serial: str?
