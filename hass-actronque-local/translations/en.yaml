@@ -20,6 +20,9 @@ configuration:
   setup_retry_delay:
     name: Setup retry delay
     description: Seconds between guided setup retry attempts while waiting for controller setup steps.
+  separate_heat_cool_targets:
+    name: Separate Heat/Cool Targets
+    description: Use independent heating and cooling targets on climate entities instead of a single target temperature.
   topic_prefix:
     name: MQTT topic prefix
     description: Root MQTT topic used internally by this app.
