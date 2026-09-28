@@ -7,12 +7,14 @@ This add-on is designed as a local replacement for `hass-actronque`: it keeps th
 ## Features
 
 - Full local HVAC control over WallLink TCP.
+- Multiple independent QUE systems from one add-on instance.
 - Main and zone climate entities with selectable single-target or separate Heat/Cool target control.
 - Away Mode, Control All Zones, Constant Fan and Quiet Mode controls.
 - Indoor and outdoor temperature, humidity, compressor mode/capacity/power, coil inlet temperature, fan PWM/RPM and filter diagnostics.
 - Wireless zone-sensor battery and RSSI where available.
 - Automatic reconnect and MQTT Discovery.
 - Guided synthetic-secondary setup for both master-only systems and systems that already have a physical secondary controller.
+- Multi-QUE first-time setup is automatically serialized so only one QUE performs UDP discovery/pairing at a time.
 - Home Assistant setup-status sensor and **Redo Secondary Controller Setup** button.
 - Optional raw WallLink state and Data_Change event topics for diagnostics.
 
@@ -27,11 +29,37 @@ Examples:
 - `sensor.actronque_<master_serial>_temperature`
 - `switch.actronque_<master_serial>_control_all_zones`
 
-The serial is read from the actual QUE master, so multiple QUE systems remain distinct.
+The serial is read from each actual QUE master, so multiple QUE systems remain distinct.
+
+## Multiple QUE systems
+
+`master_ip` accepts one QUE endpoint or a comma-separated list. The normal WallLink port is `19296`; it may be omitted.
+
+Examples:
+
+```yaml
+master_ip: 192.168.1.218
+```
+
+```yaml
+master_ip: 192.168.1.218:19296, 192.168.1.219:19296
+```
+
+`serial` follows the same positional-list model. For multiple systems you may supply matching synthetic-secondary serials in the same order:
+
+```yaml
+serial: FA000001, FA000002
+```
+
+If additional synthetic serials are omitted, the add-on generates unique serials for the additional QUE units. `existing_secondary_serial` can also contain a matching comma-separated positional list; leave an entry blank where automatic physical-secondary detection should be used.
+
+Each QUE has an independent WallLink connection, MQTT transport namespace, Home Assistant device identity and persisted secondary-setup state. Normal operation is concurrent. If more than one QUE requires first-time automatic secondary setup, the add-on automatically allows only one unit at a time to perform UDP discovery/pairing; the next unit is enabled after the previous unit records setup completion.
+
+Existing single-QUE configurations remain valid without modification.
 
 ## Migrating from hass-actronque
 
-Do not run both add-ons as active controllers at the same time.
+Do not run both add-ons as active controllers for the same QUE system at the same time.
 
 Recommended migration:
 
@@ -45,17 +73,15 @@ The local add-on uses its own MQTT discovery topics internally, but advertises c
 
 ## One-time secondary-controller setup
 
-The QUE master treats the Home Assistant add-on as a synthetic secondary wall controller.
-
-If the synthetic controller is already paired, the add-on connects normally and setup completes automatically.
+Each QUE master treats the Home Assistant add-on as a synthetic secondary wall controller. If the synthetic controller is already paired, that unit connects normally and setup completes automatically.
 
 ### Master-only system — no physical secondary
 
-If the installation has only the QUE master controller, leave `existing_secondary_serial` blank.
+If the installation has only the QUE master controller, leave `existing_secondary_serial` blank for that unit.
 
 1. Start the add-on with **Automatic secondary setup** enabled.
 2. The add-on checks for an existing physical secondary.
-3. If none is detected, the setup status will ask you to select **Connect another controller** on the QUE master.
+3. If none is detected, the setup status asks you to select **Connect another controller** on the QUE master.
 4. The add-on announces its synthetic secondary controller and pairs directly into the available secondary slot.
 5. After pairing, the add-on raises `NV_SystemSettings.MaxSecondaryControllers` to the configured value (normally `2`) through the new local connection.
 6. Setup is marked complete and normal local control starts.
@@ -74,9 +100,9 @@ For a typical system with one master and one physical secondary already paired:
 6. The add-on announces the synthetic controller and waits for the master to accept it.
 7. When setup reports complete, power the original secondary back on.
 
-The setup state is stored under `/data`, so normal add-on restarts do not repeat the pairing process.
+The setup state is stored separately under `/data` for each configured QUE, so normal add-on restarts do not repeat the pairing process.
 
-If setup needs to be repeated later, press **Redo Secondary Controller Setup** in Home Assistant.
+If setup needs to be repeated later, press **Redo Secondary Controller Setup** for that QUE in Home Assistant.
 
 ## Temperature target mode
 
@@ -93,11 +119,10 @@ Changing this option keeps the same climate entity IDs, but Home Assistant autom
 
 ## Important options
 
-- `master_ip` — IP address of the QUE master wall controller.
-- `master_port` — WallLink TCP port, normally `19296`.
-- `serial` — synthetic Home Assistant secondary-controller serial.
-- `auto_secondary_setup` — enables the guided one-time setup workflow.
-- `existing_secondary_serial` — optional known physical-secondary serial. Leave blank for automatic detection; if no physical secondary exists, the add-on uses the master-only direct-pairing path.
+- `master_ip` — one QUE master address or a comma-separated list. Each address can be `IP:port`; if the port is omitted it defaults to `19296`.
+- `serial` — synthetic Home Assistant secondary serial, or a matching comma-separated list for multiple QUEs. Missing additional serials are generated automatically.
+- `auto_secondary_setup` — enables guided one-time setup. Multi-QUE setup is serialized automatically.
+- `existing_secondary_serial` — optional known physical-secondary serial, or matching positional list. Leave blank where automatic detection should be used.
 - `max_secondary_controllers` — controller limit used during setup; normally `2`, allowing Home Assistant and one physical secondary to coexist.
 - `setup_retry_delay` — delay between setup retries while waiting for physical steps.
 - `separate_heat_cool_targets` — `false` (default) for one target temperature; `true` for independent heating and cooling targets.
@@ -106,7 +131,7 @@ Changing this option keeps the same climate entity IDs, but Home Assistant autom
 
 ## MQTT diagnostics
 
-With the default topic prefix:
+With the default topic prefix, the first/single QUE uses:
 
 - `hass-actronque-local/status` — WallLink online/offline status.
 - `hass-actronque-local/bridge/status` — application/MQTT status.
@@ -115,9 +140,11 @@ With the default topic prefix:
 - `hass-actronque-local/secondary_setup/status` — secondary-controller setup state.
 - `hass-actronque-local/secondary_setup/redo` — command topic used by the redo button.
 
+Additional QUE units use isolated subtopics beneath the configured topic prefix.
+
 ## Requirements
 
 - Home Assistant OS/Supervised add-on environment.
 - MQTT service available to the add-on.
-- Network access from Home Assistant to the QUE master.
-- The QUE master IP should be stable, preferably via DHCP reservation.
+- Network access from Home Assistant to every configured QUE master.
+- QUE master IP addresses should be stable, preferably via DHCP reservation.
