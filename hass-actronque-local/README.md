@@ -7,8 +7,7 @@ This add-on is designed as a local replacement for `hass-actronque`: it keeps th
 ## Features
 
 - Full local HVAC control over WallLink TCP.
-- Main climate entity with heat/cool range, operating mode and fan mode.
-- Zone climate entities with enable/disable and per-zone heat/cool targets.
+- Main and zone climate entities with selectable single-target or separate Heat/Cool target control.
 - Away Mode, Control All Zones, Constant Fan and Quiet Mode controls.
 - Indoor and outdoor temperature, humidity, compressor mode/capacity/power, coil inlet temperature, fan PWM/RPM and filter diagnostics.
 - Wireless zone-sensor battery and RSSI where available.
@@ -79,6 +78,19 @@ The setup state is stored under `/data`, so normal add-on restarts do not repeat
 
 If setup needs to be repeated later, press **Redo Secondary Controller Setup** in Home Assistant.
 
+## Temperature target mode
+
+**Separate Heat/Cool Targets** controls how the existing master and zone climate entities present their target temperature. Entity IDs do not change when this option is changed.
+
+| Setting | Climate control |
+| --- | --- |
+| Off (default) | One target temperature |
+| On | Independent heating and cooling targets |
+
+Single-target mode matches the cloud add-on behaviour. In **Cool** mode a target change writes the cooling setpoint; in **Heat** mode it writes the heating setpoint; in **Auto** it writes both setpoints to the selected temperature. In **Off** or **Fan only**, the QUE does not accept a single target change. When displaying a single target in Auto/Off/Fan-only, the add-on uses the midpoint of the stored heating and cooling targets, matching the cloud add-on.
+
+Changing this option keeps the same climate entity IDs, but Home Assistant automations that explicitly use a single `temperature` target versus `target_temp_high` / `target_temp_low` should match the selected mode.
+
 ## Important options
 
 - `master_ip` — IP address of the QUE master wall controller.
@@ -88,6 +100,7 @@ If setup needs to be repeated later, press **Redo Secondary Controller Setup** i
 - `existing_secondary_serial` — optional known physical-secondary serial. Leave blank for automatic detection; if no physical secondary exists, the add-on uses the master-only direct-pairing path.
 - `max_secondary_controllers` — controller limit used during setup; normally `2`, allowing Home Assistant and one physical secondary to coexist.
 - `setup_retry_delay` — delay between setup retries while waiting for physical steps.
+- `separate_heat_cool_targets` — `false` (default) for one target temperature; `true` for independent heating and cooling targets.
 - `topic_prefix` — internal MQTT topic prefix.
 - `publish_raw_state` — publishes the full current QUE state for diagnostics.
 
