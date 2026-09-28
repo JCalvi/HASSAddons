@@ -18,7 +18,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
         ("binary_sensor", "aircon_on"),
         ("sensor", "mode"),
         ("sensor", "fan_mode"),
-        ("switch", "quiet_mode"),
         ("sensor", "system_name"),
         ("sensor", "master_serial"),
     )
@@ -163,6 +162,23 @@ class LocalActronQueBridge(main.ActronQueBridge):
 
         return False
 
+    def _publish_quiet_mode_compatibility(self, config: Dict[str, Any]) -> None:
+        """Keep the accidentally-created Local entity alive while adding the canonical ID.
+
+        Home Assistant does not rename an entity-registry entry merely because MQTT
+        Discovery changes its suggested entity ID.  The compatibility discovery
+        entry therefore continues to drive existing automations using
+        switch.hvac_actron_que_local_<system>_quiet_mode, while the canonical entry
+        is explicitly published as switch.actronque_<serial>_quiet_mode.
+        """
+        compat = dict(config)
+        compat["unique_id"] = f"{self._serial_raw()}-LocalQuietModeCompatibility"
+        compat.pop("default_entity_id", None)
+        compat.pop("object_id", None)
+        compat.setdefault("device", self.device_info())
+        compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
+        self.mqtt_publish(compat_topic, compat, retain=True)
+
     def publish_discovery_entity(self, domain: str, object_id: str, config: Dict[str, Any]):
         config = dict(config)
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
@@ -185,12 +201,21 @@ class LocalActronQueBridge(main.ActronQueBridge):
         config.setdefault("unique_id", self._cloud_unique_id(domain, object_id))
         config.setdefault("default_entity_id", self._default_entity_id(domain, object_id, config))
 
+        # Quiet Mode needs an explicit MQTT object_id as well as default_entity_id.
+        # Without it, HA's device/entity naming can produce
+        # switch.hvac_actron_que_local_<system>_quiet_mode on a fresh registry.
+        if domain == "switch" and object_id == "quiet_mode":
+            config["object_id"] = f"actronque_{self._serial_entity()}_quiet_mode"
+
         icon = self.ENTITY_ICONS.get((domain, object_id))
         if icon:
             config.setdefault("icon", icon)
 
         config.setdefault("device", self.device_info())
         self.mqtt_publish(topic, config, retain=True)
+
+        if domain == "switch" and object_id == "quiet_mode":
+            self._publish_quiet_mode_compatibility(config)
 
     def clear_legacy_discovery(self):
         for domain, object_id in self.LEGACY_LOCAL_DISCOVERY_ENTITIES:
