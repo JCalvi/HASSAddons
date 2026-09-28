@@ -1,25 +1,24 @@
 # Actron QUE Local — Configuration
 
-Actron QUE Local connects directly to the QUE master wall controller using the native WallLink protocol. It does not require the Actron cloud for operation.
+Actron QUE Local connects directly to one or more QUE master wall controllers using the native WallLink protocol. It does not require the Actron cloud for operation.
 
-The add-on includes a guided one-time synthetic-secondary setup for both master-only systems and systems that already have a physical secondary controller.
+The add-on includes guided one-time synthetic-secondary setup for both master-only systems and systems that already have a physical secondary controller.
 
 ## Requirements
 
 - Home Assistant OS or Supervised with add-on support.
 - MQTT service available to the add-on.
-- Network access from Home Assistant to the QUE master.
-- A stable IP address for the QUE master is recommended.
+- Network access from Home Assistant to each QUE master.
+- Stable QUE master IP addresses are recommended.
 
 The add-on obtains MQTT credentials from Supervisor automatically.
 
 ## Main configuration
 
-- `master_ip` — IP address of the QUE master wall controller.
-- `master_port` — native WallLink TCP port; normally `19296`.
-- `serial` — serial presented by the synthetic Home Assistant secondary controller.
-- `auto_secondary_setup` — enables the guided secondary-controller setup workflow.
-- `existing_secondary_serial` — optional serial of an existing physical secondary. Leave blank to detect one automatically; if none exists, the add-on uses the master-only direct-pairing path.
+- `master_ip` — one QUE master endpoint or a comma-separated list. Use `IP:port`; the port may be omitted and defaults to `19296`.
+- `serial` — synthetic Home Assistant secondary-controller serial. For multiple QUE systems, enter matching serials as a comma-separated positional list. Missing additional serials are generated automatically.
+- `auto_secondary_setup` — enables guided secondary-controller setup. If multiple units need setup, the add-on serializes first-time discovery/pairing automatically.
+- `existing_secondary_serial` — optional existing physical-secondary serial. For multiple QUE systems, enter matching serials in the same order as `master_ip`; leave blank where automatic detection should be used.
 - `max_secondary_controllers` — target value for `NV_SystemSettings.MaxSecondaryControllers`; normally `2`, allowing Home Assistant and one physical secondary to coexist.
 - `setup_retry_delay` — seconds between setup retries while waiting for physical actions.
 - `separate_heat_cool_targets` — `false` (default) exposes one target temperature; `true` exposes independent heating and cooling targets on the same climate entities.
@@ -30,6 +29,21 @@ The add-on obtains MQTT credentials from Supervisor automatically.
 - `log_data_changes` — log incoming `Data_Change` messages.
 - `publish_raw_state` — publish complete current QUE state to MQTT.
 - `log_level` — application logging level.
+
+There is no separate `master_port` option. Existing host-only values such as `192.168.1.218` remain valid and use WallLink port `19296` automatically.
+
+## Multiple QUE systems
+
+For example:
+
+```yaml
+master_ip: 192.168.1.218:19296, 192.168.1.219:19296
+serial: FA000001, FA000002
+```
+
+Each configured QUE gets an independent WallLink session, MQTT namespace, Home Assistant device identity and secondary-setup state. The actual QUE master serial remains the basis of Home Assistant entity identity, so multiple systems do not collide.
+
+Normal operation is concurrent. When automatic secondary setup is required on multiple units, only one incomplete QUE is permitted to perform UDP discovery/pairing at a time. As soon as it records setup completion, the coordinator enables setup for the next incomplete QUE. Units that are already paired start normal operation immediately and do not wait for the setup queue.
 
 ## Temperature targets
 
@@ -43,66 +57,40 @@ For the single target state, Cool reports the cooling target, Heat reports the h
 
 Actron QUE Local deliberately advertises the same Home Assistant device/entity IDs as `hass-actronque`, derived from the actual master serial. This allows existing dashboards and automations to continue using their current entity IDs.
 
-Recommended migration:
-
-1. Stop and disable `hass-actronque`.
-2. Remove its MQTT device/entities from Home Assistant if they remain registered.
-3. Configure and start Actron QUE Local.
-4. Allow MQTT Discovery to recreate the device and entities.
-
-Do not operate both add-ons as active controllers at the same time.
+Do not operate the cloud and local add-ons as active controllers for the same QUE system at the same time.
 
 ## First start when the synthetic controller is already paired
 
-If the configured synthetic serial is already accepted by the QUE master, startup is automatic. Logs should show the WallLink connection being accepted and the initial `Data_All` state being received.
-
-The setup-status entity will settle on `Setup complete`.
+If the configured synthetic serial is already accepted by the QUE master, startup is automatic. The setup-status entity settles on `Setup complete`.
 
 ## First start on a master-only system
 
-If there is no physical secondary controller, leave `existing_secondary_serial` blank.
+If there is no physical secondary controller, leave the corresponding `existing_secondary_serial` entry blank.
 
 With automatic setup enabled:
 
-1. The add-on briefly checks for an existing physical secondary.
-2. If none is found, the setup status asks you to select **Connect another controller** on the QUE master.
-3. The add-on sends the secondary-style UDP announcement on port `19295` and waits for the master to accept the synthetic controller on WallLink TCP port `19296`.
+1. The add-on checks for an existing physical secondary.
+2. If none is found, the setup status asks you to select **Connect another controller** on that QUE master.
+3. The add-on sends the secondary-style UDP announcement on port `19295` and waits for that master to accept the synthetic controller on its configured WallLink endpoint.
 4. Once accepted, the add-on raises `NV_SystemSettings.MaxSecondaryControllers` to the configured target value through the new synthetic-controller connection.
 5. Setup is saved as complete and normal local operation begins.
 
-No controller needs to be powered off, and no existing-secondary impersonation is required on a master-only system.
+No controller needs to be powered off or impersonated in a master-only system.
 
 ## First start when a physical secondary already occupies the available slot
 
-A common QUE installation has one master and one physical secondary, with the existing slot already occupied.
-
-With automatic setup enabled:
-
-1. Initially leave the physical secondary powered on. The add-on attempts to detect its serial automatically. Alternatively enter it in `existing_secondary_serial`.
-2. When the setup status asks, power off the physical secondary and reboot the QUE master.
-3. The add-on temporarily identifies as the existing secondary and writes `NV_SystemSettings.MaxSecondaryControllers` to the configured target value, normally `2`.
-4. On the QUE master choose **Connect another controller**.
-5. The add-on sends the secondary-style UDP announcement on port `19295` and waits for the master to accept the synthetic controller on WallLink TCP port `19296`.
+1. Initially leave the physical secondary powered on. The add-on attempts to detect its serial automatically, or use `existing_secondary_serial` to supply it explicitly.
+2. When the setup status asks, power off that physical secondary and reboot its QUE master.
+3. The add-on temporarily identifies as the existing secondary and writes `NV_SystemSettings.MaxSecondaryControllers` to the configured target value.
+4. On that QUE master choose **Connect another controller**.
+5. The add-on announces the synthetic controller and waits for acceptance.
 6. When setup reports complete, power the original physical secondary back on.
 
-The completion state is saved under `/data`, so normal restarts do not repeat setup.
+Each QUE's completion state is stored separately under `/data`, so normal restarts do not repeat completed setup.
 
 ## Re-running setup
 
-Home Assistant exposes a **Redo Secondary Controller Setup** button. Pressing it clears the saved completion flag and reruns the guided setup sequence.
-
-The corresponding diagnostic sensor is **Secondary Controller Setup Status**.
-
-## MQTT diagnostic topics
-
-Default prefix: `hass-actronque-local`
-
-- `hass-actronque-local/status` — WallLink `online` / `offline`.
-- `hass-actronque-local/bridge/status` — application MQTT status.
-- `hass-actronque-local/raw/state` — complete current QUE state when enabled.
-- `hass-actronque-local/event/change` — latest incoming WallLink `Data_Change`.
-- `hass-actronque-local/secondary_setup/status` — guided setup status.
-- `hass-actronque-local/secondary_setup/redo` — command used by the redo button.
+Each QUE exposes a **Redo Secondary Controller Setup** button and a **Secondary Controller Setup Status** diagnostic sensor. Pressing the button clears that QUE's saved completion flag and reruns its guided setup sequence.
 
 ## Entity naming
 
