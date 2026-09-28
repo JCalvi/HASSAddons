@@ -17,6 +17,7 @@
 - Serialize first-time multi-QUE automatic secondary setup so only one incomplete unit performs UDP discovery/pairing at a time, preventing setup traffic from overlapping between QUE masters.
 - Allow already-paired QUE units to start and operate concurrently while another configured unit is completing first-time setup.
 - Restore the proven QUE WallLink Base64/padded wire framing after a regression briefly sent raw encrypted bytes terminated by newline. Raw ciphertext can contain `0x0A`, causing false frame boundaries and repeated `UnicodeDecodeError` failures. Normal operation and secondary setup now share the same safe codec.
+- Add semantic Home Assistant icons for **WallLink Connected** and **Air Conditioner**, complementing the existing Quiet Mode, Compressor Mode, Fan Mode, operating Mode, Master Serial and System Name icons.
 - Update README, configuration documentation and Home Assistant option descriptions for multi-QUE operation and the endpoint-list format.
 
 ## 2026.9.1
