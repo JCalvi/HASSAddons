@@ -220,16 +220,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
         config["device"] = self.device_info()
         self.mqtt_publish(topic, config, retain=True)
 
-        if domain == "switch" and object_id == "quiet_mode":
-            compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
-            self.mqtt_publish(compat_topic, b"", retain=True)
-
-    def on_mqtt_connect(self, client, userdata, flags, reason_code, properties):
-        super().on_mqtt_connect(client, userdata, flags, reason_code, properties)
-        if reason_code == 0:
-            compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
-            self.mqtt_publish(compat_topic, b"", retain=True)
-
 
 if __name__ == "__main__":
     LocalActronQueBridge().run()
