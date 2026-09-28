@@ -17,6 +17,7 @@ services:
 
 options:
   master_ip: "192.168.1.218"
+  additional_master_ips: ""
   master_port: 19296
   serial: "FA000001"
   auto_secondary_setup: true
@@ -34,6 +35,7 @@ options:
 
 schema:
   master_ip: str
+  additional_master_ips: str?
   master_port: int
   serial: str
   auto_secondary_setup: bool
