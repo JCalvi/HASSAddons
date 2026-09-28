@@ -20,6 +20,8 @@ class LocalActronQueBridge(main.ActronQueBridge):
         ("sensor", "mode"): "mdi:thermostat",
         ("sensor", "master_serial"): "mdi:identifier",
         ("sensor", "system_name"): "mdi:home-outline",
+        ("binary_sensor", "walllink_connected"): "mdi:lan-connect",
+        ("binary_sensor", "aircon_on"): "mdi:air-conditioner",
     }
 
     def _serial_raw(self) -> str:
