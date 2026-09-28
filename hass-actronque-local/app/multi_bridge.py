@@ -85,14 +85,6 @@ CHILD_CODE = r'''
 import os
 from pathlib import Path
 import main
-import walllink_codec
-
-# main.py briefly regressed from the proven QUE wire format to raw encrypted
-# newline-delimited bytes.  Restore the original Base64 + padding codec before
-# constructing either the normal bridge or the secondary-setup manager.  Both
-# paths therefore share exactly the same safe framing implementation.
-main.encrypt_walllink = walllink_codec.encrypt_walllink
-main.decrypt_walllink = walllink_codec.decrypt_walllink
 
 index = int(os.environ["ACTRONQUE_INSTANCE_INDEX"])
 main.OPTIONS["master_ip"] = os.environ["ACTRONQUE_MASTER_IP"]
