@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026.9.2
+
+- Add **Separate Heat/Cool Targets** configuration, matching the Actron QUE Cloud behaviour.
+- Default to a single target temperature for the main climate and all zone climate entities.
+- In single-target mode, write the cooling setpoint in Cool mode, heating setpoint in Heat mode, and both setpoints in Auto mode; Off and Fan-only ignore target changes, matching the cloud add-on.
+- Publish the cooling target in Cool mode, heating target in Heat mode, and the heat/cool midpoint for Auto, Off and Fan-only modes.
+- When **Separate Heat/Cool Targets** is enabled, retain the existing independent high/low target controls.
+- Preserve all existing climate entity IDs and cloud-compatible unique IDs when switching between target modes.
+- Keep the separate Heating/Cooling Number entities suppressed; target control remains on the climate entities only.
+
 ## 2026.9.1
 
 - Promote Actron QUE Local to the final calendar-versioned release line.
@@ -59,40 +69,6 @@
 
 ## 0.3.0
 
-- Promote Actron QUE Local to stable/production status.
-- Add guided one-time synthetic secondary-controller setup.
-- Detect an existing physical secondary automatically when possible, or allow its serial to be entered manually.
-- Raise `NV_SystemSettings.MaxSecondaryControllers` during setup so a physical secondary and Home Assistant can coexist.
-- Add secondary-style UDP pairing announcements on port `19295` and WallLink acceptance on TCP `19296`.
-- Persist setup completion under `/data` so normal restarts do not repeat pairing.
-- Add a **Secondary Controller Setup Status** diagnostic entity.
-- Add a **Redo Secondary Controller Setup** Home Assistant button.
-- Make Home Assistant device/entity IDs compatible with `hass-actronque`, using the actual QUE master serial so existing dashboards and automations can be retained during migration.
-- Keep local MQTT discovery topics separate from the cloud add-on while advertising cloud-compatible entity IDs.
-- Keep Paho MQTT 2.1.0 and reduce the runtime image by moving pip into a builder stage.
-- Rewrite README and configuration documentation for the current full local-control feature set and migration workflow.
-
-## 0.2.2
-
-- Round Home Assistant sensor values for cleaner display.
-- Temperature, humidity, capacity, power, damper position and runtime values now publish with sensible precision.
-- Coil inlet temperature publishes to 2 decimal places.
-- Fan PWM/RPM, battery and RSSI publish as whole numbers.
-
-## 0.2.1
-
-- Present master and zone heat/cool targets as combined lower/upper climate ranges, matching the cloud add-on UI.
-- Remove the separate heating/cooling Number entities introduced in v0.2.0.
-- Add a proper climate entity for each existing zone.
-- Rename the device to `Actron QUE Local (<SystemName>)` for consistency with the cloud add-on.
-
-## 0.2.0
-
-- Add full local HVAC climate control using native WallLink writes.
-- Add main HVAC mode, fan mode, heating and cooling setpoint controls.
-- Add Away Mode, Control All Zones and Constant Fan switches.
-- Add indoor temperature, outdoor temperature, humidity, compressor mode/capacity/power, coil inlet temperature, fan PWM/RPM and filter status/runtime sensors.
-- Dynamically discover existing zones from `RemoteZoneInfo`.
-- Add per-zone enable control, live temperature, heating/cooling setpoints and damper position.
-- Add per-zone wireless sensor temperature, battery and RSSI entities when present.
-- Keep v0.1.x Quiet Mode control and diagnostics.
+- Promote the add-on from experimental to production-ready status.
+- Add guided synthetic-secondary controller setup and redo control.
+- Add full local QUE climate, zone and diagnostic entity support.
