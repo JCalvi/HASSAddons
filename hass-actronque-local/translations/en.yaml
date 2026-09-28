@@ -1,19 +1,22 @@
 configuration:
   master_ip:
-    name: QUE master IP
-    description: IP address of the QUE master wall controller.
+    name: Primary QUE master IP
+    description: IP address of the primary QUE master wall controller.
+  additional_master_ips:
+    name: Additional QUE master IPs
+    description: Optional comma-separated IP addresses for additional independent QUE systems controlled by this add-on.
   master_port:
     name: WallLink TCP port
     description: Native QUE WallLink TCP port. Normally 19296.
   serial:
     name: Synthetic secondary serial
-    description: Serial used by Home Assistant as the synthetic secondary controller.
+    description: Serial used by Home Assistant as the synthetic secondary controller. Additional QUE units receive deterministic unique synthetic serials automatically.
   auto_secondary_setup:
     name: Automatic secondary setup
     description: Automatically guide and perform the one-time synthetic secondary pairing process when required.
   existing_secondary_serial:
     name: Existing secondary serial
-    description: Optional serial of a real secondary controller. Leave blank to detect one automatically; master-only systems pair directly if none is found.
+    description: Optional serial of a real secondary controller on the primary QUE. Leave blank to detect automatically; additional QUE units always perform their own detection.
   max_secondary_controllers:
     name: Maximum secondary controllers
     description: Value used for NV_SystemSettings.MaxSecondaryControllers. Normally 2 so Home Assistant and one physical secondary can coexist.
