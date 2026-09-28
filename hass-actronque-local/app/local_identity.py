@@ -156,6 +156,41 @@ class LocalActronQueBridge(main.ActronQueBridge):
 
         return False
 
+    def _identity_from_discovery_topic(self, topic: str):
+        """Extract (domain, object_id) from per-entity HA MQTT discovery topics."""
+        prefix = f"{self.discovery_prefix}/"
+        if not topic.startswith(prefix) or not topic.endswith("/config"):
+            return None
+        parts = topic[len(prefix):].split("/")
+        if len(parts) < 3:
+            return None
+        domain = parts[0]
+        object_id = parts[-2]
+        return domain, object_id
+
+    def mqtt_publish(self, topic: str, payload: Any, retain: bool = False):
+        """Enforce the serial identity scheme on every MQTT discovery payload.
+
+        2026.9.1 routed the base entities through publish_discovery_entity().  The
+        2026.9.2 base bridge briefly published seven entities directly, bypassing
+        Local's identity/icon mapping.  Normalising at the MQTT discovery boundary
+        makes both base and Full bridge discovery follow the same rules.
+        """
+        identity = self._identity_from_discovery_topic(topic)
+        if identity and isinstance(payload, dict):
+            domain, object_id = identity
+            payload = dict(payload)
+            payload["unique_id"] = self._cloud_unique_id(domain, object_id)
+            payload["default_entity_id"] = self._default_entity_id(domain, object_id, payload)
+            # object_id as a discovery payload option is deprecated in modern HA;
+            # default_entity_id is the supported way to seed the entity registry ID.
+            payload.pop("object_id", None)
+            payload["device"] = self.device_info()
+            icon = self.ENTITY_ICONS.get((domain, object_id))
+            if icon:
+                payload["icon"] = icon
+        return super().mqtt_publish(topic, payload, retain=retain)
+
     def publish_discovery_entity(self, domain: str, object_id: str, config: Dict[str, Any]):
         config = dict(config)
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
@@ -175,24 +210,16 @@ class LocalActronQueBridge(main.ActronQueBridge):
             self.mqtt_publish(topic, b"", retain=True)
             return
 
-        # Do not use setdefault here.  Base discovery payloads may already contain
-        # a generic object_id/default_entity_id derived from the device name.  Local
-        # deliberately overrides those so every entity follows the serial scheme.
         config["unique_id"] = self._cloud_unique_id(domain, object_id)
-        canonical_entity_id = self._default_entity_id(domain, object_id, config)
-        config["default_entity_id"] = canonical_entity_id
-        config["object_id"] = canonical_entity_id.split(".", 1)[1]
+        config["default_entity_id"] = self._default_entity_id(domain, object_id, config)
 
         icon = self.ENTITY_ICONS.get((domain, object_id))
         if icon:
-            config.setdefault("icon", icon)
+            config["icon"] = icon
 
         config["device"] = self.device_info()
         self.mqtt_publish(topic, config, retain=True)
 
-        # Remove the short-lived duplicate compatibility discovery entry from the
-        # previous Quiet Mode fix.  The canonical entity itself retains QuietMode's
-        # stable unique_id, so no second entity should be published.
         if domain == "switch" and object_id == "quiet_mode":
             compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
             self.mqtt_publish(compat_topic, b"", retain=True)
@@ -200,9 +227,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
     def on_mqtt_connect(self, client, userdata, flags, reason_code, properties):
         super().on_mqtt_connect(client, userdata, flags, reason_code, properties)
         if reason_code == 0:
-            # Remove only the accidental duplicate Quiet Mode compatibility topic.
-            # Do not clear live discovery topics here: they are republished above
-            # with canonical serial-based IDs.
             compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
             self.mqtt_publish(compat_topic, b"", retain=True)
 
