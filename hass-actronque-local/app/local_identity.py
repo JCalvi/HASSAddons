@@ -13,15 +13,6 @@ def _slug(value: Any) -> str:
 class LocalActronQueBridge(main.ActronQueBridge):
     """Local QUE bridge presented as a drop-in replacement for hass-actronque."""
 
-    LEGACY_LOCAL_DISCOVERY_ENTITIES = (
-        ("binary_sensor", "walllink_connected"),
-        ("binary_sensor", "aircon_on"),
-        ("sensor", "mode"),
-        ("sensor", "fan_mode"),
-        ("sensor", "system_name"),
-        ("sensor", "master_serial"),
-    )
-
     ENTITY_ICONS = {
         ("switch", "quiet_mode"): "mdi:volume-off",
         ("sensor", "compressor_mode"): "mdi:engine-outline",
@@ -52,6 +43,7 @@ class LocalActronQueBridge(main.ActronQueBridge):
         }
 
     def _default_entity_id(self, domain: str, object_id: str, config: Dict[str, Any]) -> str:
+        """Canonical entity ID for every Local entity: <domain>.actronque_<serial>_..."""
         serial = self._serial_entity()
         base = f"{domain}.actronque_{serial}"
 
@@ -93,7 +85,7 @@ class LocalActronQueBridge(main.ActronQueBridge):
         return f"{base}_{suffix}"
 
     def _cloud_unique_id(self, domain: str, object_id: str) -> str:
-        """Return hass-actronque's unique_id where a cloud equivalent exists."""
+        """Stable unique ID, matching hass-actronque where a cloud equivalent exists."""
         serial = self._serial_raw()
 
         fixed = {
@@ -162,23 +154,6 @@ class LocalActronQueBridge(main.ActronQueBridge):
 
         return False
 
-    def _publish_quiet_mode_compatibility(self, config: Dict[str, Any]) -> None:
-        """Keep the accidentally-created Local entity alive while adding the canonical ID.
-
-        Home Assistant does not rename an entity-registry entry merely because MQTT
-        Discovery changes its suggested entity ID.  The compatibility discovery
-        entry therefore continues to drive existing automations using
-        switch.hvac_actron_que_local_<system>_quiet_mode, while the canonical entry
-        is explicitly published as switch.actronque_<serial>_quiet_mode.
-        """
-        compat = dict(config)
-        compat["unique_id"] = f"{self._serial_raw()}-LocalQuietModeCompatibility"
-        compat.pop("default_entity_id", None)
-        compat.pop("object_id", None)
-        compat.setdefault("device", self.device_info())
-        compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
-        self.mqtt_publish(compat_topic, compat, retain=True)
-
     def publish_discovery_entity(self, domain: str, object_id: str, config: Dict[str, Any]):
         config = dict(config)
         topic = f"{self.discovery_prefix}/{domain}/hass_actronque_local/{object_id}/config"
@@ -198,36 +173,36 @@ class LocalActronQueBridge(main.ActronQueBridge):
             self.mqtt_publish(topic, b"", retain=True)
             return
 
-        config.setdefault("unique_id", self._cloud_unique_id(domain, object_id))
-        config.setdefault("default_entity_id", self._default_entity_id(domain, object_id, config))
-
-        # Quiet Mode needs an explicit MQTT object_id as well as default_entity_id.
-        # Without it, HA's device/entity naming can produce
-        # switch.hvac_actron_que_local_<system>_quiet_mode on a fresh registry.
-        if domain == "switch" and object_id == "quiet_mode":
-            config["object_id"] = f"actronque_{self._serial_entity()}_quiet_mode"
+        # Do not use setdefault here.  Base discovery payloads may already contain
+        # a generic object_id/default_entity_id derived from the device name.  Local
+        # deliberately overrides those so every entity follows the serial scheme.
+        config["unique_id"] = self._cloud_unique_id(domain, object_id)
+        canonical_entity_id = self._default_entity_id(domain, object_id, config)
+        config["default_entity_id"] = canonical_entity_id
+        config["object_id"] = canonical_entity_id.split(".", 1)[1]
 
         icon = self.ENTITY_ICONS.get((domain, object_id))
         if icon:
             config.setdefault("icon", icon)
 
-        config.setdefault("device", self.device_info())
+        config["device"] = self.device_info()
         self.mqtt_publish(topic, config, retain=True)
 
+        # Remove the short-lived duplicate compatibility discovery entry from the
+        # previous Quiet Mode fix.  The canonical entity itself retains QuietMode's
+        # stable unique_id, so no second entity should be published.
         if domain == "switch" and object_id == "quiet_mode":
-            self._publish_quiet_mode_compatibility(config)
-
-    def clear_legacy_discovery(self):
-        for domain, object_id in self.LEGACY_LOCAL_DISCOVERY_ENTITIES:
-            for prefix in ("actronque_local", "hass_actronque_local"):
-                topic = f"{self.discovery_prefix}/{domain}/{prefix}/{object_id}/config"
-                self.mqtt_publish(topic, b"", retain=True)
-        main.LOG.info("Cleared legacy local MQTT discovery entries")
+            compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
+            self.mqtt_publish(compat_topic, b"", retain=True)
 
     def on_mqtt_connect(self, client, userdata, flags, reason_code, properties):
         super().on_mqtt_connect(client, userdata, flags, reason_code, properties)
         if reason_code == 0:
-            self.clear_legacy_discovery()
+            # Remove only the accidental duplicate Quiet Mode compatibility topic.
+            # Do not clear live discovery topics here: they are republished above
+            # with canonical serial-based IDs.
+            compat_topic = f"{self.discovery_prefix}/switch/hass_actronque_local/quiet_mode_compat/config"
+            self.mqtt_publish(compat_topic, b"", retain=True)
 
 
 if __name__ == "__main__":
