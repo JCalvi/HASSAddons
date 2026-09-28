@@ -23,17 +23,24 @@ def _options():
         return {}
 
 
-def _masters(options):
+def _list(value):
+    """Accept one value or a comma/semicolon/whitespace separated list."""
     result = []
-    primary = str(options.get("master_ip", "")).strip()
-    if primary:
-        result.append(primary)
-    raw = str(options.get("additional_master_ips", "") or "")
-    for item in re.split(r"[,;\s]+", raw):
-        ip = item.strip()
-        if ip and ip not in result:
-            result.append(ip)
+    for item in re.split(r"[,;\s]+", str(value or "")):
+        item = item.strip()
+        if item and item not in result:
+            result.append(item)
     return result
+
+
+def _masters(options):
+    return _list(options.get("master_ip", ""))
+
+
+def _value_for(values, index, default=""):
+    if index < len(values):
+        return values[index]
+    return default
 
 
 # This wrapper deliberately imports main first, then overrides that process's
@@ -48,10 +55,7 @@ index = int(os.environ["ACTRONQUE_INSTANCE_INDEX"])
 main.OPTIONS["master_ip"] = os.environ["ACTRONQUE_MASTER_IP"]
 main.OPTIONS["topic_prefix"] = os.environ["ACTRONQUE_TOPIC_PREFIX"]
 main.OPTIONS["serial"] = os.environ["ACTRONQUE_SYNTHETIC_SERIAL"]
-if index > 0:
-    # A manually supplied existing-secondary serial belongs to the primary.
-    # Additional masters perform their own physical-secondary detection.
-    main.OPTIONS["existing_secondary_serial"] = ""
+main.OPTIONS["existing_secondary_serial"] = os.environ.get("ACTRONQUE_EXISTING_SECONDARY_SERIAL", "")
 
 import secondary_setup
 secondary_setup.STATE_FILE = Path(f"/data/secondary_setup_{index}.json") if index else Path("/data/secondary_setup.json")
@@ -87,8 +91,15 @@ def main_entry():
         return 1
 
     base_topic = str(options.get("topic_prefix", "hass-actronque-local")).rstrip("/")
-    base_serial = str(options.get("serial", "FA000001")).strip() or "FA000001"
+    synthetic_serials = _list(options.get("serial", "FA000001"))
+    existing_secondaries = _list(options.get("existing_secondary_serial", ""))
+    base_serial = synthetic_serials[0] if synthetic_serials else "FA000001"
     children = []
+
+    if len(synthetic_serials) > len(masters):
+        print("Warning: more synthetic secondary serials than QUE master IPs; extras will be ignored", flush=True)
+    if len(existing_secondaries) > len(masters):
+        print("Warning: more existing secondary serials than QUE master IPs; extras will be ignored", flush=True)
 
     for index, master_ip in enumerate(masters):
         env = os.environ.copy()
@@ -98,12 +109,24 @@ def main_entry():
         env["ACTRONQUE_DISCOVERY_MARKER"] = suffix.lower()
         if index == 0:
             env["ACTRONQUE_TOPIC_PREFIX"] = base_topic
-            env["ACTRONQUE_SYNTHETIC_SERIAL"] = base_serial
         else:
             env["ACTRONQUE_TOPIC_PREFIX"] = f"{base_topic}/{suffix.lower()}"
-            # Deterministic but distinct synthetic controller serial per master.
-            env["ACTRONQUE_SYNTHETIC_SERIAL"] = f"{base_serial[:6]}{index + 1:02d}"
-        print(f"Starting QUE instance {index + 1}: {master_ip}", flush=True)
+
+        # Serial lists map positionally to master_ip. For backwards
+        # compatibility a single serial still works exactly as before. If a
+        # multi-master installation supplies fewer synthetic serials than
+        # masters, deterministic unique serials are generated for the rest.
+        synthetic = _value_for(synthetic_serials, index)
+        if not synthetic:
+            synthetic = f"{base_serial[:6]}{index + 1:02d}"
+        env["ACTRONQUE_SYNTHETIC_SERIAL"] = synthetic
+        env["ACTRONQUE_EXISTING_SECONDARY_SERIAL"] = _value_for(existing_secondaries, index)
+
+        print(
+            f"Starting QUE instance {index + 1}: {master_ip} "
+            f"(synthetic secondary {synthetic})",
+            flush=True,
+        )
         children.append(subprocess.Popen([sys.executable, "-c", CHILD_CODE], env=env))
 
     stopping = False
