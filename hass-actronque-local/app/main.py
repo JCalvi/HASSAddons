@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import base64
 import copy
 import json
 import logging
@@ -14,13 +13,10 @@ from typing import Any, Dict, Optional, Tuple
 
 import paho.mqtt.client as mqtt
 
+from walllink_codec import decrypt_walllink, encrypt_walllink
+
 
 OPTIONS_FILE = Path("/data/options.json")
-
-K0 = 0xFE2D85CD
-K1 = 0x043E9190
-K2 = 0x2E0EA4A4
-MASK = 0xFFFFFFFF
 
 
 def load_options() -> Dict[str, Any]:
@@ -54,75 +50,6 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
 )
 LOG = logging.getLogger("actronque")
-
-
-def extract32(data: bytes) -> int:
-    value = 0
-    for b in data:
-        signed = b if b < 128 else b - 256
-        value = (signed | ((value << 8) & MASK)) & MASK
-    return value
-
-
-def next_bit(state) -> int:
-    x, y, z = state
-
-    fb0 = (
-        (x >> 6)
-        ^ (x >> 31)
-        ^ x
-        ^ (x >> 4)
-        ^ (x >> 2)
-        ^ ((x << 1) & MASK)
-    ) & MASK
-
-    x = ((x >> 1) | ((fb0 & 1) << 31)) & MASK
-
-    fb1 = ((y >> 30) ^ (y >> 2)) & 1
-    y = ((y >> 1) | (fb1 << 30)) & MASK
-
-    zs = z >> 1
-    fb2 = (zs ^ (z >> 28)) & 1
-    z = (zs | (fb2 << 28)) & MASK
-
-    state[:] = [x, y, z]
-    return (x ^ y ^ z) & 1
-
-
-def next_byte(state) -> int:
-    value = 0
-    for _ in range(8):
-        value = ((value << 1) & 0xFE) | next_bit(state)
-    return value
-
-
-def encrypt_walllink(data: bytes) -> bytes:
-    seed = os.urandom(12)
-    state = [
-        extract32(seed[0:4]) ^ K0,
-        extract32(seed[4:8]) ^ K1,
-        extract32(seed[8:12]) ^ K2,
-    ]
-    encrypted = bytearray(seed)
-    encrypted.extend((b ^ next_byte(state)) for b in data)
-    encrypted.append(0x0A)
-    return bytes(encrypted)
-
-
-def decrypt_walllink(frame: bytes) -> Dict[str, Any]:
-    if frame.endswith(b"\n"):
-        frame = frame[:-1]
-    if len(frame) < 12:
-        raise ValueError("encrypted WallLink frame shorter than 12-byte seed")
-
-    seed = frame[:12]
-    state = [
-        extract32(seed[0:4]) ^ K0,
-        extract32(seed[4:8]) ^ K1,
-        extract32(seed[8:12]) ^ K2,
-    ]
-    plain = bytes(b ^ next_byte(state) for b in frame[12:])
-    return json.loads(plain.decode("utf-8"))
 
 
 def set_state_path(root: Dict[str, Any], path: str, value: Any) -> None:
