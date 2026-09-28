@@ -9,6 +9,14 @@
 - When **Separate Heat/Cool Targets** is enabled, retain the existing independent high/low target controls.
 - Preserve all existing climate entity IDs and cloud-compatible unique IDs when switching between target modes.
 - Keep the separate Heating/Cooling Number entities suppressed; target control remains on the climate entities only.
+- Add support for multiple independent QUE systems from one add-on instance.
+- Allow `master_ip` to contain one `IP:port` endpoint or a comma-separated list of endpoints; host-only values remain backwards compatible and default to WallLink port `19296`.
+- Remove the redundant user-facing `master_port` option.
+- Allow `serial` and `existing_secondary_serial` to use matching positional lists for multi-QUE installations; missing additional synthetic serials are generated automatically.
+- Give each QUE an independent WallLink session, MQTT namespace, Home Assistant device identity and persisted secondary-controller setup state.
+- Serialize first-time multi-QUE automatic secondary setup so only one incomplete unit performs UDP discovery/pairing at a time, preventing setup traffic from overlapping between QUE masters.
+- Allow already-paired QUE units to start and operate concurrently while another configured unit is completing first-time setup.
+- Update README, configuration documentation and Home Assistant option descriptions for multi-QUE operation and the endpoint-list format.
 
 ## 2026.9.1
 
