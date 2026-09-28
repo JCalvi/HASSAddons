@@ -22,6 +22,7 @@ The add-on obtains MQTT credentials from Supervisor automatically.
 - `existing_secondary_serial` — optional serial of an existing physical secondary. Leave blank to detect one automatically; if none exists, the add-on uses the master-only direct-pairing path.
 - `max_secondary_controllers` — target value for `NV_SystemSettings.MaxSecondaryControllers`; normally `2`, allowing Home Assistant and one physical secondary to coexist.
 - `setup_retry_delay` — seconds between setup retries while waiting for physical actions.
+- `separate_heat_cool_targets` — `false` (default) exposes one target temperature; `true` exposes independent heating and cooling targets on the same climate entities.
 - `topic_prefix` — internal MQTT topic prefix.
 - `discovery_prefix` — Home Assistant MQTT Discovery prefix.
 - `reconnect_delay` — WallLink reconnect delay.
@@ -29,6 +30,14 @@ The add-on obtains MQTT credentials from Supervisor automatically.
 - `log_data_changes` — log incoming `Data_Change` messages.
 - `publish_raw_state` — publish complete current QUE state to MQTT.
 - `log_level` — application logging level.
+
+## Temperature targets
+
+The **Separate Heat/Cool Targets** option applies to the main climate and every zone climate without changing their entity IDs.
+
+With the option disabled, Home Assistant shows a single target. A change writes the cooling target in Cool mode, heating target in Heat mode, and both targets in Auto mode. With the option enabled, Home Assistant exposes the QUE heating and cooling setpoints independently.
+
+For the single target state, Cool reports the cooling target, Heat reports the heating target, and Auto/Off/Fan-only report the midpoint of the stored heat and cool targets. This mirrors the existing Actron QUE Cloud behaviour.
 
 ## Migrating from hass-actronque
 
