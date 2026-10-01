@@ -7,6 +7,7 @@ from pathlib import Path
 
 LOCAL_IP = os.environ["LOCAL_IP"]
 LOCAL_USER_ID = os.environ["LOCAL_USER_ID"]
+NEO_MQTT_PORT = int(os.getenv("NEO_MQTT_PORT", "28883"))
 MQTT_HOST = os.environ["MQTT_HOST"]
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
