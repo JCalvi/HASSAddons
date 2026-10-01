@@ -10,6 +10,7 @@ on:
         options:
           - actronque-cloud
           - actronque-local
+          - actronneo-localcloud
           - networkexplorer
           - rekognition
 
@@ -53,6 +54,14 @@ jobs:
               ADDON_PATH="hass-actronque-local"
               IMAGE_NAME="hass-actronque-local"
               CONFIG_FILE="hass-actronque-local/config.yaml"
+              VERSION="$(grep -m1 '^version:' "$CONFIG_FILE" | cut -d: -f2- | xargs | tr -d '"')"
+              BUILD_ARGS=""
+              ;;
+
+            actronneo-localcloud)
+              ADDON_PATH="hass-actronneo-localcloud"
+              IMAGE_NAME="hass-actronneo-localcloud"
+              CONFIG_FILE="hass-actronneo-localcloud/config.yaml"
               VERSION="$(grep -m1 '^version:' "$CONFIG_FILE" | cut -d: -f2- | xargs | tr -d '"')"
               BUILD_ARGS=""
               ;;
