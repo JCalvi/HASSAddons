@@ -2,6 +2,9 @@ configuration:
   local_ip:
     name: Home Assistant LAN IP
     description: LAN IP address of the Home Assistant host that the NEO controller can reach. This address is returned to the controller as its local MQTT endpoint.
+  neo_mqtt_port:
+    name: NEO MQTT port
+    description: Host TCP port advertised to NEO controllers for local TLS MQTT. The add-on Network host port for container port 8883 must match this value. Default 28883 avoids the standard Mosquitto 8883 port.
   topic_prefix:
     name: MQTT topic prefix
     description: Root MQTT topic used by the add-on for normalized state and Home Assistant command topics.

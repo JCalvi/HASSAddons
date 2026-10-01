@@ -10,6 +10,7 @@ if [ -z "${LOCAL_IP}" ]; then
 fi
 
 export LOCAL_IP
+export NEO_MQTT_PORT="$(bashio::config 'neo_mqtt_port')"
 export TOPIC_PREFIX="$(bashio::config 'topic_prefix')"
 export DISCOVERY_PREFIX="$(bashio::config 'discovery_prefix')"
 export PUBLISH_RAW_STATE="$(bashio::config 'publish_raw_state')"
