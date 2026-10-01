@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from config import LOCAL_IP, LOCAL_USER_ID
+from config import LOCAL_IP, LOCAL_USER_ID, NEO_MQTT_PORT
 
 _LOGGER = logging.getLogger("actronneo-localcloud.nimbus")
 
@@ -53,7 +53,7 @@ class NimbusHandler(BaseHTTPRequestHandler):
             self._send_json(
                 {
                     "Endpoint": LOCAL_IP,
-                    "Port": "8883",
+                    "Port": str(NEO_MQTT_PORT),
                     "Protocol": "TLS",
                     "WcMinFwVersion": "2.5.x;3.5.x",
                     "Time": now.strftime("%-m/%-d/%Y %-I:%M:%S %p"),
