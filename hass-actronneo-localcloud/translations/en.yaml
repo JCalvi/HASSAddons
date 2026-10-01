@@ -1,0 +1,16 @@
+configuration:
+  local_ip:
+    name: Home Assistant LAN IP
+    description: LAN IP address of the Home Assistant host that the NEO controller can reach. This address is returned to the controller as its local MQTT endpoint.
+  topic_prefix:
+    name: MQTT topic prefix
+    description: Root MQTT topic used by the add-on for normalized state and Home Assistant command topics.
+  discovery_prefix:
+    name: MQTT discovery prefix
+    description: Home Assistant MQTT Discovery prefix. The normal value is homeassistant.
+  publish_raw_state:
+    name: Publish raw NEO state
+    description: Retain the complete decoded NEO state under the add-on topic prefix for diagnostics.
+  log_level:
+    name: Log level
+    description: Add-on logging verbosity.
