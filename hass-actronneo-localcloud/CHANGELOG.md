@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Avoids the standard Mosquitto Broker add-on's host TCP 8883 port conflict by mapping the NEO TLS MQTT listener to host port 28883 by default.
+- Adds a `neo_mqtt_port` option and advertises that port through the local Nimbus messaging endpoint.
+- The add-on Network host port for container port 8883 must match `neo_mqtt_port` if changed from the default.
+
 ## 0.1.0
 
 - Initial experimental release.
