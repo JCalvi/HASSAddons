@@ -1,5 +1,5 @@
 name: "Actron QUE Local"
-version: "2026.9.2"
+version: "2026.9.3"
 slug: "hass-actronque-local"
 description: "Direct local control of ActronAir QUE via the native WallLink protocol"
 url: "https://github.com/JCalvi/HASSAddons/tree/master/hass-actronque-local"
