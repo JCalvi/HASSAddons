@@ -2,6 +2,8 @@
 
 ## 2026.9.2
 
+- Fix Home Assistant climate action reporting so a QUE system that is on but not actively heating or cooling reports **Idle** rather than inheriting a stale compressor mode.
+- Use the live outdoor-unit `CompressorOn` state, together with the active compressor mode and fan state, to distinguish **Heating**, **Cooling**, **Fan** and **Idle**; retain the legacy compressor-mode mapping as a fallback for partial/older WallLink payloads.
 - Add **Separate Heat/Cool Targets** configuration, matching the Actron QUE Cloud behaviour.
 - Default to a single target temperature for the main climate and all zone climate entities.
 - In single-target mode, write the cooling setpoint in Cool mode, heating setpoint in Heat mode, and both setpoints in Auto mode; Off and Fan-only ignore target changes, matching the cloud add-on.
