@@ -18,6 +18,7 @@ class ActronQueLocalBridge(FullActronQueBridge):
         "UserAirconSettings.TemperatureSetpoint_Cool_oC", "UserAirconSettings.TemperatureSetpoint_Heat_oC",
         "MasterInfo.ControlAllZones", "MasterInfo.LiveTemp_oC", "MasterInfo.LiveOutdoorTemp_oC",
         "MasterInfo.LiveHumidity_pc", "LiveAircon.CompressorMode", "LiveAircon.CompressorCapacity",
+        "LiveAircon.AmRunningFan", "LiveAircon.OutdoorUnit.CompressorOn",
         "LiveAircon.OutdoorUnit.CompPower", "LiveAircon.CoilInlet", "LiveAircon.FanPWM", "LiveAircon.FanRPM",
         "Alerts.CleanFilter", "ACStats.NV_FanRunTime_10m", "NV_SystemSettings.SystemName", "NV_SystemSettings.MaxSecondaryControllers",
     }
@@ -138,6 +139,33 @@ class ActronQueLocalBridge(FullActronQueBridge):
         for path, value in unexposed[:100]: main.LOG.debug("Unexposed QUE field: %s = %s", path, json.dumps(value, ensure_ascii=False, default=str))
         if len(unexposed) > 100: main.LOG.debug("QUE field scan: %d additional field(s) omitted", len(unexposed) - 100)
 
+    @staticmethod
+    def _actual_climate_action(system_on, live):
+        if system_on is False:
+            return "off"
+        if not isinstance(live, dict):
+            return "idle"
+
+        raw_mode = str(live.get("CompressorMode") or "").upper()
+        if raw_mode == "IDLE":
+            return "idle"
+
+        outdoor = live.get("OutdoorUnit", {})
+        compressor_on = _as_bool(outdoor.get("CompressorOn")) if isinstance(outdoor, dict) else None
+        fan_running = _as_bool(live.get("AmRunningFan"))
+
+        # QUE can leave CompressorMode at COOL/HEAT while the plant is in
+        # Standby. CompressorOn is the authoritative indication of active
+        # compressor operation in the live QUE state.
+        if compressor_on is True:
+            if "COOL" in raw_mode: return "cooling"
+            if "HEAT" in raw_mode: return "heating"
+        elif compressor_on is False:
+            return "fan" if fan_running is True else "idle"
+
+        # Older/partial WallLink payloads may not contain CompressorOn.
+        return FullActronQueBridge._climate_action(system_on, raw_mode)
+
     def publish_current_state(self):
         super().publish_current_state()
         with self.state_lock: state = copy.deepcopy(self.state)
@@ -148,7 +176,8 @@ class ActronQueLocalBridge(FullActronQueBridge):
         if not isinstance(zones, list): zones = []
         enabled = settings.get("EnabledZones", [])
         if not isinstance(enabled, list): enabled = []
-        system_on = _as_bool(settings.get("isOn")); raw_mode = str(settings.get("Mode", "")).upper(); active_mode = self.QUE_TO_MODE.get(raw_mode, "auto"); action = self._climate_action(system_on, live.get("CompressorMode")); p = self.topic_prefix
+        system_on = _as_bool(settings.get("isOn")); raw_mode = str(settings.get("Mode", "")).upper(); active_mode = self.QUE_TO_MODE.get(raw_mode, "auto"); action = self._actual_climate_action(system_on, live); p = self.topic_prefix
+        self._publish_value(f"{p}/climate/action/state", action)
         compressor_capacity = _as_number(live.get("CompressorCapacity"))
         if compressor_capacity is not None and not 0.0 <= compressor_capacity <= 100.0: self._publish_value(f"{p}/compressor_capacity/state", 0)
         fan_pwm = _as_number(live.get("FanPWM"))
