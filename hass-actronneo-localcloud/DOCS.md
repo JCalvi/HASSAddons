@@ -192,19 +192,21 @@ Moving the connection local removes Internet/cloud latency, but the NEO firmware
 Version 1.0 therefore supplements native push traffic with a local `getAll` refresh:
 
 ```text
-System ON:   about every 10 seconds
-System OFF:  about every 60 seconds
+System ON:   about every 5 seconds
+System OFF:  about every 30 seconds
 ```
 
 Native status changes are still processed immediately. The periodic refresh simply bounds how stale compressor power, compressor speed and other engineering telemetry can become. The refresh is skipped during the 6-second command settling/anti-bounce window.
+
+The NEO can retain the last non-zero compressor telemetry in `CompPower`, `CompSpeed` and `CompressorCapacity` even after the compressor has stopped. When `UserAirconSettings.isOn` or `OutdoorUnit.CompressorOn` says the compressor is stopped, the add-on reports those live values as zero instead of leaving the stale historical values visible in Home Assistant.
 
 ### NTW / Inverter telemetry scaling
 
 NTW/Inverter systems encode some engineering values with scale factors. Version 1.0 applies:
 
 ```text
-LiveAircon.OutdoorUnit.CompPower        x 100 -> W
-LiveAircon.OutdoorUnit.SupplyVoltage_Vac x 10 -> V
+LiveAircon.OutdoorUnit.CompPower         x 100 -> W
+LiveAircon.OutdoorUnit.SupplyVoltage_Vac x 10  -> V
 ```
 
 For example, a raw `CompPower` value of `40` is exposed as approximately `4000 W`.
@@ -301,9 +303,9 @@ Use version 0.1.7 or later. The bridge includes a 6-second optimistic settling w
 
 Use version 1.0 or later. NTW/Inverter `CompPower` requires the x100 engineering scale before publishing watts.
 
-### Compressor telemetry changes slowly
+### Compressor telemetry changes slowly or stays non-zero after shutdown
 
-Use version 1.0 or later. The add-on requests local full state approximately every 10 seconds while a system is on and every 60 seconds while off, in addition to native status-change pushes.
+Use version 1.0 or later. The add-on requests local full state approximately every 5 seconds while a system is on and every 30 seconds while off, in addition to native status-change pushes. It also reports compressor power/speed/capacity as zero when the compressor is not running, even if the NEO retains the previous non-zero raw values.
 
 ### Nimbus works but MQTT never arrives
 
