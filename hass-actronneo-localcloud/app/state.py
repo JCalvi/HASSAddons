@@ -107,14 +107,57 @@ def ha_to_neo_mode(mode: str) -> str:
     }.get(mode.lower(), mode.upper())
 
 
+def _neo_hvac_action(is_on: bool, neo_mode: str, live: dict[str, Any]) -> str:
+    """Map live NEO operation to Home Assistant climate HVAC actions."""
+    if not is_on:
+        return "off"
+
+    compressor_mode = str(live.get("CompressorMode") or "").upper()
+    if "HEAT" in compressor_mode:
+        return "heating"
+    if "DRY" in compressor_mode:
+        return "drying"
+    if "COOL" in compressor_mode:
+        return "drying" if neo_mode.upper() == "DRY" else "cooling"
+    if bool(live.get("AmRunningFan", False)) or neo_mode.upper() == "FAN":
+        return "fan"
+    return "idle"
+
+
+def _int_or_none(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _format_error_code(value: Any) -> str | None:
+    if value is None or value == "":
+        return None
+    try:
+        return f"E{int(value):02d}"
+    except (TypeError, ValueError):
+        text = str(value).strip()
+        return text or None
+
+
 def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     settings = raw.get("UserAirconSettings") or {}
     master = raw.get("MasterInfo") or {}
     live = raw.get("LiveAircon") or {}
     outdoor = live.get("OutdoorUnit") or {}
     aircon = raw.get("AirconSystem") or {}
+    indoor = aircon.get("IndoorUnit") or {}
+    outdoor_config = aircon.get("OutdoorUnit") or {}
     nv = raw.get("NV_SystemSettings") or {}
     alerts = raw.get("Alerts") or {}
+    cloud = raw.get("Cloud") or {}
+    cloud_connection = cloud.get("Connection") or {}
+    cloud_uptime = cloud_connection.get("UpTime") or {}
+    cloud_sessions = cloud_connection.get("SessionCount") or {}
+    system_local = raw.get("SystemStatus_Local") or {}
+    wifi = system_local.get("WiFi") or {}
+    eev = outdoor.get("EEV") or {}
 
     is_on = bool(settings.get("isOn", live.get("SystemOn", False)))
     neo_mode = str(settings.get("Mode", "AUTO"))
@@ -193,6 +236,9 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     if fan_mode and fan_mode not in fan_modes:
         fan_modes.append(fan_mode)
 
+    session_count = _int_or_none(cloud_sessions.get("SinceLastMCUReset"))
+    reconnect_count = max(session_count - 1, 0) if session_count is not None else None
+
     return {
         "serial": serial,
         "name": system_name,
@@ -201,6 +247,7 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "online": True,
         "power": is_on,
         "mode": mode,
+        "hvac_action": _neo_hvac_action(is_on, neo_mode, live),
         "supported_modes": supported_modes,
         "current_temperature": master.get("LiveTemp_oC"),
         "target_temperature": target,
@@ -215,6 +262,33 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "compressor_mode": live.get("CompressorMode"),
         "compressor_power": outdoor.get("CompPower"),
         "compressor_speed": outdoor.get("CompSpeed"),
+        "compressor_capacity": live.get("CompressorCapacity"),
+        "indoor_fan_rpm": live.get("FanRPM"),
+        "indoor_fan_pwm": live.get("FanPWM"),
+        "compressor_running": bool(outdoor.get("CompressorOn", False)),
+        "coil_inlet_temperature": live.get("CoilInlet"),
+        "outdoor_coil_temperature": outdoor.get("CoilTemp"),
+        "discharge_temperature": outdoor.get("DischargeTemp"),
+        "suction_temperature": outdoor.get("SuctTemp"),
+        "drive_temperature": outdoor.get("DriveTemp"),
+        "wifi_signal": system_local.get("WifiStrength_of3"),
+        "controller_uptime": system_local.get("Uptime_s"),
+        "mqtt_session_uptime": cloud_uptime.get("CurrentSession_s"),
+        "mqtt_reconnect_count": reconnect_count,
+        "vsd_comms_status": outdoor.get("VSDODUCommsStatus"),
+        "error_code": _format_error_code(live.get("ErrCode")),
+        "lp_fault": bool(outdoor.get("LPErr", False)),
+        "hp_fault": bool(outdoor.get("HPErr", False)),
+        "supply_voltage": outdoor.get("SupplyVoltage_Vac"),
+        "supply_current": outdoor.get("SupplyCurrentRMS_A"),
+        "supply_power": outdoor.get("SupplyPowerRMS_W"),
+        "eev_opening": eev.get("Opening_pc"),
+        "superheat": eev.get("SuperHeat"),
+        "indoor_firmware": indoor.get("IndoorFW"),
+        "outdoor_firmware": outdoor_config.get("SoftwareVersion"),
+        "outdoor_family": outdoor_config.get("Family"),
+        "system_capacity_kw": outdoor_config.get("Capacity_kW"),
+        "wifi_firmware": wifi.get("FirmwareVersion"),
         "clean_filter": bool(alerts.get("CleanFilter", False)),
         "defrosting": bool(alerts.get("Defrosting", live.get("Defrost", False))),
         "min_temp": min_temp,
