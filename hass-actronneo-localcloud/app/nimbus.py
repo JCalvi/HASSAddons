@@ -14,7 +14,7 @@ _LOGGER = logging.getLogger("actronneo-localcloud.nimbus")
 
 
 class NimbusHandler(BaseHTTPRequestHandler):
-    server_version = "ActronNEOLocalCloud/0.1"
+    server_version = "ActronNEOLocalCloud/1.0"
 
     def log_message(self, fmt: str, *args: Any) -> None:
         _LOGGER.info("%s - %s", self.client_address[0], fmt % args)
