@@ -243,12 +243,25 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     model = str(aircon.get("MasterWCModel", ""))
     family = str(outdoor_config.get("Family", ""))
     is_ntw_series = model.upper().startswith("NTW") or "INVERTER" in family.upper()
+    compressor_running = bool(outdoor.get("CompressorOn", False)) and is_on
     raw_comp_power = _float_or_none(outdoor.get("CompPower"))
     compressor_power = (
         raw_comp_power * 100.0
         if is_ntw_series and raw_comp_power is not None
         else raw_comp_power
     )
+    compressor_speed = _float_or_none(outdoor.get("CompSpeed"))
+    compressor_capacity = _float_or_none(live.get("CompressorCapacity"))
+
+    # NEO can retain the last non-zero power/speed/capacity values in its state
+    # after the compressor has stopped. They are historical values at that
+    # point, not current telemetry, so expose zero whenever CompressorOn/system
+    # power says the compressor is not actually running.
+    if not compressor_running:
+        compressor_power = 0.0
+        compressor_speed = 0.0
+        compressor_capacity = 0.0
+
     raw_supply_voltage = _float_or_none(outdoor.get("SupplyVoltage_Vac"))
     supply_voltage = (
         raw_supply_voltage * 10.0
@@ -278,11 +291,11 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "away": bool(settings.get("AwayMode", False)),
         "compressor_mode": live.get("CompressorMode"),
         "compressor_power": compressor_power,
-        "compressor_speed": outdoor.get("CompSpeed"),
-        "compressor_capacity": live.get("CompressorCapacity"),
+        "compressor_speed": compressor_speed,
+        "compressor_capacity": compressor_capacity,
         "indoor_fan_rpm": live.get("FanRPM"),
         "indoor_fan_pwm": live.get("FanPWM"),
-        "compressor_running": bool(outdoor.get("CompressorOn", False)),
+        "compressor_running": compressor_running,
         "coil_inlet_temperature": live.get("CoilInlet"),
         "outdoor_coil_temperature": outdoor.get("CoilTemp"),
         "discharge_temperature": outdoor.get("DischargeTemp"),
