@@ -49,16 +49,29 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         "temperature_command_topic": f"{base}/set/temperature",
         "current_temperature_topic": state_topic,
         "current_temperature_template": "{{ value_json.current_temperature }}",
-        "fan_mode_state_topic": state_topic,
-        "fan_mode_state_template": "{{ value_json.fan_mode }}",
-        "fan_mode_command_topic": f"{base}/set/fan_mode",
         "modes": state["supported_modes"],
-        "fan_modes": state["fan_modes"],
         "min_temp": state["min_temp"],
         "max_temp": state["max_temp"],
         "temp_step": 0.5,
         "temperature_unit": "C",
     }
+
+    # Some NEO status snapshots omit UserAirconSettings.FanMode entirely. Do
+    # not publish fan-mode discovery until a real current value exists; Home
+    # Assistant otherwise rejects the empty state as an invalid fan mode. A
+    # later status containing FanMode republishes discovery with fan controls.
+    fan_mode = str(state.get("fan_mode") or "").strip()
+    fan_modes = [str(item).strip() for item in state.get("fan_modes", []) if str(item).strip()]
+    if fan_mode and fan_modes:
+        climate.update(
+            {
+                "fan_mode_state_topic": state_topic,
+                "fan_mode_state_template": "{{ value_json.fan_mode }}",
+                "fan_mode_command_topic": f"{base}/set/fan_mode",
+                "fan_modes": fan_modes,
+            }
+        )
+
     _publish(client, "climate", f"actronneo_{serial}", climate)
 
     switches = {

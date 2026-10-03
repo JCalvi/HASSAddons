@@ -113,8 +113,9 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         else settings.get("TemperatureSetpoint_Cool_oC")
     )
 
-    fan_raw = str(settings.get("FanMode", ""))
-    fan_mode = fan_raw.replace("+CONT", "").replace("-CONT", "").lower()
+    fan_value = settings.get("FanMode")
+    fan_raw = str(fan_value).strip() if fan_value is not None else ""
+    fan_mode = fan_raw.replace("+CONT", "").replace("-CONT", "").lower() or None
     turbo_raw = settings.get("TurboMode", False)
     turbo = turbo_raw.get("Enabled", False) if isinstance(turbo_raw, dict) else bool(turbo_raw)
 
