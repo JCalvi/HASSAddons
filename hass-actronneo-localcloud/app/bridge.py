@@ -26,9 +26,9 @@ from state import deep_merge, extract_event, ha_to_neo_mode, normalize_state, se
 
 _LOGGER = logging.getLogger("actronneo-localcloud.bridge")
 _COMMAND_SETTLE_SECONDS = 6.0
-_ACTIVE_REFRESH_SECONDS = 10.0
-_IDLE_REFRESH_SECONDS = 60.0
-_REFRESH_LOOP_SECONDS = 2.0
+_ACTIVE_REFRESH_SECONDS = 5.0
+_IDLE_REFRESH_SECONDS = 30.0
+_REFRESH_LOOP_SECONDS = 1.0
 
 
 class HomeAssistantBridge:
