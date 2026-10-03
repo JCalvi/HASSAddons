@@ -61,15 +61,27 @@ def set_path(root: dict[str, Any], path: str, value: Any) -> None:
 
 
 def extract_event(payload: Any) -> dict[str, Any] | None:
+    """Return the state-bearing body of a NEO MQTT broadcast.
+
+    NEO full-status and status-change MQTT payloads are wrapped as
+    ``{"event": {"type": "...-broadcast", ...state fields...}}``.  The
+    previous implementation incorrectly returned the first dictionary value
+    inside ``event`` (often only ``AirconSystem``), which discarded the rest of
+    the full state and caused status-change broadcasts to be ignored whenever
+    ``type`` was the first key.
+    """
     if not isinstance(payload, dict):
         return None
+
     event = payload.get("event")
     if isinstance(event, dict) and event:
-        first = next(iter(event.values()))
-        if isinstance(first, dict):
-            return first
+        body = {key: deepcopy(value) for key, value in event.items() if key != "type"}
+        return body or None
+
+    # Keep accepting an already-unwrapped state body for captures/tests and
+    # compatibility with any firmware that publishes the fields directly.
     if any(k in payload for k in ("AirconSystem", "UserAirconSettings", "LiveAircon")):
-        return payload
+        return {key: deepcopy(value) for key, value in payload.items() if key != "type"}
     return None
 
 
