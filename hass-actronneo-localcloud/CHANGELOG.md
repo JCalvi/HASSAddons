@@ -1,11 +1,18 @@
 # Changelog
 
+## 0.1.6
+
+- Fixes NEO MQTT `full-status-broadcast` and `status-change-broadcast` event unwrapping. The previous parser incorrectly returned only the first nested dictionary from `event`, which commonly discarded `UserAirconSettings`, `RemoteZoneInfo`, temperatures and other state.
+- Fixes status-change broadcasts being silently ignored when the event `type` field appeared first. This prevented Home Assistant from reflecting command-driven state changes even though the NEO returned command responses.
+- Restores complete normalized state so power/mode, fan state, temperatures and zones can be populated from the actual NEO broadcast instead of fallback/default values.
+- Corrects the 0.1.5 Nimbus UserId guidance: testing confirmed an already cloud-paired NEO can reach full-status/heartbeat using the generated local UUID, so `nimbus_user_id` is now documented as an optional advanced override rather than a normal setup requirement.
+
 ## 0.1.5
 
 - Adds a `nimbus_user_id` option so an already cloud-paired NEO can be presented with the same Nimbus account/UserId it used before the local cutover.
 - Persists a configured Nimbus UserId in the add-on data directory without printing it in normal logs.
-- Retains the generated local UUID fallback for development/new-pairing scenarios, with a warning when no Nimbus UserId is configured.
-- Expands the README and installation/troubleshooting documentation to explain the paired UserId requirement, how it differs from tokens/passwords, and why a mismatched account ID can cause repeated MQTT re-initialization.
+- Retains the generated local UUID fallback for development/new-pairing scenarios.
+- Expands the README and installation/troubleshooting documentation around Nimbus identity and DNS behaviour.
 - Documents that a gateway-wide DNS override for `nimbus.actronair.com.au` can also redirect Home Assistant's official Actron Air cloud integration to the local emulator.
 
 ## 0.1.4
