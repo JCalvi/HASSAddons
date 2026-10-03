@@ -26,6 +26,9 @@ from state import deep_merge, extract_event, ha_to_neo_mode, normalize_state, se
 
 _LOGGER = logging.getLogger("actronneo-localcloud.bridge")
 _COMMAND_SETTLE_SECONDS = 6.0
+_ACTIVE_REFRESH_SECONDS = 10.0
+_IDLE_REFRESH_SECONDS = 60.0
+_REFRESH_LOOP_SECONDS = 2.0
 
 
 class HomeAssistantBridge:
@@ -36,6 +39,8 @@ class HomeAssistantBridge:
         self._known_devices: dict[str, dict[str, str]] = self._load_known_devices()
         self._suppress_until: dict[str, float] = {}
         self._suppress_lock = threading.Lock()
+        self._last_full_status: dict[str, float] = {}
+        self._last_getall_request: dict[str, float] = {}
         self._client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"actronneo-localcloud-{uuid.uuid4().hex[:8]}",
@@ -48,6 +53,12 @@ class HomeAssistantBridge:
     def run(self) -> None:
         _LOGGER.info("Connecting HA bridge to MQTT service %s:%s", MQTT_HOST, MQTT_PORT)
         self._client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
+        refresh_thread = threading.Thread(
+            target=self._telemetry_refresh_loop,
+            name="neo-telemetry-refresh",
+            daemon=True,
+        )
+        refresh_thread.start()
         self._client.loop_forever(retry_first_connection=True)
 
     def _on_connect(
@@ -88,6 +99,8 @@ class HomeAssistantBridge:
         else:
             with self._suppress_lock:
                 self._suppress_until.pop(serial, None)
+            self._last_full_status.pop(serial, None)
+            self._last_getall_request.pop(serial, None)
             _LOGGER.info("NEO %s disconnected from local MQTT", serial)
             self._publish_availability(serial, False)
 
@@ -129,6 +142,7 @@ class HomeAssistantBridge:
                 )
                 return
             self._states[serial] = body
+            self._last_full_status[serial] = time.monotonic()
             self._publish_device(serial)
             return
 
@@ -317,14 +331,7 @@ class HomeAssistantBridge:
         return None
 
     def _begin_command_settle(self, serial: str, command: dict[str, Any]) -> None:
-        """Publish the requested state optimistically and ignore stale echoes briefly.
-
-        NEO can emit one or more status-change broadcasts containing the previous
-        value while a set-settings command is being applied. Publishing those
-        immediately makes Home Assistant controls flip back, then forward again.
-        The older QUE bridge solved the same race with a short optimistic publish
-        and suppression window, so mirror that behaviour here.
-        """
+        """Publish the requested state optimistically and ignore stale echoes briefly."""
         state = self._states.get(serial)
         body = command.get("command")
         if state is None or not isinstance(body, dict):
@@ -388,11 +395,42 @@ class HomeAssistantBridge:
         topic = f"actron-cloud/{user_id}/neo/{serial}/app/cmd"
         self._client.publish(topic, json.dumps(command, separators=(",", ":")), qos=0)
 
-    def _request_get_all(self, serial: str) -> None:
+    def _request_get_all(self, serial: str, *, periodic: bool = False) -> None:
         user_id = self._user_ids.get(serial)
         if user_id:
-            _LOGGER.info("Requesting full NEO state from %s with getAll", serial)
+            self._last_getall_request[serial] = time.monotonic()
+            if periodic:
+                _LOGGER.debug("Periodic live-state refresh for NEO %s", serial)
+            else:
+                _LOGGER.info("Requesting full NEO state from %s with getAll", serial)
             self._send_command(serial, user_id, {"command": {"type": "getAll"}})
+
+    def _telemetry_refresh_loop(self) -> None:
+        """Bound live telemetry staleness while keeping idle traffic modest.
+
+        NEO pushes many control changes immediately, but compressor telemetry is
+        not guaranteed to be emitted on every status-change broadcast. Because
+        this bridge is entirely local, periodically requesting getAll gives
+        useful near-real-time power/speed data without involving Actron's cloud.
+        """
+        while True:
+            time.sleep(_REFRESH_LOOP_SECONDS)
+            now = time.monotonic()
+            for serial, online in list(self._connection_state.items()):
+                if not online or serial not in self._states:
+                    continue
+                if self._is_command_settling(serial):
+                    continue
+
+                raw = self._states[serial]
+                settings = raw.get("UserAirconSettings") or {}
+                live = raw.get("LiveAircon") or {}
+                is_on = bool(settings.get("isOn", live.get("SystemOn", False)))
+                interval = _ACTIVE_REFRESH_SECONDS if is_on else _IDLE_REFRESH_SECONDS
+                last_status = self._last_full_status.get(serial, 0.0)
+                last_request = self._last_getall_request.get(serial, 0.0)
+                if now - max(last_status, last_request) >= interval:
+                    self._request_get_all(serial, periodic=True)
 
     def _publish_availability(self, serial: str, online: bool) -> None:
         self._client.publish(
@@ -407,11 +445,14 @@ class HomeAssistantBridge:
             return
         normalized = normalize_state(serial, raw)
         _LOGGER.debug(
-            "Publishing NEO %s state: power=%s mode=%s fan=%s zones=%d",
+            "Publishing NEO %s state: power=%s mode=%s action=%s fan=%s power_w=%s speed=%s zones=%d",
             serial,
             normalized.get("power"),
             normalized.get("mode"),
+            normalized.get("hvac_action"),
             normalized.get("fan_mode"),
+            normalized.get("compressor_power"),
+            normalized.get("compressor_speed"),
             len(normalized.get("zones", [])),
         )
         publish_discovery(self._client, serial, normalized)
