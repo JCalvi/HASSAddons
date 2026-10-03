@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5
+
+- Adds packet-level diagnostics for the broker-to-NEO side of duplicate-CONNECT recovery without logging MQTT topics, payloads, credentials or account identifiers.
+- Packetises Mosquitto responses so the replacement-session `SUBACK` can be observed directly instead of being hidden inside arbitrary TCP reads.
+- Logs the NEO `SUBSCRIBE` packet identifier, the matching Mosquitto `SUBACK` identifier/result codes, whether the IDs match, and the broker response latency.
+- Includes the last observed SUBSCRIBE/SUBACK identifiers and SUBACK result codes in the duplicate-session close summary so an immediate NEO disconnect can be distinguished from a missing or rejected SUBACK.
+- Keeps the 1.0.4 replacement-session behaviour and the 1.0.3 pre-CONNECT timeout unchanged; this release is diagnostic only apart from packet-aware forwarding of the same MQTT bytes.
+
 ## 1.0.4
 
 - Changes duplicate NEO MQTT `CONNECT` handling from a synthetic local CONNACK to a genuine fresh Mosquitto session.
