@@ -163,7 +163,9 @@ NEO <serial> full-status received (...)
 NEO <serial> heart-beat received
 ```
 
-NEO firmware may send a duplicate MQTT CONNECT during bootstrap. Version 0.1.2+ absorbs the duplicate instead of forwarding it to Mosquitto. A controller may also retry the bootstrap once before settling into a stable session.
+NEO firmware 2.6.x may send a duplicate MQTT CONNECT during bootstrap and then deliberately close that attempt even after receiving a valid MQTT acknowledgement. Version 1.0.6 absorbs the duplicate instead of forwarding it to Mosquitto. During observed add-on restarts a controller can then take one or more firmware-controlled retry slots of roughly 30 seconds before establishing its stable session; recovery of about 30-120 seconds has been observed. Once `full-status` and heartbeats arrive, normal local operation has remained stable.
+
+This restart path is not the same as a NEO cold boot against the real Actron service. Captured cold-boot traffic performs a longer HTTPS/OTA bootstrap before the new MQTT session is established, whereas restarting only the local add-on leaves the NEO running and exercises its broker-loss/reconnect state machine.
 
 Do **not** use Home Assistant's manual **Add MQTT device** flow. MQTT Discovery creates the NEO device automatically after usable state is received.
 
@@ -291,9 +293,11 @@ If every ordinary add-on restart logs `Generating persistent local Nimbus TLS ce
 
 ## Troubleshooting
 
-### Connects, then retries once
+### Connects, then retries
 
-A first-attempt duplicate CONNECT/disconnect followed by a successful retry has been observed on NEO firmware 2.6.x. If the second attempt reaches `full-status` and heartbeats continue, the local session is usable.
+A duplicate CONNECT/disconnect followed by one or more roughly 30-second retry slots has been observed on NEO firmware 2.6.x when the local service is restarted while the controller remains powered. Tests with a forced 5-second pre-CONNECT socket close did not make the NEO retry sooner, and tests using a fresh Mosquitto backend produced a valid matching SUBACK before the NEO still chose to close the session. Version 1.0.6 therefore leaves the firmware retry timer alone and uses only the minimum compatibility handling required to prevent Mosquitto rejecting the duplicate CONNECT.
+
+If a later attempt reaches `full-status` and heartbeats continue, the local session is usable. Observed recovery has ranged from about 30 seconds to around two minutes; this is controller reconnect behaviour rather than Home Assistant waiting for state after an established MQTT session.
 
 ### Commands receive cmd-response but HA controls snap back
 

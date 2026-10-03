@@ -7,14 +7,13 @@ import socket
 import ssl
 import struct
 import threading
-import time
 from typing import Callable
 
 from config import CERT_FILE, KEY_FILE, MQTT_HOST, MQTT_PASSWORD, MQTT_PORT, MQTT_USERNAME
 
 _LOGGER = logging.getLogger("actronneo-localcloud.mqtt_proxy")
 
-_INITIAL_CONNECT_TIMEOUT = 5.0
+_SUCCESS_CONNACK = b"\x20\x02\x00\x00"
 _MQTT_PACKET_NAMES = {
     1: "CONNECT",
     2: "CONNACK",
@@ -93,13 +92,6 @@ def _pack_mqtt_field(value: bytes) -> bytes:
     return struct.pack("!H", len(value)) + value
 
 
-def _mqtt_packet_id(body: bytes) -> int | None:
-    """Return the MQTT packet identifier from a packet body when present."""
-    if len(body) < 2:
-        return None
-    return struct.unpack("!H", body[:2])[0]
-
-
 def patch_connect(first_byte: int, body: bytes) -> tuple[bytes, str]:
     """Replace NEO's password-only CONNECT with Supervisor MQTT credentials."""
     if first_byte != 0x10:
@@ -174,149 +166,44 @@ def _validate_connack(first_byte: int, body: bytes, client_id: str) -> None:
         raise ValueError(f"local broker rejected {client_id} with CONNACK return code {body[1]}")
 
 
-def _close_socket(sock: socket.socket | ssl.SSLSocket | None) -> None:
-    if sock is None:
-        return
-    try:
-        sock.shutdown(socket.SHUT_RDWR)
-    except OSError:
-        pass
-    try:
-        sock.close()
-    except OSError:
-        pass
-
-
-def _open_backend(patched_connect: bytes, client_id: str) -> tuple[socket.socket, bytes]:
-    """Open a fresh Mosquitto session and return the socket plus its real CONNACK."""
-    broker = socket.create_connection((MQTT_HOST, MQTT_PORT), timeout=10)
-    try:
-        broker.settimeout(None)
-        broker.sendall(patched_connect)
-        connack_first, connack_body, connack_packet = _read_packet(broker)
-        _validate_connack(connack_first, connack_body, client_id)
-        return broker, connack_packet
-    except Exception:
-        _close_socket(broker)
-        raise
-
-
-def _broker_to_neo(
-    backend_state: dict[str, object],
-    backend_lock: threading.Lock,
-    broker: socket.socket,
-    generation: int,
-    neo: ssl.SSLSocket,
-    neo_write_lock: threading.Lock,
-    client_id: str,
+def _pipe(
+    src: socket.socket | ssl.SSLSocket,
+    dst: socket.socket | ssl.SSLSocket,
+    write_lock: threading.Lock | None = None,
 ) -> None:
-    """Forward one broker generation to the NEO, packetising for safe diagnostics.
-
-    A duplicate NEO CONNECT creates a new broker generation. When an old broker
-    generation is deliberately closed, its reader must not tear down the NEO TLS
-    stream that is being reused for the replacement session.
-    """
     try:
         while True:
-            first_byte, body, packet = _read_packet(broker)
-            packet_type = first_byte >> 4
-            packet_name = _MQTT_PACKET_NAMES.get(packet_type, f"TYPE_{packet_type}")
-
-            if generation > 1:
-                if packet_type == 9:  # SUBACK
-                    suback_id = _mqtt_packet_id(body)
-                    result_codes = [f"0x{code:02x}" for code in body[2:]] if len(body) >= 3 else []
-                    now = time.monotonic()
-                    with backend_lock:
-                        expected_id = backend_state.get("last_subscribe_id")
-                        subscribe_at = backend_state.get("last_subscribe_at")
-                        backend_state["last_suback_id"] = suback_id
-                        backend_state["last_suback_results"] = tuple(result_codes)
-                    latency_ms = (
-                        (now - subscribe_at) * 1000.0
-                        if isinstance(subscribe_at, (int, float))
-                        else None
-                    )
-                    _LOGGER.info(
-                        "Mosquitto SUBACK -> NEO %s after replacement: packet_id=%s "
-                        "expected=%s match=%s results=%s latency_ms=%s",
-                        client_id,
-                        suback_id if suback_id is not None else "invalid",
-                        expected_id if expected_id is not None else "unknown",
-                        bool(suback_id is not None and suback_id == expected_id),
-                        ",".join(result_codes) if result_codes else "none",
-                        f"{latency_ms:.1f}" if latency_ms is not None else "unknown",
-                    )
-                else:
-                    _LOGGER.debug(
-                        "Mosquitto -> NEO %s after replacement: %s type=%d flags=0x%x body=%d bytes",
-                        client_id,
-                        packet_name,
-                        packet_type,
-                        first_byte & 0x0F,
-                        len(body),
-                    )
-
-            with neo_write_lock:
-                neo.sendall(packet)
-    except EOFError:
-        pass
+            data = src.recv(65536)
+            if not data:
+                break
+            if write_lock is None:
+                dst.sendall(data)
+            else:
+                with write_lock:
+                    dst.sendall(data)
     except (OSError, ssl.SSLError):
         pass
     finally:
-        with backend_lock:
-            is_current = (
-                backend_state.get("socket") is broker
-                and backend_state.get("generation") == generation
-            )
-        if is_current:
-            _LOGGER.debug("Local MQTT broker session for NEO %s ended", client_id)
-            try:
-                neo.shutdown(socket.SHUT_RDWR)
-            except OSError:
-                pass
-
-
-def _start_broker_reader(
-    backend_state: dict[str, object],
-    backend_lock: threading.Lock,
-    broker: socket.socket,
-    generation: int,
-    neo: ssl.SSLSocket,
-    neo_write_lock: threading.Lock,
-    client_id: str,
-) -> None:
-    threading.Thread(
-        target=_broker_to_neo,
-        args=(
-            backend_state,
-            backend_lock,
-            broker,
-            generation,
-            neo,
-            neo_write_lock,
-            client_id,
-        ),
-        daemon=True,
-        name=f"neo-broker-reader-{client_id}-{generation}",
-    ).start()
+        try:
+            dst.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
 
 
 def _neo_to_broker(
     neo: ssl.SSLSocket,
-    backend_state: dict[str, object],
-    backend_lock: threading.Lock,
+    broker: socket.socket,
     neo_write_lock: threading.Lock,
     client_id: str,
 ) -> None:
-    """Forward NEO packets, replacing the broker session on duplicate CONNECT.
+    """Forward NEO MQTT packets while absorbing its duplicate CONNECT quirk.
 
-    NEO firmware 2.6.x can send another CONNECT on an already-established TLS
-    stream after Nimbus account bootstrap. The CONNECT uses Clean Session, and
-    observed controllers immediately SUBSCRIBE after receiving CONNACK. Treat the
-    duplicate CONNECT as a genuine new MQTT session: retire the old Mosquitto
-    connection, establish a fresh one with the rewritten credentials, and return
-    Mosquitto's real CONNACK to the NEO before forwarding subsequent packets.
+    NEO firmware 2.6.x can send another CONNECT packet on the already-established
+    TLS/MQTT stream after Nimbus account bootstrap. Mosquitto rejects a second
+    CONNECT on the same MQTT session, so absorb it locally and acknowledge it.
+    Testing showed that opening a replacement Mosquitto session and returning a
+    real CONNACK/SUBACK does not stop the NEO from closing this bootstrap attempt,
+    so the simpler compatibility path is retained here.
     """
     duplicate_connects = 0
     post_duplicate_packets = 0
@@ -326,146 +213,70 @@ def _neo_to_broker(
             first_byte, body, packet = _read_packet(neo)
             packet_type = first_byte >> 4
             packet_name = _MQTT_PACKET_NAMES.get(packet_type, f"TYPE_{packet_type}")
-
             if packet_type == 1:  # CONNECT
                 duplicate_connects += 1
                 post_duplicate_packets = 0
                 last_post_duplicate_packet = "none"
-
-                patched_connect, duplicate_client_id = patch_connect(first_byte, body)
-                if duplicate_client_id.lower() != client_id.lower():
-                    raise ValueError(
-                        f"duplicate CONNECT client id changed from {client_id} to {duplicate_client_id}"
-                    )
-
                 _LOGGER.info(
-                    "NEO %s sent duplicate MQTT CONNECT #%d; replacing local broker session",
+                    "NEO %s sent duplicate MQTT CONNECT #%d; keeping existing local broker session",
                     client_id,
                     duplicate_connects,
                 )
-
-                # Retire the old backend generation before opening the replacement.
-                # This prevents its reader thread from interpreting the intentional
-                # close as a reason to tear down the NEO TLS stream.
-                with backend_lock:
-                    old_backend = backend_state.get("socket")
-                    new_generation = int(backend_state.get("generation", 0)) + 1
-                    backend_state["generation"] = new_generation
-                    backend_state["socket"] = None
-                    backend_state["last_subscribe_id"] = None
-                    backend_state["last_subscribe_at"] = None
-                    backend_state["last_suback_id"] = None
-                    backend_state["last_suback_results"] = None
-
-                if isinstance(old_backend, socket.socket):
-                    _close_socket(old_backend)
-
-                try:
-                    new_backend, connack_packet = _open_backend(patched_connect, client_id)
-                except Exception as exc:
-                    _LOGGER.warning(
-                        "Failed to replace local MQTT broker session for NEO %s after duplicate CONNECT #%d: %s",
-                        client_id,
-                        duplicate_connects,
-                        exc,
-                    )
-                    try:
-                        neo.shutdown(socket.SHUT_RDWR)
-                    except OSError:
-                        pass
-                    return
-
-                with backend_lock:
-                    backend_state["socket"] = new_backend
-
                 with neo_write_lock:
-                    neo.sendall(connack_packet)
-
-                _start_broker_reader(
-                    backend_state,
-                    backend_lock,
-                    new_backend,
-                    new_generation,
-                    neo,
-                    neo_write_lock,
-                    client_id,
-                )
-                _LOGGER.info(
-                    "Local MQTT broker replacement accepted NEO %s after duplicate CONNECT #%d",
-                    client_id,
-                    duplicate_connects,
-                )
+                    neo.sendall(_SUCCESS_CONNACK)
                 continue
 
             if duplicate_connects:
                 post_duplicate_packets += 1
                 last_post_duplicate_packet = packet_name
-                _LOGGER.debug(
-                    "NEO %s post-replacement packet #%d: %s type=%d flags=0x%x body=%d bytes",
-                    client_id,
-                    post_duplicate_packets,
-                    packet_name,
-                    packet_type,
-                    first_byte & 0x0F,
-                    len(body),
-                )
-
-                if packet_type == 8:  # SUBSCRIBE
-                    subscribe_id = _mqtt_packet_id(body)
-                    with backend_lock:
-                        backend_state["last_subscribe_id"] = subscribe_id
-                        backend_state["last_subscribe_at"] = time.monotonic()
+                if packet_type == 14:
                     _LOGGER.info(
-                        "NEO %s SUBSCRIBE after broker replacement: packet_id=%s body=%d bytes",
+                        "NEO %s sent MQTT DISCONNECT after duplicate CONNECT #%d",
                         client_id,
-                        subscribe_id if subscribe_id is not None else "invalid",
+                        duplicate_connects,
+                    )
+                else:
+                    _LOGGER.debug(
+                        "NEO %s post-duplicate packet #%d: %s type=%d flags=0x%x body=%d bytes",
+                        client_id,
+                        post_duplicate_packets,
+                        packet_name,
+                        packet_type,
+                        first_byte & 0x0F,
                         len(body),
                     )
 
-            with backend_lock:
-                broker = backend_state.get("socket")
-            if not isinstance(broker, socket.socket):
-                raise ConnectionError(f"no active local MQTT broker session for NEO {client_id}")
             broker.sendall(packet)
     except EOFError:
         if duplicate_connects:
-            with backend_lock:
-                subscribe_id = backend_state.get("last_subscribe_id")
-                suback_id = backend_state.get("last_suback_id")
-                suback_results = backend_state.get("last_suback_results")
             _LOGGER.info(
-                "NEO %s closed MQTT/TLS stream after %d broker-session replacement(s); "
-                "post-replacement packets=%d last=%s subscribe_id=%s suback_id=%s suback_results=%s",
+                "NEO %s closed MQTT/TLS stream after duplicate CONNECT #%d; "
+                "post-duplicate packets=%d last=%s",
                 client_id,
                 duplicate_connects,
                 post_duplicate_packets,
                 last_post_duplicate_packet,
-                subscribe_id if subscribe_id is not None else "none",
-                suback_id if suback_id is not None else "none",
-                ",".join(suback_results) if isinstance(suback_results, tuple) else "none",
             )
         else:
             _LOGGER.debug("NEO %s closed MQTT/TLS stream", client_id)
     except (OSError, ssl.SSLError) as exc:
         if duplicate_connects:
-            with backend_lock:
-                subscribe_id = backend_state.get("last_subscribe_id")
-                suback_id = backend_state.get("last_suback_id")
-                suback_results = backend_state.get("last_suback_results")
             _LOGGER.info(
-                "NEO %s MQTT/TLS stream ended after %d broker-session replacement(s): %s; "
-                "post-replacement packets=%d last=%s subscribe_id=%s suback_id=%s suback_results=%s",
+                "NEO %s MQTT/TLS stream ended after duplicate CONNECT #%d: %s; "
+                "post-duplicate packets=%d last=%s",
                 client_id,
                 duplicate_connects,
                 exc,
                 post_duplicate_packets,
                 last_post_duplicate_packet,
-                subscribe_id if subscribe_id is not None else "none",
-                suback_id if suback_id is not None else "none",
-                ",".join(suback_results) if isinstance(suback_results, tuple) else "none",
             )
     except Exception as exc:
         _LOGGER.warning("NEO MQTT packet forwarding for %s failed: %s", client_id, exc)
+    finally:
+        try:
+            broker.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
 
 
 class NeoMqttProxy:
@@ -496,9 +307,7 @@ class NeoMqttProxy:
 
     def _handle(self, raw: socket.socket, addr: tuple[str, int]) -> None:
         tls: ssl.SSLSocket | None = None
-        initial_backend: socket.socket | None = None
-        backend_state: dict[str, object] | None = None
-        backend_lock = threading.Lock()
+        backend: socket.socket | None = None
         client_id = ""
         online_announced = False
         try:
@@ -509,24 +318,19 @@ class NeoMqttProxy:
                 tls.version(),
                 tls.cipher()[0] if tls.cipher() else "unknown",
             )
+            backend = socket.create_connection((MQTT_HOST, MQTT_PORT), timeout=10)
+            backend.settimeout(None)
 
-            tls.settimeout(_INITIAL_CONNECT_TIMEOUT)
-            try:
-                first, body, _packet = _read_packet(tls)
-            except socket.timeout:
-                _LOGGER.info(
-                    "NEO %s sent no MQTT CONNECT within %.1fs after TLS; closing stalled TLS session",
-                    addr[0],
-                    _INITIAL_CONNECT_TIMEOUT,
-                )
-                return
-            finally:
-                tls.settimeout(None)
-
+            # Wait naturally for the NEO's first MQTT CONNECT. A 5-second
+            # post-TLS timeout was tested and only closed idle sockets sooner;
+            # it did not shorten the controller's own retry interval.
+            first, body, _packet = _read_packet(tls)
             patched_connect, client_id = patch_connect(first, body)
-            initial_backend, connack_packet = _open_backend(patched_connect, client_id)
-            with threading.Lock():
-                tls.sendall(connack_packet)
+            backend.sendall(patched_connect)
+
+            connack_first, connack_body, connack_packet = _read_packet(backend)
+            _validate_connack(connack_first, connack_body, client_id)
+            tls.sendall(connack_packet)
             _LOGGER.info("Local MQTT broker accepted NEO %s", client_id)
 
             if self._connection_callback and client_id:
@@ -534,31 +338,20 @@ class NeoMqttProxy:
                 online_announced = True
 
             neo_write_lock = threading.Lock()
-            backend_state = {
-                "socket": initial_backend,
-                "generation": 1,
-                "last_subscribe_id": None,
-                "last_subscribe_at": None,
-                "last_suback_id": None,
-                "last_suback_results": None,
-            }
-            _start_broker_reader(
-                backend_state,
-                backend_lock,
-                initial_backend,
-                1,
-                tls,
-                neo_write_lock,
-                client_id,
+            t1 = threading.Thread(
+                target=_neo_to_broker,
+                args=(tls, backend, neo_write_lock, client_id),
+                daemon=True,
             )
-
-            _neo_to_broker(
-                tls,
-                backend_state,
-                backend_lock,
-                neo_write_lock,
-                client_id,
+            t2 = threading.Thread(
+                target=_pipe,
+                args=(backend, tls, neo_write_lock),
+                daemon=True,
             )
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
         except EOFError:
             _LOGGER.debug("NEO %s closed after TLS before MQTT CONNECT", addr[0])
         except Exception as exc:
@@ -566,22 +359,11 @@ class NeoMqttProxy:
         finally:
             if online_announced and self._connection_callback and client_id:
                 self._connection_callback(client_id.lower(), False)
-
-            current_backend: socket.socket | None = None
-            if backend_state is not None:
-                with backend_lock:
-                    maybe_backend = backend_state.get("socket")
-                    backend_state["generation"] = int(backend_state.get("generation", 0)) + 1
-                    backend_state["socket"] = None
-                if isinstance(maybe_backend, socket.socket):
-                    current_backend = maybe_backend
-
-            _close_socket(current_backend)
-            if initial_backend is not current_backend:
-                _close_socket(initial_backend)
-            _close_socket(tls)
-            if raw is not tls:
-                _close_socket(raw)
-
+            for sock in (tls, backend, raw):
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except OSError:
+                        pass
             if client_id:
                 _LOGGER.info("NEO MQTT client %s disconnected", client_id)
