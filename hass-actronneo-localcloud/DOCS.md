@@ -27,13 +27,13 @@ No separate Home Assistant custom integration is required. The standard Mosquitt
 
 Once a NEO connects, the add-on learns the controller's real Actron/Nimbus UserId automatically from its native MQTT topic and uses that value for commands. Before MQTT is established, the local Nimbus bootstrap response still requires a UserId field, so the add-on generates and persists a private local UUID for that bootstrap response only.
 
-If you deliberately use the override, the value is the UUID returned by the real Nimbus `/api/v0/messaging/connection/details` response and used in topics such as:
+If you deliberately use the override, the value is the UUID used in topics such as:
 
 ```text
 actron-cloud/<UserId>/neo/<serial>/...
 ```
 
-It is not an email address, OAuth token, refresh token, password, pairing code or MQTT password. Clearing the field removes the manual override.
+It is not an email address, OAuth token, refresh token, password, pairing code or MQTT password.
 
 ## Ports
 
@@ -106,17 +106,7 @@ Destination:       Home Assistant LAN IP
 Destination ports: 443, 28883
 ```
 
-For example, with NEOs at `10.189.60.101`, `.102` and `.103` and HA at `192.168.0.18`:
-
-```text
-Source:            10.189.60.101-10.189.60.103
-Destination:       192.168.0.18
-Protocol:          TCP
-Source port:       Any
-Destination ports: 443, 28883
-```
-
-Do not put `443,28883` in **Source Port**. The NEO does not need HA host port `1883`, and it does not need the normal Mosquitto host port `8883`.
+The NEO does not need HA host port `1883`, and it does not need the normal Mosquitto host port `8883`.
 
 ## DNS redirection
 
@@ -124,12 +114,6 @@ Create this record on the DNS server actually used by the NEO network:
 
 ```text
 nimbus.actronair.com.au -> <Home Assistant LAN IP>
-```
-
-For example:
-
-```text
-nimbus.actronair.com.au -> 192.168.0.18
 ```
 
 ### UniFi / UDM
@@ -145,7 +129,7 @@ TTL:         Auto
 
 A gateway-wide Host (A) record is generally visible to all clients using the gateway as DNS. Restrict access with the firewall rule above.
 
-A gateway-wide DNS override can also affect Home Assistant itself. If the official HA **Actron Air** cloud integration remains enabled, it may resolve `nimbus.actronair.com.au` to the local emulator and fail TLS/API calls. Disable the old cloud integration while using the local replacement, or use source-scoped DNS/DNAT if both must coexist.
+A gateway-wide DNS override can also affect Home Assistant itself. If the official HA **Actron Air** cloud integration remains enabled, it may resolve `nimbus.actronair.com.au` to the local emulator. Disable the old cloud integration while using the local replacement, or use source-scoped DNS/DNAT if both must coexist.
 
 ## First connection
 
@@ -163,9 +147,11 @@ NEO <serial> full-status received (...)
 NEO <serial> heart-beat received
 ```
 
-NEO firmware 2.6.x may send a duplicate MQTT CONNECT during bootstrap and then deliberately close that attempt even after receiving a valid MQTT acknowledgement. Version 1.0.6 absorbs the duplicate instead of forwarding it to Mosquitto. During observed add-on restarts a controller can then take one or more firmware-controlled retry slots of roughly 30 seconds before establishing its stable session; recovery of about 30-120 seconds has been observed. Once `full-status` and heartbeats arrive, normal local operation has remained stable.
+NEO firmware 2.6.x can send a second MQTT CONNECT on an already-established TLS/MQTT stream. Standard Mosquitto rejects that as a protocol error, so the add-on absorbs the duplicate CONNECT and acknowledges it locally while keeping the existing broker session.
 
-This restart path is not the same as a NEO cold boot against the real Actron service. Captured cold-boot traffic performs a longer HTTPS/OTA bootstrap before the new MQTT session is established, whereas restarting only the local add-on leaves the NEO running and exercises its broker-loss/reconnect state machine.
+The controller also uses an approximately **30-second retry interval** after an established MQTT connection is lost. A controlled forced disconnect against the real Actron MQTT service produced the same roughly 31-second delay before the first replacement connection, confirming that this timer is part of the NEO reconnect behaviour rather than a Home Assistant delay.
+
+During a local add-on restart a controller may occasionally need more than one retry slot before reaching a stable session. Once `full-status` and heartbeats arrive, normal operation has remained stable.
 
 Do **not** use Home Assistant's manual **Add MQTT device** flow. MQTT Discovery creates the NEO device automatically after usable state is received.
 
@@ -191,20 +177,20 @@ The bridge keeps the complete full-status tree and merges partial status-change 
 
 Moving the connection local removes Internet/cloud latency, but the NEO firmware still decides when it emits native status-change broadcasts. Compressor telemetry is not guaranteed to be pushed every time the underlying value changes.
 
-Version 1.0 therefore supplements native push traffic with a local `getAll` refresh:
+The add-on therefore supplements native push traffic with a local `getAll` refresh:
 
 ```text
 System ON:   about every 5 seconds
 System OFF:  about every 30 seconds
 ```
 
-Native status changes are still processed immediately. The periodic refresh simply bounds how stale compressor power, compressor speed and other engineering telemetry can become. The refresh is skipped during the 6-second command settling/anti-bounce window.
+Native status changes are still processed immediately. The periodic refresh bounds how stale compressor power, compressor speed and other engineering telemetry can become. The refresh is skipped during the 6-second command settling/anti-bounce window.
 
-The NEO can retain the last non-zero compressor telemetry in `CompPower`, `CompSpeed` and `CompressorCapacity` even after the compressor has stopped. When `UserAirconSettings.isOn` or `OutdoorUnit.CompressorOn` says the compressor is stopped, the add-on reports those live values as zero instead of leaving the stale historical values visible in Home Assistant.
+The NEO can retain the last non-zero compressor telemetry in `CompPower`, `CompSpeed` and `CompressorCapacity` even after the compressor has stopped. When `UserAirconSettings.isOn` or `OutdoorUnit.CompressorOn` says the compressor is stopped, the add-on reports those live values as zero.
 
 ### NTW / Inverter telemetry scaling
 
-NTW/Inverter systems encode some engineering values with scale factors. Version 1.0 applies:
+NTW/Inverter systems encode some engineering values with scale factors:
 
 ```text
 LiveAircon.OutdoorUnit.CompPower         x 100 -> W
@@ -213,7 +199,7 @@ LiveAircon.OutdoorUnit.SupplyVoltage_Vac x 10  -> V
 
 For example, a raw `CompPower` value of `40` is exposed as approximately `4000 W`.
 
-`LiveAircon.OutdoorUnit.CompSpeed` is exposed as Compressor Speed in `%` with a speedometer icon.
+`LiveAircon.OutdoorUnit.CompSpeed` is exposed as Compressor Speed in `%`.
 
 ## Entities
 
@@ -228,34 +214,7 @@ Enabled by default:
 - Clean Filter and Defrosting binary sensors.
 - Per-zone climate/humidity entities when the NEO reports configured zones.
 
-Version 1.0 also publishes the following **disabled by default** as Home Assistant diagnostic entities:
-
-- Compressor Capacity (%).
-- Indoor Fan RPM.
-- Indoor Fan PWM (%).
-- Compressor Running.
-- Coil Inlet Temperature.
-- Outdoor Coil Temperature.
-- Discharge Temperature.
-- Suction Temperature.
-- Drive / VSD Temperature.
-- Wi-Fi Signal.
-- Controller Uptime.
-- MQTT Session Uptime.
-- MQTT Reconnect Count.
-- VSD Communications Status.
-- AC Error Code.
-- Low Pressure Fault / High Pressure Fault.
-- Supply Voltage / Current / Power.
-- EEV Opening (%).
-- Superheat.
-- Indoor Unit Firmware.
-- Outdoor Unit Firmware.
-- Outdoor Unit Family.
-- System Capacity.
-- Wi-Fi Firmware.
-
-Enable only the diagnostics you want from the Home Assistant device/entity page.
+Additional engineering/information entities are published **disabled by default** and can be enabled individually from the Home Assistant device page. These include compressor capacity, fan RPM/PWM, compressor running state, multiple temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD status, AC error code, pressure faults, supply electrical values, EEV opening, superheat, firmware, outdoor unit family and rated capacity.
 
 Normalized state is retained at:
 
@@ -295,21 +254,21 @@ If every ordinary add-on restart logs `Generating persistent local Nimbus TLS ce
 
 ### Connects, then retries
 
-A duplicate CONNECT/disconnect followed by one or more roughly 30-second retry slots has been observed on NEO firmware 2.6.x when the local service is restarted while the controller remains powered. Tests with a forced 5-second pre-CONNECT socket close did not make the NEO retry sooner, and tests using a fresh Mosquitto backend produced a valid matching SUBACK before the NEO still chose to close the session. Version 1.0.6 therefore leaves the firmware retry timer alone and uses only the minimum compatibility handling required to prevent Mosquitto rejecting the duplicate CONNECT.
+A NEO may take one or more approximately 30-second retry slots after an MQTT service interruption. The same first-retry interval was observed against the real Actron MQTT service, so the add-on intentionally leaves the firmware retry timer alone.
 
-If a later attempt reaches `full-status` and heartbeats continue, the local session is usable. Observed recovery has ranged from about 30 seconds to around two minutes; this is controller reconnect behaviour rather than Home Assistant waiting for state after an established MQTT session.
+If a later attempt reaches `full-status` and heartbeats continue, the local session is usable.
 
 ### Commands receive cmd-response but HA controls snap back
 
-Use version 0.1.7 or later. The bridge includes a 6-second optimistic settling window and canonical `getAll` refresh to prevent stale status echoes from immediately reversing a control in Home Assistant.
+The bridge includes a 6-second optimistic settling window and canonical `getAll` refresh to prevent stale status echoes from immediately reversing a control in Home Assistant.
 
 ### Compressor power appears about 100x too small
 
-Use version 1.0 or later. NTW/Inverter `CompPower` requires the x100 engineering scale before publishing watts.
+Current releases apply the NTW/Inverter x100 engineering scale before publishing compressor power in watts.
 
 ### Compressor telemetry changes slowly or stays non-zero after shutdown
 
-Use version 1.0 or later. The add-on requests local full state approximately every 5 seconds while a system is on and every 30 seconds while off, in addition to native status-change pushes. It also reports compressor power/speed/capacity as zero when the compressor is not running, even if the NEO retains the previous non-zero raw values.
+The add-on requests local full state approximately every 5 seconds while a system is on and every 30 seconds while off, in addition to native status-change pushes. It also reports compressor power/speed/capacity as zero when the compressor is not running.
 
 ### Nimbus works but MQTT never arrives
 
@@ -321,7 +280,7 @@ Confirm:
 
 ### Mosquitto says `Bad client ... sending multiple CONNECT messages`
 
-Use version 0.1.2 or later.
+Use Actron NEO Local Cloud 1.1.0 or later. The compatibility proxy absorbs the NEO's duplicate CONNECT instead of forwarding it to Mosquitto.
 
 ### No Nimbus requests appear
 
@@ -331,7 +290,7 @@ Verify DNS/DNAT and confirm the NEO actually uses that DNS server. Reconnect Wi-
 
 A TCP/TLS/MQTT connection alone is not enough. Discovery is published after usable NEO state such as `full-status` arrives.
 
-For detailed diagnostics set:
+For deeper logging set:
 
 ```yaml
 log_level: DEBUG
