@@ -54,17 +54,3 @@ A UniFi **Host (A)** DNS record is normally visible to clients that use the UniF
 A gateway-wide DNS override can also affect Home Assistant itself. If the official Home Assistant **Actron Air** cloud integration remains enabled, it may resolve `nimbus.actronair.com.au` to the local emulator. Disable the old cloud integration while using the local replacement, or use source-scoped DNS/DNAT if both must coexist.
 
 See [DOCS.md](DOCS.md) for the full network setup, installation sequence, expected logs and troubleshooting information.
-
-## Nimbus bootstrap identity
-
-Nimbus requires a `UserId` field during bootstrap, but testing confirmed that this does not need to be the controller's real Actron/Nimbus UUID.
-
-The add-on therefore creates and persists its own private local bootstrap UUID automatically. There is no Nimbus User ID setting to configure.
-
-The NEO publishes native MQTT traffic under topics such as:
-
-```text
-actron-cloud/<UserId>/neo/<serial>/...
-```
-
-Once the controller connects, the add-on learns the real Actron/Nimbus UserId automatically from the MQTT topic and uses that learned value for commands. The generated local UUID is used only for the Nimbus bootstrap response.
