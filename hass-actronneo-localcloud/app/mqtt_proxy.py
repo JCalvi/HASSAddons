@@ -14,6 +14,7 @@ from config import CERT_FILE, KEY_FILE, MQTT_HOST, MQTT_PASSWORD, MQTT_PORT, MQT
 _LOGGER = logging.getLogger("actronneo-localcloud.mqtt_proxy")
 
 _SUCCESS_CONNACK = b"\x20\x02\x00\x00"
+_INITIAL_CONNECT_TIMEOUT = 5.0
 _MQTT_PACKET_NAMES = {
     1: "CONNECT",
     2: "CONNACK",
@@ -316,10 +317,23 @@ class NeoMqttProxy:
                 tls.version(),
                 tls.cipher()[0] if tls.cipher() else "unknown",
             )
+
+            tls.settimeout(_INITIAL_CONNECT_TIMEOUT)
+            try:
+                first, body, _packet = _read_packet(tls)
+            except socket.timeout:
+                _LOGGER.info(
+                    "NEO %s sent no MQTT CONNECT within %.1fs after TLS; closing stalled TLS session",
+                    addr[0],
+                    _INITIAL_CONNECT_TIMEOUT,
+                )
+                return
+            finally:
+                tls.settimeout(None)
+
             backend = socket.create_connection((MQTT_HOST, MQTT_PORT), timeout=10)
             backend.settimeout(None)
 
-            first, body, _packet = _read_packet(tls)
             patched_connect, client_id = patch_connect(first, body)
             backend.sendall(patched_connect)
 
