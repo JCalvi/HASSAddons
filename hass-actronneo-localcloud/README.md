@@ -20,7 +20,7 @@ Before MQTT is established, the local Nimbus bootstrap response still requires a
 
 `nimbus_user_id` remains only as an optional advanced/manual override. If deliberately set, it must be the Nimbus UUID returned by `/api/v0/messaging/connection/details`; it is not an email address, OAuth token, password or MQTT password.
 
-From version 0.1.8, clearing the field really removes the override. Older versions could continue using a previously persisted override after the UI field was cleared.
+In 0.1.7, clearing the field really removes the override; blank means no manual override is used.
 
 ## Default ports
 
