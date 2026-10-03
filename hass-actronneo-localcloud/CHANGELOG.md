@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2
+
+- Adds MQTT reconnect diagnostics around the NEO 2.6.x duplicate-CONNECT sequence so restart delays can be characterised without logging sensitive payload contents.
+- Logs whether a NEO explicitly sends MQTT `DISCONNECT` after the duplicate CONNECT or simply closes the MQTT/TLS stream.
+- At DEBUG level, records the MQTT packet type/flags/length of post-duplicate traffic, while INFO summarizes the final close reason and last packet type.
+- No reconnect behaviour is changed yet; this release is intentionally diagnostic so the real Actron broker behaviour can be emulated more accurately in a follow-up fix.
+
 ## 1.0.1
 
 - Gives disabled-by-default engineering/diagnostic entities meaningful icons for their enabled state, including compressor/fan, temperatures, Wi-Fi, uptime, communications, electrical values, EEV, firmware and fault indicators.
