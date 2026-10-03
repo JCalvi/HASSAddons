@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.6
+
+- Confirms from 1.0.5 packet tracing that a duplicate-CONNECT attempt can receive a valid, matching Mosquitto `SUBACK` (`0x00`) before the NEO voluntarily closes the TLS session, so the broker response is not the cause of the restart delay.
+- Removes the experimental 5-second pre-CONNECT timeout from 1.0.3. It shortened the lifetime of an idle TLS socket but did not shorten the NEO firmware's own retry interval.
+- Simplifies duplicate-CONNECT compatibility back to the proven lightweight path: keep the existing Mosquitto backend session, absorb the repeated NEO `CONNECT`, and return a local successful CONNACK.
+- Removes the 1.0.4/1.0.5 replacement-Mosquitto-session and SUBACK tracing machinery because testing showed it did not change controller reconnect behaviour.
+- Retains safe packet-type diagnostics for duplicate-CONNECT attempts and documents that NEO 2.6.x may require one or more roughly 30-second retry slots after a local service restart before a stable session is established.
+
 ## 1.0.5
 
 - Adds packet-level diagnostics for the broker-to-NEO side of duplicate-CONNECT recovery without logging MQTT topics, payloads, credentials or account identifiers.
@@ -93,7 +101,7 @@
 - Validates the real Mosquitto CONNACK before announcing a NEO as connected, so the add-on log now distinguishes TLS/CONNECT arrival from successful broker acceptance.
 - Keeps normal MQTT packets flowing through the existing Mosquitto session after the duplicate CONNECT workaround.
 - Expands README and installation documentation with the required host/container port mapping, `neo_mqtt_port` matching requirement, destination-port firewall rules, DNS override behaviour, UniFi/UDM notes, install order and troubleshooting guidance.
-- Clarifies that Home Assistant MQTT Discovery creates NEO devices automatically after usable status is received; the manual **Add MQTT device** flow is not used.
+- Clarifies that Home Assistant MQTT Discovery creates NEO devices automatically after usable state is received; the manual **Add MQTT device** flow is not used.
 
 ## 0.1.1
 
