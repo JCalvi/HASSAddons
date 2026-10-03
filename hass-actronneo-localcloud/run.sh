@@ -11,6 +11,8 @@ fi
 
 export LOCAL_IP
 export NEO_MQTT_PORT="$(bashio::config 'neo_mqtt_port')"
+export NIMBUS_ACCOUNT_DELAY_IP="$(bashio::config 'nimbus_account_delay_ip')"
+export NIMBUS_ACCOUNT_DELAY_SECONDS="$(bashio::config 'nimbus_account_delay_seconds')"
 export TOPIC_PREFIX="$(bashio::config 'topic_prefix')"
 export DISCOVERY_PREFIX="$(bashio::config 'discovery_prefix')"
 export PUBLISH_RAW_STATE="$(bashio::config 'publish_raw_state')"
@@ -78,6 +80,7 @@ server {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Host nimbus.actronair.com.au;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header Connection "";
         proxy_request_buffering off;
         proxy_buffering off;
