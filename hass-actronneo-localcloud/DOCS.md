@@ -2,23 +2,75 @@
 
 ## What this add-on does
 
-The NEO controller normally boots through `nimbus.actronair.com.au`, receives an Actron MQTT endpoint, and then exchanges status and commands over TLS MQTT. This add-on replaces both parts locally:
+The NEO controller normally bootstraps through `nimbus.actronair.com.au`, receives an Actron MQTT endpoint, and then exchanges status and commands over TLS MQTT. This add-on replaces both parts locally:
 
 ```text
 NEO controller
-  |-- HTTPS 443 --> Actron NEO Local Cloud --> local Nimbus emulator
-  `-- MQTT/TLS 8883 --> compatibility proxy --> Home Assistant Mosquitto
-                                               |
-                                               `--> MQTT Discovery entities
+  |-- HTTPS 443 -----------------> HA host:443
+  |                                  |
+  |                                  `-> add-on container:443 -> nginx -> local Nimbus emulator
+  |
+  `-- MQTT/TLS 28883 -----------> HA host:28883
+                                     |
+                                     `-> add-on container:8883 -> compatibility proxy
+                                                                        |
+                                                                        `-> Supervisor Mosquitto:1883
+                                                                                     |
+                                                                                     `-> MQTT Discovery entities
 ```
 
-No separate Home Assistant custom integration is required. The standard Mosquitto Broker integration/add-on is required.
+No separate Home Assistant custom integration is required. The standard Mosquitto Broker add-on/integration is required.
+
+## Important port distinction
+
+The NEO does **not** connect to Home Assistant's Mosquitto Broker directly.
+
+| Purpose | Add-on container port | Default HA host port | Notes |
+| --- | ---: | ---: | --- |
+| Local Nimbus HTTPS | 443 | 443 | NEO bootstrap HTTPS |
+| NEO MQTT/TLS compatibility proxy | 8883 | **28883** | NEO connects here |
+| Supervisor Mosquitto | internal service | normally 1883 internally | Used only by the add-on bridge/proxy |
+
+The add-on intentionally maps container port `8883/tcp` to Home Assistant host port `28883`. This prevents a conflict with a normal Mosquitto Broker installation that may already expose host port `8883`.
+
+The add-on option `neo_mqtt_port` is the **host-side port advertised to the NEO**. Therefore these values must match:
+
+```text
+Add-on Network mapping: 8883/tcp -> 28883
+Add-on option:           neo_mqtt_port: 28883
+```
+
+If you change one, change the other to the same host port.
+
+Host TCP 443 normally must remain available to this add-on because the NEO accesses `https://nimbus.actronair.com.au` on the standard HTTPS port. An advanced NAT design can translate NEO TCP 443 to another add-on host port, but that is outside the normal installation.
 
 ## Requirements
 
-- Home Assistant OS/Supervised with the Mosquitto Broker available through the Supervisor MQTT service.
-- The NEO controller must be able to reach the Home Assistant host on TCP 443 and TCP 8883.
-- DNS or firewall/NAT control so `nimbus.actronair.com.au` traffic from the NEO can be directed to the Home Assistant host.
+- Home Assistant OS/Supervised.
+- The standard Mosquitto Broker add-on/integration available through the Supervisor MQTT service.
+- A fixed or reserved Home Assistant LAN IP reachable from the NEO network.
+- The NEO controller(s) must be able to reach the Home Assistant host on destination TCP ports **443** and **28883** by default.
+- DNS or firewall/NAT control so `nimbus.actronair.com.au` traffic from the NEO is directed to the Home Assistant host.
+
+## Recommended installation order
+
+1. Install and start the standard **Mosquitto Broker** add-on and make sure the Home Assistant MQTT integration is working.
+2. Install **Actron NEO Local Cloud**.
+3. Set `local_ip` to the Home Assistant LAN address reachable by the NEO controller(s).
+4. Leave `neo_mqtt_port: 28883` unless you intentionally change the add-on host port mapping.
+5. Confirm the add-on Network mappings are:
+
+   ```text
+   443/tcp  -> 443
+   8883/tcp -> 28883
+   ```
+
+6. Start the add-on and confirm it remains running before changing DNS or reconnecting a NEO.
+7. Create the firewall allow rule from the NEO controller IPs/network to the Home Assistant host.
+8. Create the DNS override for `nimbus.actronair.com.au`.
+9. Reconnect/reboot one NEO first and watch the add-on log. Once it is working, move the remaining NEOs across.
+
+Starting the add-on before applying the DNS override avoids directing a controller to an HTTPS endpoint that is not yet listening.
 
 ## Add-on configuration
 
@@ -28,52 +80,111 @@ Typical options:
 
 ```yaml
 local_ip: 192.168.0.18
+neo_mqtt_port: 28883
 topic_prefix: hass-actronneo-localcloud
 discovery_prefix: homeassistant
 publish_raw_state: true
 log_level: INFO
 ```
 
-The add-on listens on host TCP 443 and 8883. These ports must not already be used by another add-on or host service.
+`neo_mqtt_port` must match the Home Assistant **host-side** port mapped from add-on container port `8883/tcp`.
 
-## Network redirection
+## Firewall setup
+
+A minimal firewall rule should look like:
+
+```text
+Action:            Allow
+Protocol:          TCP
+Source:            NEO controller IP(s), or the smallest suitable NEO group
+Source port:       Any
+Destination:       Home Assistant LAN IP
+Destination ports: 443, 28883
+```
+
+Do not put `443,28883` in **Source Port**. They are destination ports on the Home Assistant host.
+
+The NEO does not need access to Home Assistant host port `1883`, and it does not need access to the normal Mosquitto host port `8883`. The compatibility proxy uses Supervisor-provided Mosquitto credentials internally.
+
+If an IoT/Untrusted-to-LAN/Trusted block rule exists, place the NEO allow rule above that block rule.
+
+### Example with three NEOs
+
+For controllers at `10.189.60.101`, `10.189.60.102` and `10.189.60.103` and Home Assistant at `192.168.0.18`:
+
+```text
+Source:            10.189.60.101-10.189.60.103
+Destination:       192.168.0.18
+Protocol:          TCP
+Source port:       Any
+Destination ports: 443, 28883
+```
+
+Using an explicit IP group/list is preferable to allowing an entire IoT subnet when only the NEO controllers require access.
+
+## DNS redirection
 
 ### Recommended: local DNS override
 
-On the DNS server used by the NEO VLAN, create a local record:
+On the DNS server actually used by the NEO network, create:
 
 ```text
 nimbus.actronair.com.au -> <Home Assistant LAN IP>
 ```
 
-Then allow the NEO/VLAN to reach the Home Assistant LAN IP on:
+For example:
 
-- TCP 443 - local Nimbus HTTPS
-- TCP 8883 - local NEO MQTT/TLS
+```text
+nimbus.actronair.com.au -> 192.168.0.18
+```
 
-The NEO itself does not need direct access to the Home Assistant Mosquitto port; the add-on proxies MQTT internally using Supervisor-provided credentials.
+If the NEO network receives the gateway/router as its DNS server by DHCP, create the record on that gateway/router rather than on a DNS server the NEO never queries.
 
-### Alternative: destination NAT
+### UniFi / UDM example
 
-A firewall DNAT rule can redirect only NEO traffic destined for the real Nimbus HTTPS address to `<Home Assistant LAN IP>:443`. This was the method used during protocol development. A DNS override is preferable because the public Nimbus address can change.
+When the NEO VLAN uses **Auto DNS Server**, the UniFi gateway normally answers DNS for those clients. In current UniFi Network releases the record can be created as a Policy Engine DNS **Host (A)** record:
+
+```text
+Type:        Host (A)
+Domain Name: nimbus.actronair.com.au
+IP Address:  <Home Assistant LAN IP>
+TTL:         Auto
+```
+
+A UniFi Host (A) record is generally available to clients using the gateway as DNS; the DNS record itself is not necessarily source-scoped to only the NEOs. This is usually acceptable when the firewall rule restricts access to Home Assistant TCP 443/28883 to the NEO IPs.
+
+If strict source-specific redirection is required, use a source-restricted DNAT design instead of a global/local DNS record. A DNAT rule tied to Actron's current public Nimbus IP is less robust because that public IP can change.
 
 ## First connection
 
-After installing and starting the add-on, reboot the NEO controller or wait for it to repeat its cloud bootstrap. Successful logs should show:
+After the add-on is running and the network rules are in place, reboot the NEO, reconnect it to Wi-Fi from the network controller, or wait for it to repeat its cloud bootstrap.
+
+Successful logs should progress through messages similar to:
 
 ```text
 Nimbus emulator listening on 127.0.0.1:8080
 NEO MQTT TLS compatibility proxy listening on 0.0.0.0:8883
-NEO MQTT TLS established ...
-MQTT CONNECT <serial> ... -> local broker credentials
 HA MQTT bridge connected
+...
+GET /api/v0/messaging/connection/details ... 200
+NEO MQTT TLS established from <NEO-IP> ...
+MQTT CONNECT <serial> ... -> local broker credentials
+Local MQTT broker accepted NEO <serial>
 ```
 
-The controller then publishes `full-status`, `status-change` and `heart-beat` messages. The add-on creates Home Assistant MQTT Discovery entities automatically.
+NEO firmware 2.6.x may send another MQTT CONNECT packet after the MQTT session has already been established. Version 0.1.2 and later deliberately absorbs this controller quirk and returns a successful CONNACK without forwarding the duplicate CONNECT to Mosquitto. A log such as this is therefore normal:
+
+```text
+NEO <serial> sent duplicate MQTT CONNECT #1; keeping existing local broker session
+```
+
+The controller should then publish `full-status`, `status-change` and `heart-beat` messages. The add-on creates Home Assistant MQTT Discovery entities automatically after usable state is received.
+
+Do **not** use Home Assistant's manual **Add MQTT device** button for the NEO. The device/entities are created by MQTT Discovery.
 
 ## Entities
 
-The first release publishes:
+The add-on publishes:
 
 - Main climate entity: power/mode, target temperature, current temperature and fan mode.
 - Per-zone climate entities for zones reported by the NEO.
@@ -112,12 +223,30 @@ While connected to the local cloud, the add-on returns Nimbus' normal no-update 
 
 On first start the add-on creates a persistent self-signed certificate for `nimbus.actronair.com.au` in the add-on data directory. NEO controllers tested during development accepted this certificate for both the local Nimbus HTTPS endpoint and the local MQTT/TLS endpoint. The certificate is retained across restarts.
 
+If every ordinary add-on restart logs `Generating persistent local Nimbus TLS certificate...`, investigate add-on data persistence. Normally that line appears only when the certificate is first created.
+
 ## Troubleshooting
 
-If Nimbus requests appear but MQTT does not connect, confirm the add-on's `local_ip` is reachable from the NEO VLAN on TCP 8883.
+### Nimbus works but MQTT never arrives
 
-If no Nimbus requests appear, verify the DNS override or DNAT rule and confirm the NEO uses the expected DNS server.
+If `/api/v0/messaging/connection/details` appears in the add-on log but no MQTT TLS connection follows, confirm:
 
-If Home Assistant entities do not appear, verify the MQTT integration is enabled and that the discovery prefix is `homeassistant` unless you intentionally changed it.
+- the NEO can reach the Home Assistant host on destination TCP `28883`;
+- the add-on Network mapping is `8883/tcp -> 28883`;
+- `neo_mqtt_port` is also `28883`.
 
-For detailed diagnostics set `log_level` to `DEBUG` and leave `publish_raw_state` enabled.
+### Mosquitto says `Bad client ... sending multiple CONNECT messages`
+
+Update Actron NEO Local Cloud to **0.1.2 or later**. Older versions transparently forwarded the NEO firmware's repeated CONNECT packet after the first handshake, which standards-compliant Mosquitto rejects as a protocol error.
+
+### No Nimbus requests appear
+
+Verify the DNS override/DNAT rule and confirm the NEO actually uses that DNS server. If the NEO already has an established cloud session, reconnecting it to Wi-Fi or rebooting it may be required to force a fresh bootstrap.
+
+### No device appears in the MQTT integration
+
+A successful TCP/TLS/MQTT connection alone is not enough. The add-on publishes discovery after it receives usable NEO state such as `full-status`. Do not manually add an MQTT device. Check the add-on log for status traffic first.
+
+### Home Assistant entities still do not appear
+
+Verify the MQTT integration is enabled and that `discovery_prefix` is `homeassistant` unless you intentionally changed it. For detailed diagnostics set `log_level` to `DEBUG` and leave `publish_raw_state` enabled.
