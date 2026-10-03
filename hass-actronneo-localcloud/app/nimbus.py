@@ -120,4 +120,10 @@ class NimbusHandler(BaseHTTPRequestHandler):
 def run_nimbus() -> None:
     server = ThreadingHTTPServer(("127.0.0.1", 8080), NimbusHandler)
     _LOGGER.info("Nimbus emulator listening on 127.0.0.1:8080")
+    if NIMBUS_ACCOUNT_DELAY_SECONDS > 0 and NIMBUS_ACCOUNT_DELAY_IP:
+        _LOGGER.info(
+            "Nimbus account delay diagnostic enabled: target=%s delay=%ss",
+            NIMBUS_ACCOUNT_DELAY_IP,
+            NIMBUS_ACCOUNT_DELAY_SECONDS,
+        )
     server.serve_forever()
