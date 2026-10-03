@@ -28,17 +28,23 @@ fi
 
 mkdir -p /data
 
-# nimbus_user_id is an optional advanced override. Testing shows existing
-# cloud-paired NEO controllers can operate with the generated local identity,
-# so normal installations do not need to discover or enter the Actron account
-# UUID. If an override is supplied, keep it persistent without logging it.
+# nimbus_user_id is an optional advanced bootstrap override only. The bridge
+# learns the controller's real Nimbus/Actron UserId from the NEO's native MQTT
+# topic once it connects, so normal installations should leave this blank.
+#
+# Keep the automatically generated bootstrap identity in a separate file from
+# the optional override. This means clearing the option really removes the
+# override instead of silently continuing to use a value persisted by an older
+# add-on version.
 NIMBUS_USER_ID="$(bashio::config 'nimbus_user_id')"
 if [ -n "${NIMBUS_USER_ID}" ]; then
-    printf '%s\n' "${NIMBUS_USER_ID}" > /data/local_user_id
-elif [ ! -s /data/local_user_id ]; then
-    cat /proc/sys/kernel/random/uuid > /data/local_user_id
+    export LOCAL_USER_ID="${NIMBUS_USER_ID}"
+else
+    if [ ! -s /data/generated_user_id ]; then
+        cat /proc/sys/kernel/random/uuid > /data/generated_user_id
+    fi
+    export LOCAL_USER_ID="$(tr -d '\r\n' < /data/generated_user_id)"
 fi
-export LOCAL_USER_ID="$(tr -d '\r\n' < /data/local_user_id)"
 
 export CERT_FILE="/data/nimbus.crt"
 export KEY_FILE="/data/nimbus.key"
