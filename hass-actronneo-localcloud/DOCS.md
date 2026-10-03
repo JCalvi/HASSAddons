@@ -23,9 +23,9 @@ No separate Home Assistant custom integration is required. The standard Mosquitt
 
 ## Nimbus UserId
 
-`nimbus_user_id` is optional. Leave it blank for normal installations; the add-on generates and persists a local UUID automatically.
+`nimbus_user_id` is optional. Leave it blank for normal installations.
 
-Version 0.1.5 introduced the option while investigating a reconnect loop. Later testing showed an already cloud-paired NEO successfully reached `full-status` and heartbeat with the generated local UUID, so the original Actron account UserId is **not** required for normal setup.
+Once a NEO connects, the add-on learns the controller's real Actron/Nimbus UserId automatically from its native MQTT topic and uses that value for commands. Before MQTT is established, the local Nimbus bootstrap response still requires a UserId field, so the add-on generates and persists a private local UUID for that bootstrap response only.
 
 If you deliberately use the override, the value is the UUID returned by the real Nimbus `/api/v0/messaging/connection/details` response and used in topics such as:
 
@@ -33,7 +33,7 @@ If you deliberately use the override, the value is the UUID returned by the real
 actron-cloud/<UserId>/neo/<serial>/...
 ```
 
-It is not an email address, OAuth token, refresh token, password, pairing code or MQTT password.
+It is not an email address, OAuth token, refresh token, password, pairing code or MQTT password. Clearing the field removes the manual override.
 
 ## Ports
 
@@ -143,9 +143,9 @@ IP Address:  <Home Assistant LAN IP>
 TTL:         Auto
 ```
 
-A gateway-wide Host (A) record is generally visible to all clients using the gateway for DNS. Restrict access with the firewall rule above.
+A gateway-wide Host (A) record is generally visible to all clients using the gateway as DNS. Restrict access with the firewall rule above.
 
-A gateway-wide DNS override can also affect Home Assistant itself. If the official HA **Actron Air** cloud integration remains enabled, it may resolve `nimbus.actronair.com.au` to the local emulator and fail TLS/API calls. Disable the old cloud integration while testing the local replacement, or use source-scoped DNS/DNAT if both must coexist.
+A gateway-wide DNS override can also affect Home Assistant itself. If the official HA **Actron Air** cloud integration remains enabled, it may resolve `nimbus.actronair.com.au` to the local emulator and fail TLS/API calls. Disable the old cloud integration while using the local replacement, or use source-scoped DNS/DNAT if both must coexist.
 
 ## First connection
 
@@ -183,18 +183,75 @@ A native NEO full-status message is wrapped like:
 
 Status changes use the same `event` wrapper with `type: status-change-broadcast` and may contain flat keys such as `UserAirconSettings.isOn` or `RemoteZoneInfo[1].ZonePosition`.
 
-Version 0.1.6 fixes event unwrapping so the complete event body is retained. Earlier versions could keep only the first nested dictionary, causing default/unknown values, zero zones and ignored command-driven status changes.
+The bridge keeps the complete full-status tree and merges partial status-change paths into it before normalizing Home Assistant state.
+
+## Live telemetry refresh
+
+Moving the connection local removes Internet/cloud latency, but the NEO firmware still decides when it emits native status-change broadcasts. Compressor telemetry is not guaranteed to be pushed every time the underlying value changes.
+
+Version 1.0 therefore supplements native push traffic with a local `getAll` refresh:
+
+```text
+System ON:   about every 10 seconds
+System OFF:  about every 60 seconds
+```
+
+Native status changes are still processed immediately. The periodic refresh simply bounds how stale compressor power, compressor speed and other engineering telemetry can become. The refresh is skipped during the 6-second command settling/anti-bounce window.
+
+### NTW / Inverter telemetry scaling
+
+NTW/Inverter systems encode some engineering values with scale factors. Version 1.0 applies:
+
+```text
+LiveAircon.OutdoorUnit.CompPower        x 100 -> W
+LiveAircon.OutdoorUnit.SupplyVoltage_Vac x 10 -> V
+```
+
+For example, a raw `CompPower` value of `40` is exposed as approximately `4000 W`.
+
+`LiveAircon.OutdoorUnit.CompSpeed` is exposed as Compressor Speed in `%` with a speedometer icon.
 
 ## Entities
 
-The add-on publishes:
+Enabled by default:
 
-- Main climate entity: power/mode, target temperature, current temperature and fan mode when available.
-- Per-zone climate entities.
+- Main climate entity with HVAC mode, target/current temperature, fan mode and live HVAC action.
 - Quiet Mode, Turbo Mode, Away Mode and Continuous Fan switches.
-- Outdoor temperature, humidity, compressor power and compressor speed sensors.
+- Outdoor Temperature.
+- Humidity.
+- Compressor Power.
+- Compressor Speed (%).
 - Clean Filter and Defrosting binary sensors.
-- Per-zone humidity sensors.
+- Per-zone climate/humidity entities when the NEO reports configured zones.
+
+Version 1.0 also publishes the following **disabled by default** as Home Assistant diagnostic entities:
+
+- Compressor Capacity (%).
+- Indoor Fan RPM.
+- Indoor Fan PWM (%).
+- Compressor Running.
+- Coil Inlet Temperature.
+- Outdoor Coil Temperature.
+- Discharge Temperature.
+- Suction Temperature.
+- Drive / VSD Temperature.
+- Wi-Fi Signal.
+- Controller Uptime.
+- MQTT Session Uptime.
+- MQTT Reconnect Count.
+- VSD Communications Status.
+- AC Error Code.
+- Low Pressure Fault / High Pressure Fault.
+- Supply Voltage / Current / Power.
+- EEV Opening (%).
+- Superheat.
+- Indoor Unit Firmware.
+- Outdoor Unit Firmware.
+- Outdoor Unit Family.
+- System Capacity.
+- Wi-Fi Firmware.
+
+Enable only the diagnostics you want from the Home Assistant device/entity page.
 
 Normalized state is retained at:
 
@@ -218,6 +275,8 @@ actron-cloud/<UserId>/neo/<serial>/app/cmd
 
 The NEO replies on `mwc/cmd-response/...`. State changes are reflected back through `status-change` broadcasts and merged into the retained HA state.
 
+The bridge uses a short 6-second optimistic settling window after commands to prevent stale NEO echoes from making HA controls bounce back. At the end of that window it requests canonical full state with `getAll`.
+
 ## OTA behaviour
 
 While connected to the local cloud, the add-on returns Nimbus' no-update response for OTA queries. To use Actron's normal OTA service, temporarily restore the controller's normal DNS/network path to Nimbus.
@@ -234,13 +293,17 @@ If every ordinary add-on restart logs `Generating persistent local Nimbus TLS ce
 
 A first-attempt duplicate CONNECT/disconnect followed by a successful retry has been observed on NEO firmware 2.6.x. If the second attempt reaches `full-status` and heartbeats continue, the local session is usable.
 
-### Full-status arrives but values are Unknown/default or zones=0
-
-Update to **0.1.6 or later**. Earlier versions incorrectly unwrapped the MQTT `event` object and could discard most of the NEO state.
-
 ### Commands receive cmd-response but HA controls snap back
 
-Update to **0.1.6 or later**. Earlier versions could silently discard `status-change-broadcast` payloads, so the NEO could acknowledge a command while Home Assistant continued showing the previous retained state.
+Use version 0.1.7 or later. The bridge includes a 6-second optimistic settling window and canonical `getAll` refresh to prevent stale status echoes from immediately reversing a control in Home Assistant.
+
+### Compressor power appears about 100x too small
+
+Use version 1.0 or later. NTW/Inverter `CompPower` requires the x100 engineering scale before publishing watts.
+
+### Compressor telemetry changes slowly
+
+Use version 1.0 or later. The add-on requests local full state approximately every 10 seconds while a system is on and every 60 seconds while off, in addition to native status-change pushes.
 
 ### Nimbus works but MQTT never arrives
 
@@ -248,11 +311,11 @@ Confirm:
 
 - NEO can reach HA destination TCP `28883`;
 - add-on mapping is `8883/tcp -> 28883`;
-- `neo_mqtt_port` is `28883`.
+- `neo_mqtt_port` is also `28883`.
 
 ### Mosquitto says `Bad client ... sending multiple CONNECT messages`
 
-Update to **0.1.2 or later**.
+Use version 0.1.2 or later.
 
 ### No Nimbus requests appear
 
