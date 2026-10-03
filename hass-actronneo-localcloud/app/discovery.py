@@ -26,6 +26,7 @@ def _state_sensor(
     name: str,
     unit: str | None = None,
     device_class: str | None = None,
+    icon: str | None = None,
     enabled_by_default: bool = True,
     diagnostic: bool = False,
 ) -> None:
@@ -42,6 +43,8 @@ def _state_sensor(
         payload["unit_of_measurement"] = unit
     if device_class:
         payload["device_class"] = device_class
+    if icon:
+        payload["icon"] = icon
     if diagnostic:
         payload["entity_category"] = "diagnostic"
     _publish(client, "sensor", f"actronneo_{serial}_{key}", payload)
@@ -89,10 +92,6 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         "model": state.get("model") or "NEO",
     }
 
-    # Home Assistant's MQTT discovery schema requires device.sw_version to be
-    # a string when present. Some NEO full-status payloads do not expose the
-    # wall-controller firmware field used by normalize_state(), so omit the
-    # key entirely until a non-empty firmware value is available.
     firmware = str(state.get("firmware") or "").strip()
     if firmware:
         device["sw_version"] = firmware
@@ -121,10 +120,6 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         "temperature_unit": "C",
     }
 
-    # Some NEO status snapshots omit UserAirconSettings.FanMode entirely. Do
-    # not publish fan-mode discovery until a real current value exists; Home
-    # Assistant otherwise rejects the empty state as an invalid fan mode. A
-    # later status containing FanMode republishes discovery with fan controls.
     fan_mode = str(state.get("fan_mode") or "").strip()
     fan_modes = [str(item).strip() for item in state.get("fan_modes", []) if str(item).strip()]
     if fan_mode and fan_modes:
@@ -203,6 +198,8 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         device=device,
         key="compressor_speed",
         name="Compressor Speed",
+        unit="%",
+        icon="mdi:speedometer",
     )
 
     _state_binary_sensor(
