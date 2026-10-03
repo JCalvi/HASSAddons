@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+
+- Gives disabled-by-default engineering/diagnostic entities meaningful icons for their enabled state, including compressor/fan, temperatures, Wi-Fi, uptime, communications, electrical values, EEV, firmware and fault indicators.
+- Note: Home Assistant shows its generic disabled-entity eye icon while an entity remains disabled; the entity's own icon appears after it is enabled.
+
 ## 1.0
 
 - Promotes Actron NEO Local Cloud from experimental to stable status.
