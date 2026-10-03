@@ -9,7 +9,8 @@
 - Keeps the normal device page compact; all new engineering/information entities are published as Home Assistant diagnostic entities and can be enabled individually when wanted.
 - Corrects NTW/Inverter compressor power telemetry scaling: raw `CompPower` is converted to watts using the NEO/NTW x100 scale. NTW supply voltage receives the corresponding x10 scale.
 - Exposes `CompSpeed` as Compressor Speed in `%` and gives it a speedometer icon.
-- Adds local telemetry refreshes with `getAll` approximately every 10 seconds while a system is on and every 60 seconds while off. Native push/status-change updates are still processed immediately.
+- Adds local telemetry refreshes with `getAll` approximately every 5 seconds while a system is on and every 30 seconds while off. Native push/status-change updates are still processed immediately.
+- Forces compressor power, speed and capacity to zero whenever the system/compressor state says the compressor is stopped, preventing stale retained compressor telemetry from lingering after shutdown.
 - Updates the local Nimbus service identifier to 1.0 and expands README/DOCS for the stable release.
 
 ## 0.1.7
