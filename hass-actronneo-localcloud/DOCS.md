@@ -21,6 +21,34 @@ NEO controller
 
 No separate Home Assistant custom integration is required. The standard Mosquitto Broker add-on/integration is required.
 
+## Existing paired controllers: Nimbus UserId
+
+An existing NEO is already paired to a Nimbus account and retains that account identity. For an already-paired controller, set `nimbus_user_id` to the original Nimbus `UserId` before redirecting the controller to the local emulator.
+
+The UserId can be obtained from a capture of the real Nimbus response:
+
+```text
+GET /api/v0/messaging/connection/details
+```
+
+where it appears as:
+
+```json
+{"UserId":"<uuid>"}
+```
+
+The same UUID appears in the native MQTT topic path:
+
+```text
+actron-cloud/<UserId>/neo/<serial>/...
+```
+
+`nimbus_user_id` is only that UUID. It is **not** a bearer token, OAuth token, password, refresh token, pairing code or MQTT password. Do not store those credentials in the add-on configuration.
+
+If this option is blank, the add-on generates and persists a random local UUID. That fallback is suitable for development/new pairing work, but an existing cloud-paired NEO may repeatedly re-initialize its MQTT session if Nimbus suddenly reports a different account ID. Version 0.1.5 adds this option specifically so the local emulator can preserve the identity used by the paired controller.
+
+Multiple NEO controllers paired to the same Actron account normally share the same Nimbus UserId, so one add-on instance can serve them all.
+
 ## Important port distinction
 
 The NEO does **not** connect to Home Assistant's Mosquitto Broker directly.
@@ -49,6 +77,7 @@ Host TCP 443 normally must remain available to this add-on because the NEO acces
 - Home Assistant OS/Supervised.
 - The standard Mosquitto Broker add-on/integration available through the Supervisor MQTT service.
 - A fixed or reserved Home Assistant LAN IP reachable from the NEO network.
+- The original Nimbus UserId for already-paired controllers.
 - The NEO controller(s) must be able to reach the Home Assistant host on destination TCP ports **443** and **28883** by default.
 - DNS or firewall/NAT control so `nimbus.actronair.com.au` traffic from the NEO is directed to the Home Assistant host.
 
@@ -57,18 +86,19 @@ Host TCP 443 normally must remain available to this add-on because the NEO acces
 1. Install and start the standard **Mosquitto Broker** add-on and make sure the Home Assistant MQTT integration is working.
 2. Install **Actron NEO Local Cloud**.
 3. Set `local_ip` to the Home Assistant LAN address reachable by the NEO controller(s).
-4. Leave `neo_mqtt_port: 28883` unless you intentionally change the add-on host port mapping.
-5. Confirm the add-on Network mappings are:
+4. For already-paired NEOs, set `nimbus_user_id` to the original Nimbus UserId used by those controllers.
+5. Leave `neo_mqtt_port: 28883` unless you intentionally change the add-on host port mapping.
+6. Confirm the add-on Network mappings are:
 
    ```text
    443/tcp  -> 443
    8883/tcp -> 28883
    ```
 
-6. Start the add-on and confirm it remains running before changing DNS or reconnecting a NEO.
-7. Create the firewall allow rule from the NEO controller IPs/network to the Home Assistant host.
-8. Create the DNS override for `nimbus.actronair.com.au`.
-9. Reconnect/reboot one NEO first and watch the add-on log. Once it is working, move the remaining NEOs across.
+7. Start the add-on and confirm it remains running before changing DNS or reconnecting a NEO.
+8. Create the firewall allow rule from the NEO controller IPs/network to the Home Assistant host.
+9. Create the DNS override for `nimbus.actronair.com.au`.
+10. Reconnect/reboot one NEO first and watch the add-on log. Once it is working, move the remaining NEOs across.
 
 Starting the add-on before applying the DNS override avoids directing a controller to an HTTPS endpoint that is not yet listening.
 
@@ -80,6 +110,7 @@ Typical options:
 
 ```yaml
 local_ip: 192.168.0.18
+nimbus_user_id: "<original Nimbus UserId>"
 neo_mqtt_port: 28883
 topic_prefix: hass-actronneo-localcloud
 discovery_prefix: homeassistant
@@ -88,6 +119,8 @@ log_level: INFO
 ```
 
 `neo_mqtt_port` must match the Home Assistant **host-side** port mapped from add-on container port `8883/tcp`.
+
+When `nimbus_user_id` is non-empty, the add-on persists that value in its data directory. The value is deliberately not printed in normal logs.
 
 ## Firewall setup
 
@@ -153,6 +186,8 @@ TTL:         Auto
 
 A UniFi Host (A) record is generally available to clients using the gateway as DNS; the DNS record itself is not necessarily source-scoped to only the NEOs. This is usually acceptable when the firewall rule restricts access to Home Assistant TCP 443/28883 to the NEO IPs.
 
+A gateway-wide DNS override can also affect Home Assistant itself. If the official Home Assistant **Actron Air** cloud integration is still enabled, it may resolve `nimbus.actronair.com.au` to the local emulator and fail TLS/API calls. Disable the old cloud integration while testing the local replacement, or use a source-scoped DNS/DNAT design if both services must coexist.
+
 If strict source-specific redirection is required, use a source-restricted DNAT design instead of a global/local DNS record. A DNAT rule tied to Actron's current public Nimbus IP is less robust because that public IP can change.
 
 ## First connection
@@ -172,13 +207,9 @@ MQTT CONNECT <serial> ... -> local broker credentials
 Local MQTT broker accepted NEO <serial>
 ```
 
-NEO firmware 2.6.x may send another MQTT CONNECT packet after the MQTT session has already been established. Version 0.1.2 and later deliberately absorbs this controller quirk and returns a successful CONNACK without forwarding the duplicate CONNECT to Mosquitto. A log such as this is therefore normal:
-
-```text
-NEO <serial> sent duplicate MQTT CONNECT #1; keeping existing local broker session
-```
-
 The controller should then publish `full-status`, `status-change` and `heart-beat` messages. The add-on creates Home Assistant MQTT Discovery entities automatically after usable state is received.
+
+NEO firmware can issue another MQTT CONNECT during bootstrap. The proxy prevents that packet from being forwarded directly into Mosquitto, because standards-compliant Mosquitto rejects a second CONNECT on an already-established session. If a controller still loops immediately after the second CONNECT, verify `nimbus_user_id` first; an existing paired NEO should receive the same Nimbus account ID it used before the local cutover.
 
 Do **not** use Home Assistant's manual **Add MQTT device** button for the NEO. The device/entities are created by MQTT Discovery.
 
@@ -186,7 +217,7 @@ Do **not** use Home Assistant's manual **Add MQTT device** button for the NEO. T
 
 The add-on publishes:
 
-- Main climate entity: power/mode, target temperature, current temperature and fan mode.
+- Main climate entity: power/mode, target temperature, current temperature and fan mode when a valid fan-mode value has been received.
 - Per-zone climate entities for zones reported by the NEO.
 - Quiet Mode, Turbo Mode, Away Mode and Continuous Fan switches.
 - Outdoor temperature, humidity, compressor power and compressor speed sensors.
@@ -210,7 +241,7 @@ hass-actronneo-localcloud/<serial>/raw
 Home Assistant commands are translated to the NEO's native `set-settings` payloads and published to:
 
 ```text
-actron-cloud/<local-user-id>/neo/<serial>/app/cmd
+actron-cloud/<Nimbus-UserId>/neo/<serial>/app/cmd
 ```
 
 The controller's command acknowledgements remain available on its native `mwc/cmd-response/...` topics.
@@ -226,6 +257,10 @@ On first start the add-on creates a persistent self-signed certificate for `nimb
 If every ordinary add-on restart logs `Generating persistent local Nimbus TLS certificate...`, investigate add-on data persistence. Normally that line appears only when the certificate is first created.
 
 ## Troubleshooting
+
+### Connects to MQTT, sends a second CONNECT, then immediately disconnects/retries
+
+For an already cloud-paired NEO, first verify `nimbus_user_id` is set to the controller's original Nimbus UserId. The successful development path preserved the paired Nimbus UserId; replacing it with a generated UUID can cause the controller to re-initialize the session after `/api/v0/client/account` is returned.
 
 ### Nimbus works but MQTT never arrives
 
