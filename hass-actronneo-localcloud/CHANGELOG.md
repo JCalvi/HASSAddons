@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+
+- Promotes the tested local-cloud implementation to a clean production release after the reconnect investigation.
+- Removes the temporary `/client/account` delay experiment and the synthetic Nimbus JWT experiment, including their add-on options, environment wiring and diagnostic code.
+- Returns OAuth handling to the simple local bearer token required by the local MQTT compatibility path; no real Actron token, refresh token or signing key is required.
+- Simplifies duplicate-CONNECT handling to the minimum required compatibility behaviour: acknowledge the repeated CONNECT locally and keep the existing Supervisor Mosquitto session.
+- Removes the detailed post-duplicate packet tracing used during reconnect diagnosis while retaining normal connection/disconnection logging.
+- Documents that NEO firmware 2.6.x uses an approximately 30-second MQTT reconnect interval. A controlled forced disconnect against the real Actron MQTT service showed the same roughly 31-second wait before the first replacement connection.
+- Keeps the real Nimbus `/client/account` HAL-style `_links` structure, local `getAll` refresh, command anti-bounce, live HVAC action, diagnostics/entities and all normal 1.0 functionality.
+
 ## 1.0.9
 
 - Adds an opt-in `nimbus_synthetic_jwt` diagnostic for the NEO OAuth refresh path. It is disabled by default and does not change normal 1.0.8 behaviour unless explicitly enabled.
@@ -72,7 +82,7 @@
 
 - Promotes Actron NEO Local Cloud from experimental to stable status.
 - Adds live HVAC action to the main climate entity so Home Assistant can show `off`, `idle`, `heating`, `cooling`, `drying` and `fan` independently of the selected HVAC mode.
-- Adds disabled-by-default engineering diagnostics for compressor capacity, indoor fan RPM/PWM, compressor running state, coil inlet/outdoor coil/discharge/suction/VSD temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD communications status, AC error code, LP/HP faults, supply voltage/current/power, EEV opening and superheat.
+- Adds disabled-by-default engineering diagnostics for compressor capacity, indoor fan RPM/PWM, compressor running state, coil inlet/outdoor coil/discharge/suction/VSD temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD communications status, current AC error code, LP/HP faults, supply voltage/current/power, EEV opening and superheat.
 - Adds disabled-by-default equipment information entities for indoor unit firmware, outdoor unit firmware/family/capacity and Wi-Fi firmware.
 - Keeps the normal device page compact; all new engineering/information entities are published as Home Assistant diagnostic entities and can be enabled individually when wanted.
 - Corrects NTW/Inverter compressor power telemetry scaling: raw `CompPower` is converted to watts using the NEO/NTW x100 scale. NTW supply voltage receives the corresponding x10 scale.
