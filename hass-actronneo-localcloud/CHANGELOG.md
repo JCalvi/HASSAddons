@@ -7,6 +7,9 @@
 - Adds disabled-by-default engineering diagnostics for compressor capacity, indoor fan RPM/PWM, compressor running state, coil inlet/outdoor coil/discharge/suction/VSD temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD communications status, AC error code, LP/HP faults, supply voltage/current/power, EEV opening and superheat.
 - Adds disabled-by-default equipment information entities for indoor unit firmware, outdoor unit firmware/family/capacity and Wi-Fi firmware.
 - Keeps the normal device page compact; all new engineering/information entities are published as Home Assistant diagnostic entities and can be enabled individually when wanted.
+- Corrects NTW/Inverter compressor power telemetry scaling: raw `CompPower` is converted to watts using the NEO/NTW x100 scale. NTW supply voltage receives the corresponding x10 scale.
+- Exposes `CompSpeed` as Compressor Speed in `%` and gives it a speedometer icon.
+- Adds local telemetry refreshes with `getAll` approximately every 10 seconds while a system is on and every 60 seconds while off. Native push/status-change updates are still processed immediately.
 - Updates the local Nimbus service identifier to 1.0 and expands README/DOCS for the stable release.
 
 ## 0.1.7
