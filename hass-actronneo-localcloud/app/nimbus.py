@@ -94,6 +94,9 @@ class NimbusHandler(BaseHTTPRequestHandler):
                     client_ip,
                 )
 
+            # Match the real Nimbus account response structure captured from a
+            # paired NEO. Account values remain local/synthetic; the experiment
+            # changes only the HAL-style _links object that was previously {}.
             self._send_json(
                 {
                     "id": LOCAL_USER_ID,
@@ -105,7 +108,33 @@ class NimbusHandler(BaseHTTPRequestHandler):
                     "state": "",
                     "country": "",
                     "postcode": "",
-                    "_links": {},
+                    "_links": {
+                        "self": {"href": "/api/v0/client/account"},
+                        "change-email": {
+                            "href": "/api/v0/client/account/change-email",
+                            "title": "Change Email",
+                        },
+                        "change-password": {
+                            "href": "/api/v0/client/account/change-password",
+                            "title": "Change Password",
+                        },
+                        "update-details": {
+                            "href": "/api/v0/client/account/update-details",
+                            "title": "Update Details",
+                        },
+                        "register-account": {
+                            "href": "/api/v0/client/account/register",
+                            "title": "POST to create a new account, GET will return format of the object to fill out.",
+                        },
+                        "forgot-password": {
+                            "href": "/api/v0/client/account/forgot-password",
+                            "title": "Forgot Password",
+                        },
+                        "reset-password": {
+                            "href": "/api/v0/client/account/reset-password",
+                            "title": "Forgot Password",
+                        },
+                    },
                 }
             )
             return
