@@ -28,23 +28,15 @@ fi
 
 mkdir -p /data
 
-# nimbus_user_id is an optional advanced bootstrap override only. The bridge
-# learns the controller's real Nimbus/Actron UserId from the NEO's native MQTT
-# topic once it connects, so normal installations should leave this blank.
-#
-# Keep the automatically generated bootstrap identity in a separate file from
-# the optional override. This means clearing the option really removes the
-# override instead of silently continuing to use a value persisted by an older
-# add-on version.
-NIMBUS_USER_ID="$(bashio::config 'nimbus_user_id')"
-if [ -n "${NIMBUS_USER_ID}" ]; then
-    export LOCAL_USER_ID="${NIMBUS_USER_ID}"
-else
-    if [ ! -s /data/generated_user_id ]; then
-        cat /proc/sys/kernel/random/uuid > /data/generated_user_id
-    fi
-    export LOCAL_USER_ID="$(tr -d '\r\n' < /data/generated_user_id)"
+# Nimbus requires a UserId in its bootstrap response, but testing confirmed it
+# does not need to be the controller's real Actron/Nimbus UUID. Keep a private,
+# persistent local bootstrap identity instead. Once MQTT is established, the
+# bridge learns the controller's real UserId from its native MQTT topic and uses
+# that learned value for commands.
+if [ ! -s /data/generated_user_id ]; then
+    cat /proc/sys/kernel/random/uuid > /data/generated_user_id
 fi
+export LOCAL_USER_ID="$(tr -d '\r\n' < /data/generated_user_id)"
 
 export CERT_FILE="/data/nimbus.crt"
 export KEY_FILE="/data/nimbus.key"
