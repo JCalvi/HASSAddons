@@ -28,8 +28,16 @@ fi
 
 mkdir -p /data
 
-if [ ! -s /data/local_user_id ]; then
+# Existing cloud-paired NEO controllers retain their Nimbus account/UserId and
+# expect the local bootstrap to present the same identity.  If supplied, store
+# that ID persistently without logging it.  A generated ID remains available as
+# a fallback for development/new pairing scenarios.
+NIMBUS_USER_ID="$(bashio::config 'nimbus_user_id')"
+if [ -n "${NIMBUS_USER_ID}" ]; then
+    printf '%s\n' "${NIMBUS_USER_ID}" > /data/local_user_id
+elif [ ! -s /data/local_user_id ]; then
     cat /proc/sys/kernel/random/uuid > /data/local_user_id
+    bashio::log.warning "nimbus_user_id is empty; generated a local Nimbus user ID. Existing cloud-paired NEO controllers may repeatedly reconnect until their original Nimbus UserId is configured."
 fi
 export LOCAL_USER_ID="$(tr -d '\r\n' < /data/local_user_id)"
 
