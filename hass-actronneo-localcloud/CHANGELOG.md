@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3
+
+- Adds a 5-second timeout between successful NEO TLS establishment and receipt of the initial MQTT `CONNECT` packet.
+- If a controller opens TLS but then stalls before MQTT, the proxy now closes that dead session early instead of waiting for the NEO's observed ~30-second timeout.
+- Logs stalled pre-CONNECT sessions at INFO so restart tests can show whether early closure causes the controller to retry sooner.
+- The timeout applies only before the first MQTT packet; normal established MQTT sessions are returned to blocking operation and are otherwise unchanged.
+
 ## 1.0.2
 
 - Adds MQTT reconnect diagnostics around the NEO 2.6.x duplicate-CONNECT sequence so restart delays can be characterised without logging sensitive payload contents.
