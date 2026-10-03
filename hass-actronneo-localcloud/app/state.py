@@ -61,15 +61,7 @@ def set_path(root: dict[str, Any], path: str, value: Any) -> None:
 
 
 def extract_event(payload: Any) -> dict[str, Any] | None:
-    """Return the state-bearing body of a NEO MQTT broadcast.
-
-    NEO full-status and status-change MQTT payloads are wrapped as
-    ``{"event": {"type": "...-broadcast", ...state fields...}}``.  The
-    previous implementation incorrectly returned the first dictionary value
-    inside ``event`` (often only ``AirconSystem``), which discarded the rest of
-    the full state and caused status-change broadcasts to be ignored whenever
-    ``type`` was the first key.
-    """
+    """Return the state-bearing body of a NEO MQTT broadcast."""
     if not isinstance(payload, dict):
         return None
 
@@ -78,8 +70,6 @@ def extract_event(payload: Any) -> dict[str, Any] | None:
         body = {key: deepcopy(value) for key, value in event.items() if key != "type"}
         return body or None
 
-    # Keep accepting an already-unwrapped state body for captures/tests and
-    # compatibility with any firmware that publishes the fields directly.
     if any(k in payload for k in ("AirconSystem", "UserAirconSettings", "LiveAircon")):
         return {key: deepcopy(value) for key, value in payload.items() if key != "type"}
     return None
@@ -127,6 +117,13 @@ def _neo_hvac_action(is_on: bool, neo_mode: str, live: dict[str, Any]) -> str:
 def _int_or_none(value: Any) -> int | None:
     try:
         return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        return float(value)
     except (TypeError, ValueError):
         return None
 
@@ -239,6 +236,26 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     session_count = _int_or_none(cloud_sessions.get("SinceLastMCUReset"))
     reconnect_count = max(session_count - 1, 0) if session_count is not None else None
 
+    # NTW/Inverter telemetry uses scaled engineering values. Real NTW payloads
+    # report values such as CompPower=40 for approximately 4.0 kW. The current
+    # ActronAir NEO integration uses x100 for compressor power and x10 for
+    # supply voltage on this hardware family.
+    model = str(aircon.get("MasterWCModel", ""))
+    family = str(outdoor_config.get("Family", ""))
+    is_ntw_series = model.upper().startswith("NTW") or "INVERTER" in family.upper()
+    raw_comp_power = _float_or_none(outdoor.get("CompPower"))
+    compressor_power = (
+        raw_comp_power * 100.0
+        if is_ntw_series and raw_comp_power is not None
+        else raw_comp_power
+    )
+    raw_supply_voltage = _float_or_none(outdoor.get("SupplyVoltage_Vac"))
+    supply_voltage = (
+        raw_supply_voltage * 10.0
+        if is_ntw_series and raw_supply_voltage is not None
+        else raw_supply_voltage
+    )
+
     return {
         "serial": serial,
         "name": system_name,
@@ -260,7 +277,7 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "turbo": turbo,
         "away": bool(settings.get("AwayMode", False)),
         "compressor_mode": live.get("CompressorMode"),
-        "compressor_power": outdoor.get("CompPower"),
+        "compressor_power": compressor_power,
         "compressor_speed": outdoor.get("CompSpeed"),
         "compressor_capacity": live.get("CompressorCapacity"),
         "indoor_fan_rpm": live.get("FanRPM"),
@@ -279,7 +296,7 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "error_code": _format_error_code(live.get("ErrCode")),
         "lp_fault": bool(outdoor.get("LPErr", False)),
         "hp_fault": bool(outdoor.get("HPErr", False)),
-        "supply_voltage": outdoor.get("SupplyVoltage_Vac"),
+        "supply_voltage": supply_voltage,
         "supply_current": outdoor.get("SupplyCurrentRMS_A"),
         "supply_power": outdoor.get("SupplyPowerRMS_W"),
         "eev_opening": eev.get("Opening_pc"),
