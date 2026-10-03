@@ -14,22 +14,6 @@ from config import CERT_FILE, KEY_FILE, MQTT_HOST, MQTT_PASSWORD, MQTT_PORT, MQT
 _LOGGER = logging.getLogger("actronneo-localcloud.mqtt_proxy")
 
 _SUCCESS_CONNACK = b"\x20\x02\x00\x00"
-_MQTT_PACKET_NAMES = {
-    1: "CONNECT",
-    2: "CONNACK",
-    3: "PUBLISH",
-    4: "PUBACK",
-    5: "PUBREC",
-    6: "PUBREL",
-    7: "PUBCOMP",
-    8: "SUBSCRIBE",
-    9: "SUBACK",
-    10: "UNSUBSCRIBE",
-    11: "UNSUBACK",
-    12: "PINGREQ",
-    13: "PINGRESP",
-    14: "DISCONNECT",
-}
 
 
 def _recv_exact(sock: socket.socket | ssl.SSLSocket, count: int) -> bytes:
@@ -196,80 +180,25 @@ def _neo_to_broker(
     neo_write_lock: threading.Lock,
     client_id: str,
 ) -> None:
-    """Forward NEO MQTT packets while absorbing its duplicate CONNECT quirk.
+    """Forward NEO MQTT packets while absorbing duplicate CONNECT packets.
 
-    NEO firmware 2.6.x can send another CONNECT packet on the already-established
-    TLS/MQTT stream after Nimbus account bootstrap. Mosquitto rejects a second
-    CONNECT on the same MQTT session, so absorb it locally and acknowledge it.
-    Testing showed that opening a replacement Mosquitto session and returning a
-    real CONNACK/SUBACK does not stop the NEO from closing this bootstrap attempt,
-    so the simpler compatibility path is retained here.
+    NEO firmware 2.6.x can send another CONNECT packet on an already-established
+    TLS/MQTT stream. Mosquitto rejects a second CONNECT on the same session, so
+    acknowledge it locally and keep the existing broker session alive.
     """
-    duplicate_connects = 0
-    post_duplicate_packets = 0
-    last_post_duplicate_packet = "none"
     try:
         while True:
-            first_byte, body, packet = _read_packet(neo)
-            packet_type = first_byte >> 4
-            packet_name = _MQTT_PACKET_NAMES.get(packet_type, f"TYPE_{packet_type}")
-            if packet_type == 1:  # CONNECT
-                duplicate_connects += 1
-                post_duplicate_packets = 0
-                last_post_duplicate_packet = "none"
-                _LOGGER.info(
-                    "NEO %s sent duplicate MQTT CONNECT #%d; keeping existing local broker session",
-                    client_id,
-                    duplicate_connects,
-                )
+            first_byte, _body, packet = _read_packet(neo)
+            if first_byte >> 4 == 1:  # CONNECT
+                _LOGGER.info("NEO %s sent duplicate MQTT CONNECT; acknowledging locally", client_id)
                 with neo_write_lock:
                     neo.sendall(_SUCCESS_CONNACK)
                 continue
-
-            if duplicate_connects:
-                post_duplicate_packets += 1
-                last_post_duplicate_packet = packet_name
-                if packet_type == 14:
-                    _LOGGER.info(
-                        "NEO %s sent MQTT DISCONNECT after duplicate CONNECT #%d",
-                        client_id,
-                        duplicate_connects,
-                    )
-                else:
-                    _LOGGER.debug(
-                        "NEO %s post-duplicate packet #%d: %s type=%d flags=0x%x body=%d bytes",
-                        client_id,
-                        post_duplicate_packets,
-                        packet_name,
-                        packet_type,
-                        first_byte & 0x0F,
-                        len(body),
-                    )
-
             broker.sendall(packet)
     except EOFError:
-        if duplicate_connects:
-            _LOGGER.info(
-                "NEO %s closed MQTT/TLS stream after duplicate CONNECT #%d; "
-                "post-duplicate packets=%d last=%s",
-                client_id,
-                duplicate_connects,
-                post_duplicate_packets,
-                last_post_duplicate_packet,
-            )
-        else:
-            _LOGGER.debug("NEO %s closed MQTT/TLS stream", client_id)
-    except (OSError, ssl.SSLError) as exc:
-        if duplicate_connects:
-            _LOGGER.info(
-                "NEO %s MQTT/TLS stream ended after duplicate CONNECT #%d: %s; "
-                "post-duplicate packets=%d last=%s",
-                client_id,
-                duplicate_connects,
-                exc,
-                post_duplicate_packets,
-                last_post_duplicate_packet,
-            )
+        _LOGGER.debug("NEO %s closed MQTT/TLS stream", client_id)
+    except (OSError, ssl.SSLError):
+        pass
     except Exception as exc:
         _LOGGER.warning("NEO MQTT packet forwarding for %s failed: %s", client_id, exc)
     finally:
@@ -321,9 +250,9 @@ class NeoMqttProxy:
             backend = socket.create_connection((MQTT_HOST, MQTT_PORT), timeout=10)
             backend.settimeout(None)
 
-            # Wait naturally for the NEO's first MQTT CONNECT. A 5-second
-            # post-TLS timeout was tested and only closed idle sockets sooner;
-            # it did not shorten the controller's own retry interval.
+            # Let the NEO's own reconnect timer govern attempts. Testing against
+            # both local and real-cloud MQTT paths showed an approximately
+            # 30-second firmware retry interval after connection loss.
             first, body, _packet = _read_packet(tls)
             patched_connect, client_id = patch_connect(first, body)
             backend.sendall(patched_connect)
