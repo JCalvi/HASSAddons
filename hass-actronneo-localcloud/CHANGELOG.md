@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+- Fixes NEO firmware 2.6.x repeatedly sending MQTT CONNECT on an already-established TLS/MQTT session. The compatibility proxy now absorbs repeated CONNECT packets and returns a successful CONNACK instead of forwarding them to Mosquitto, preventing `Bad client ... sending multiple CONNECT messages` protocol errors.
+- Validates the real Mosquitto CONNACK before announcing a NEO as connected, so the add-on log now distinguishes TLS/CONNECT arrival from successful broker acceptance.
+- Keeps normal MQTT packets flowing through the existing Mosquitto session after the duplicate CONNECT workaround.
+- Expands README and installation documentation with the required host/container port mapping, `neo_mqtt_port` matching requirement, destination-port firewall rules, DNS override behaviour, UniFi/UDM notes, install order and troubleshooting guidance.
+- Clarifies that Home Assistant MQTT Discovery creates NEO devices automatically after usable status is received; the manual **Add MQTT device** flow is not used.
+
 ## 0.1.1
 
 - Avoids the standard Mosquitto Broker add-on's host TCP 8883 port conflict by mapping the NEO TLS MQTT listener to host port 28883 by default.
