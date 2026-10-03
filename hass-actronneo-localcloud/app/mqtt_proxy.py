@@ -13,6 +13,8 @@ from config import CERT_FILE, KEY_FILE, MQTT_HOST, MQTT_PASSWORD, MQTT_PORT, MQT
 
 _LOGGER = logging.getLogger("actronneo-localcloud.mqtt_proxy")
 
+_SUCCESS_CONNACK = b"\x20\x02\x00\x00"
+
 
 def _recv_exact(sock: socket.socket | ssl.SSLSocket, count: int) -> bytes:
     data = bytearray()
@@ -46,6 +48,15 @@ def _encode_remaining_length(value: int) -> bytes:
         out.append(digit)
         if not value:
             return bytes(out)
+
+
+def _read_packet(sock: socket.socket | ssl.SSLSocket) -> tuple[int, bytes, bytes]:
+    """Read one complete MQTT packet and return header byte, body and full packet."""
+    first_byte = _recv_exact(sock, 1)[0]
+    remaining = _read_remaining_length(sock)
+    body = _recv_exact(sock, remaining)
+    packet = bytes([first_byte]) + _encode_remaining_length(remaining) + body
+    return first_byte, body, packet
 
 
 def _read_mqtt_field(buf: bytes | bytearray, pos: int) -> tuple[bytes, int]:
@@ -129,18 +140,78 @@ def patch_connect(first_byte: int, body: bytes) -> tuple[bytes, str]:
     return packet, client_id_text
 
 
-def _pipe(src: socket.socket | ssl.SSLSocket, dst: socket.socket | ssl.SSLSocket) -> None:
+def _validate_connack(first_byte: int, body: bytes, client_id: str) -> None:
+    if first_byte != 0x20 or len(body) != 2:
+        raise ValueError(
+            f"local broker returned invalid CONNACK for {client_id}: "
+            f"header=0x{first_byte:02x} length={len(body)}"
+        )
+    if body[1] != 0:
+        raise ValueError(f"local broker rejected {client_id} with CONNACK return code {body[1]}")
+
+
+def _pipe(
+    src: socket.socket | ssl.SSLSocket,
+    dst: socket.socket | ssl.SSLSocket,
+    write_lock: threading.Lock | None = None,
+) -> None:
     try:
         while True:
             data = src.recv(65536)
             if not data:
                 break
-            dst.sendall(data)
+            if write_lock is None:
+                dst.sendall(data)
+            else:
+                with write_lock:
+                    dst.sendall(data)
     except (OSError, ssl.SSLError):
         pass
     finally:
         try:
             dst.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
+
+
+def _neo_to_broker(
+    neo: ssl.SSLSocket,
+    broker: socket.socket,
+    neo_write_lock: threading.Lock,
+    client_id: str,
+) -> None:
+    """Forward NEO MQTT packets while absorbing its duplicate CONNECT quirk.
+
+    NEO firmware 2.6.x can send another CONNECT packet on the already-established
+    TLS/MQTT stream after Nimbus account bootstrap. Actron's broker tolerates it,
+    while standards-compliant Mosquitto rejects it as a protocol error. Keep the
+    existing broker session and acknowledge repeated CONNECT packets locally.
+    """
+    duplicate_connects = 0
+    try:
+        while True:
+            first_byte, _body, packet = _read_packet(neo)
+            packet_type = first_byte >> 4
+            if packet_type == 1:  # CONNECT
+                duplicate_connects += 1
+                _LOGGER.info(
+                    "NEO %s sent duplicate MQTT CONNECT #%d; keeping existing local broker session",
+                    client_id,
+                    duplicate_connects,
+                )
+                with neo_write_lock:
+                    neo.sendall(_SUCCESS_CONNACK)
+                continue
+            broker.sendall(packet)
+    except EOFError:
+        pass
+    except (OSError, ssl.SSLError):
+        pass
+    except Exception as exc:
+        _LOGGER.warning("NEO MQTT packet forwarding for %s failed: %s", client_id, exc)
+    finally:
+        try:
+            broker.shutdown(socket.SHUT_WR)
         except OSError:
             pass
 
@@ -187,18 +258,30 @@ class NeoMqttProxy:
             backend = socket.create_connection((MQTT_HOST, MQTT_PORT), timeout=10)
             backend.settimeout(None)
 
-            first = _recv_exact(tls, 1)[0]
-            remaining = _read_remaining_length(tls)
-            body = _recv_exact(tls, remaining)
-            packet, client_id = patch_connect(first, body)
-            backend.sendall(packet)
+            first, body, _packet = _read_packet(tls)
+            patched_connect, client_id = patch_connect(first, body)
+            backend.sendall(patched_connect)
+
+            connack_first, connack_body, connack_packet = _read_packet(backend)
+            _validate_connack(connack_first, connack_body, client_id)
+            tls.sendall(connack_packet)
+            _LOGGER.info("Local MQTT broker accepted NEO %s", client_id)
 
             if self._connection_callback and client_id:
                 self._connection_callback(client_id.lower(), True)
                 online_announced = True
 
-            t1 = threading.Thread(target=_pipe, args=(tls, backend), daemon=True)
-            t2 = threading.Thread(target=_pipe, args=(backend, tls), daemon=True)
+            neo_write_lock = threading.Lock()
+            t1 = threading.Thread(
+                target=_neo_to_broker,
+                args=(tls, backend, neo_write_lock, client_id),
+                daemon=True,
+            )
+            t2 = threading.Thread(
+                target=_pipe,
+                args=(backend, tls, neo_write_lock),
+                daemon=True,
+            )
             t1.start()
             t2.start()
             t1.join()
