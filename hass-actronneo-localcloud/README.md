@@ -1,6 +1,6 @@
 # Actron NEO Local Cloud
 
-Experimental Home Assistant add-on that replaces the cloud bootstrap and MQTT path used by ActronAir NEO wall controllers with a local service.
+Home Assistant add-on that replaces the cloud bootstrap and MQTT path used by ActronAir NEO wall controllers with a local service.
 
 The add-on presents a local `nimbus.actronair.com.au` HTTPS endpoint, returns a local MQTT endpoint to the controller, accepts the controller's TLS MQTT connection, and bridges it into Home Assistant's Mosquitto broker. Home Assistant entities are created with MQTT Discovery, so no separate custom integration and no manual **Add MQTT device** step are required.
 
@@ -14,13 +14,11 @@ The NEO publishes its native MQTT traffic under topics such as:
 actron-cloud/<UserId>/neo/<serial>/...
 ```
 
-Once the controller connects, the add-on learns that real Actron/Nimbus UserId automatically from the MQTT topic and uses it for commands. It therefore does not need the user to know or enter the UUID.
+Once the controller connects, the add-on learns the real Actron/Nimbus UserId automatically from the MQTT topic and uses it for commands. The user therefore does not need to know or enter the UUID.
 
 Before MQTT is established, the local Nimbus bootstrap response still requires a UserId field. When `nimbus_user_id` is blank, the add-on creates and persists a private local UUID for that bootstrap response only. Testing with existing cloud-paired NEO controllers confirmed this generated bootstrap UUID does not prevent them reaching full-status and heartbeat.
 
-`nimbus_user_id` remains only as an optional advanced/manual override. If deliberately set, it must be the Nimbus UUID returned by `/api/v0/messaging/connection/details`; it is not an email address, OAuth token, password or MQTT password.
-
-In 0.1.7, clearing the field really removes the override; blank means no manual override is used.
+`nimbus_user_id` remains only as an optional advanced/manual override. If deliberately set, it must be the Nimbus UUID returned by `/api/v0/messaging/connection/details`; it is not an email address, OAuth token, password or MQTT password. Clearing the field removes the override.
 
 ## Default ports
 
@@ -45,6 +43,14 @@ If you change the host-side mapping for add-on container port `8883/tcp`, set `n
 7. On the DNS server used by the NEO network, create `nimbus.actronair.com.au -> <Home Assistant LAN IP>`.
 8. Start the add-on **before** reconnecting/rebooting a NEO or applying a DNS change that sends Nimbus traffic to Home Assistant.
 9. Reconnect or reboot one NEO first and watch the add-on log. Once `full-status` is received, Home Assistant MQTT Discovery creates the device/entities automatically.
+
+## Home Assistant entities
+
+The normal device page includes the main climate entity, Quiet/Turbo/Away/Continuous Fan controls, outdoor temperature, humidity, compressor power/speed, Clean Filter, Defrosting and any configured zones.
+
+Version 1.0 also reports the climate's live HVAC action (`off`, `idle`, `heating`, `cooling`, `drying` or `fan`).
+
+Additional engineering and diagnostic entities are published **disabled by default** so they do not clutter a normal installation. They include compressor capacity/running state, indoor fan RPM/PWM, coil/discharge/suction/VSD temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD communications state, current AC error code, LP/HP fault states, supply voltage/current/power, EEV opening, superheat, indoor/outdoor/Wi-Fi firmware, outdoor unit family and rated system capacity. Enable only the ones you want from the Home Assistant device entity list.
 
 ### UniFi DNS note
 
