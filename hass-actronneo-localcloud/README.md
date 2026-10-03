@@ -6,11 +6,21 @@ The add-on presents a local `nimbus.actronair.com.au` HTTPS endpoint, returns a 
 
 ## Nimbus UserId
 
-Normal installations can leave `nimbus_user_id` blank. The add-on generates and persists a local UUID automatically.
+Normal installations should leave `nimbus_user_id` blank.
 
-Version 0.1.5 added `nimbus_user_id` as an advanced/manual override while investigating NEO reconnect behaviour. Subsequent testing showed an already cloud-paired NEO successfully reached `full-status` and heartbeat using the generated local UUID, so discovering the original Actron/Nimbus UserId is **not** a normal installation requirement.
+The NEO publishes its native MQTT traffic under topics such as:
 
-If you intentionally use the override, it is the UUID returned by Nimbus `/api/v0/messaging/connection/details` and used in native MQTT topics such as `actron-cloud/<UserId>/neo/<serial>/...`. It is not an email address, OAuth token, password or MQTT password.
+```text
+actron-cloud/<UserId>/neo/<serial>/...
+```
+
+Once the controller connects, the add-on learns that real Actron/Nimbus UserId automatically from the MQTT topic and uses it for commands. It therefore does not need the user to know or enter the UUID.
+
+Before MQTT is established, the local Nimbus bootstrap response still requires a UserId field. When `nimbus_user_id` is blank, the add-on creates and persists a private local UUID for that bootstrap response only. Testing with existing cloud-paired NEO controllers confirmed this generated bootstrap UUID does not prevent them reaching full-status and heartbeat.
+
+`nimbus_user_id` remains only as an optional advanced/manual override. If deliberately set, it must be the Nimbus UUID returned by `/api/v0/messaging/connection/details`; it is not an email address, OAuth token, password or MQTT password.
+
+From version 0.1.8, clearing the field really removes the override. Older versions could continue using a previously persisted override after the UI field was cleared.
 
 ## Default ports
 
@@ -28,7 +38,7 @@ If you change the host-side mapping for add-on container port `8883/tcp`, set `n
 
 1. Install and configure the standard Home Assistant **Mosquitto Broker** add-on/integration first.
 2. Install **Actron NEO Local Cloud** and set `local_ip` to the Home Assistant LAN address reachable by the NEO controller(s).
-3. Leave `nimbus_user_id` blank unless you deliberately want to override the generated local identity.
+3. Leave `nimbus_user_id` blank unless you deliberately want to override the generated bootstrap identity.
 4. Leave `neo_mqtt_port: 28883` unless you intentionally change the host mapping.
 5. Confirm the add-on Network mappings are `443/tcp -> 443` and `8883/tcp -> 28883`.
 6. In the firewall, allow only the NEO controller IPs/VLAN as required to reach the Home Assistant host on **destination TCP ports 443 and 28883**. Source ports should remain `Any`.

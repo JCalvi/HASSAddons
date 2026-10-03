@@ -2,6 +2,9 @@ configuration:
   local_ip:
     name: Home Assistant LAN IP
     description: LAN IP address of the Home Assistant host that the NEO controller can reach. This address is returned to the controller as its local MQTT endpoint.
+  nimbus_user_id:
+    name: Nimbus User ID (optional)
+    description: Advanced override only. Normally leave blank. The add-on learns the real Actron/Nimbus User ID automatically from each NEO's native MQTT topic after it connects; when blank, a private persistent local UUID is used only for the Nimbus bootstrap response.
   neo_mqtt_port:
     name: NEO MQTT port
     description: Host TCP port advertised to NEO controllers for local TLS MQTT. The add-on Network host port for container port 8883 must match this value. Default 28883 avoids the standard Mosquitto 8883 port.
