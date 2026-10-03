@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Fixes Home Assistant MQTT Discovery rejecting NEO entities when the controller status does not contain a firmware version. `device.sw_version` is now omitted unless a non-empty string is available, matching Home Assistant's discovery schema.
+- This resolves errors such as `string value is None at 'device.sw_version'` and allows the retained discovery configs to create the MQTT device and entities normally.
+
 ## 0.1.2
 
 - Fixes NEO firmware 2.6.x repeatedly sending MQTT CONNECT on an already-established TLS/MQTT session. The compatibility proxy now absorbs repeated CONNECT packets and returns a successful CONNACK instead of forwarding them to Mosquitto, preventing `Bad client ... sending multiple CONNECT messages` protocol errors.
