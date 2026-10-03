@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Fixes Home Assistant warnings such as `Invalid fan_modes mode:` when a NEO status snapshot omits `UserAirconSettings.FanMode`.
+- Normalizes an absent/blank NEO fan mode to `null` rather than an empty string.
+- Publishes MQTT climate fan-mode discovery only after a real fan-mode value has been received; later status updates automatically add fan controls once available.
+- Adds clearer NEO MQTT/status diagnostics, including INFO logs for full-status reception and `getAll` requests plus DEBUG summaries for status-change, heartbeat and published normalized state.
+
 ## 0.1.3
 
 - Fixes Home Assistant MQTT Discovery rejecting NEO entities when the controller status does not contain a firmware version. `device.sw_version` is now omitted unless a non-empty string is available, matching Home Assistant's discovery schema.
