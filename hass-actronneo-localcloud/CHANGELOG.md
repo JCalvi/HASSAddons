@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.1
+
+- Removes the `nimbus_user_id` add-on option from the Home Assistant schema, options UI, translation metadata and startup path.
+- Always creates and persists a private local UUID for the Nimbus bootstrap `UserId`; no real Actron/Nimbus account UUID needs to be entered or retained.
+- Keeps command routing unchanged: once a NEO connects, the bridge learns the controller's real Actron/Nimbus UserId from its native MQTT topic and uses that learned value for commands.
+- Existing configured `nimbus_user_id` values are no longer read after upgrading to 1.1.1 and can be discarded.
+- Updates README and full installation documentation to describe the automatic bootstrap identity and removes obsolete Nimbus ID setup steps/examples.
+- Expands reconnect documentation with the completed real-cloud test result: the production Actron service also showed an occasional failed first reconnect followed by another firmware retry slot.
+
 ## 1.1.0
 
 - Promotes the tested local-cloud implementation to a clean production release after the reconnect investigation.
