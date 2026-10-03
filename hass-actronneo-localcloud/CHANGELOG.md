@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.7
+
+- Adds a controlled Nimbus bootstrap timing diagnostic to test whether the NEO's `/api/v0/client/account` response triggers or resets its MQTT reconnect state machine.
+- Adds `nimbus_account_delay_ip` and `nimbus_account_delay_seconds` options. With both set, only `/client/account` responses from the selected NEO source IP are delayed; all other controllers and Nimbus endpoints are unchanged.
+- Passes the real NEO source address from nginx to the local Nimbus emulator using `X-Real-IP`, allowing one controller to be isolated while the others remain live controls.
+- Logs the exact start and end of a targeted delay so the subsequent duplicate MQTT CONNECT can be timed against release of the unchanged account response.
+- Defaults to disabled (`nimbus_account_delay_ip` blank and delay `0`), so normal behaviour remains the same as 1.0.6 unless the diagnostic is explicitly enabled.
+
 ## 1.0.6
 
 - Confirms from 1.0.5 packet tracing that a duplicate-CONNECT attempt can receive a valid, matching Mosquitto `SUBACK` (`0x00`) before the NEO voluntarily closes the TLS session, so the broker response is not the cause of the restart delay.
