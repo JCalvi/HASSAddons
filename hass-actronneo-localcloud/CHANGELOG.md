@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.9
+
+- Adds an opt-in `nimbus_synthetic_jwt` diagnostic for the NEO OAuth refresh path. It is disabled by default and does not change normal 1.0.8 behaviour unless explicitly enabled.
+- When enabled, `/api/v0/oauth/token` returns a locally signed RS256 JWT instead of the simple `LOCAL-NEO-TOKEN`, matching the claim names/types observed in a real Nimbus refresh-token response.
+- Mirrors the real Nimbus issuer/audience, paired-controller roles, `nxgen` pairing/session/serial/no-log claims, 72-hour token lifetime and four-entry MQTT ACL structure while keeping all identity values local/synthetic.
+- Uses the incoming NEO refresh token only as the local synthetic `nxgen/pairing-id` claim and never logs it. The JWT is signed with the add-on's persistent local RSA key; no Actron signing key or cloud token is stored.
+- Resolves the NEO serial from its User-Agent and reuses the cached controller name where available, allowing each controller to receive a controller-specific synthetic token.
+- Intended to test whether NEO 2.6.x parses the real Nimbus JWT during OAuth bootstrap and whether that token structure affects the later TLS-without-CONNECT or duplicate-CONNECT reconnect states.
+
 ## 1.0.8
 
 - Mirrors the HAL-style `_links` object observed in a real Nimbus `/api/v0/client/account` response while keeping all account values local/synthetic.
@@ -122,7 +131,7 @@
 
 - Avoids the standard Mosquitto Broker add-on's host TCP 8883 port conflict by mapping the NEO TLS MQTT listener to host port 28883 by default.
 - Adds a `neo_mqtt_port` option and advertises that port through the local Nimbus messaging endpoint.
-- The add-on Network host port for container port 8883 must match `neo_mqtt_port` if changed from the default.
+- The add-on Network host port for container port 8883/tcp must match `neo_mqtt_port` if changed from the default.
 
 ## 0.1.0
 
