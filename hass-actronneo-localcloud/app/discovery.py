@@ -19,13 +19,20 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
     base = f"{TOPIC_PREFIX}/{serial}"
     availability = f"{base}/availability"
     state_topic = f"{base}/state"
-    device = {
+    device: dict[str, Any] = {
         "identifiers": [f"actronneo_{serial}"],
         "name": state["name"],
         "manufacturer": "ActronAir",
         "model": state.get("model") or "NEO",
-        "sw_version": state.get("firmware") or None,
     }
+
+    # Home Assistant's MQTT discovery schema requires device.sw_version to be
+    # a string when present. Some NEO full-status payloads do not expose the
+    # wall-controller firmware field used by normalize_state(), so omit the
+    # key entirely until a non-empty firmware value is available.
+    firmware = str(state.get("firmware") or "").strip()
+    if firmware:
+        device["sw_version"] = firmware
 
     climate = {
         "name": state["name"],
