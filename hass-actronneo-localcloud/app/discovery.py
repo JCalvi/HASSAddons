@@ -60,6 +60,7 @@ def _state_binary_sensor(
     key: str,
     name: str,
     device_class: str | None = None,
+    icon: str | None = None,
     enabled_by_default: bool = True,
     diagnostic: bool = False,
 ) -> None:
@@ -76,6 +77,8 @@ def _state_binary_sensor(
     }
     if device_class:
         payload["device_class"] = device_class
+    if icon:
+        payload["icon"] = icon
     if diagnostic:
         payload["entity_category"] = "diagnostic"
     _publish(client, "binary_sensor", f"actronneo_{serial}_{key}", payload)
@@ -226,32 +229,32 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
     # the normal device page stays compact. Users can enable whichever values
     # they want from the Home Assistant device/entity page.
     diagnostic_sensors = [
-        ("compressor_capacity", "Compressor Capacity", "%", None),
-        ("indoor_fan_rpm", "Indoor Fan RPM", "rpm", None),
-        ("indoor_fan_pwm", "Indoor Fan PWM", "%", None),
-        ("coil_inlet_temperature", "Coil Inlet Temperature", "°C", "temperature"),
-        ("outdoor_coil_temperature", "Outdoor Coil Temperature", "°C", "temperature"),
-        ("discharge_temperature", "Discharge Temperature", "°C", "temperature"),
-        ("suction_temperature", "Suction Temperature", "°C", "temperature"),
-        ("drive_temperature", "Drive / VSD Temperature", "°C", "temperature"),
-        ("wifi_signal", "Wi-Fi Signal", "dBm", "signal_strength"),
-        ("controller_uptime", "Controller Uptime", "s", "duration"),
-        ("mqtt_session_uptime", "MQTT Session Uptime", "s", "duration"),
-        ("mqtt_reconnect_count", "MQTT Reconnect Count", None, None),
-        ("vsd_comms_status", "VSD Communications Status", None, None),
-        ("error_code", "AC Error Code", None, None),
-        ("supply_voltage", "Supply Voltage", "V", "voltage"),
-        ("supply_current", "Supply Current", "A", "current"),
-        ("supply_power", "Supply Power", "W", "power"),
-        ("eev_opening", "EEV Opening", "%", None),
-        ("superheat", "Superheat", "°C", "temperature"),
-        ("indoor_firmware", "Indoor Unit Firmware", None, None),
-        ("outdoor_firmware", "Outdoor Unit Firmware", None, None),
-        ("outdoor_family", "Outdoor Unit Family", None, None),
-        ("system_capacity_kw", "System Capacity", "kW", None),
-        ("wifi_firmware", "Wi-Fi Firmware", None, None),
+        ("compressor_capacity", "Compressor Capacity", "%", None, "mdi:gauge"),
+        ("indoor_fan_rpm", "Indoor Fan RPM", "rpm", None, "mdi:fan"),
+        ("indoor_fan_pwm", "Indoor Fan PWM", "%", None, "mdi:fan"),
+        ("coil_inlet_temperature", "Coil Inlet Temperature", "°C", "temperature", "mdi:thermometer"),
+        ("outdoor_coil_temperature", "Outdoor Coil Temperature", "°C", "temperature", "mdi:thermometer"),
+        ("discharge_temperature", "Discharge Temperature", "°C", "temperature", "mdi:thermometer"),
+        ("suction_temperature", "Suction Temperature", "°C", "temperature", "mdi:thermometer"),
+        ("drive_temperature", "Drive / VSD Temperature", "°C", "temperature", "mdi:thermometer"),
+        ("wifi_signal", "Wi-Fi Signal", "dBm", "signal_strength", "mdi:wifi"),
+        ("controller_uptime", "Controller Uptime", "s", "duration", "mdi:timer-outline"),
+        ("mqtt_session_uptime", "MQTT Session Uptime", "s", "duration", "mdi:timer-outline"),
+        ("mqtt_reconnect_count", "MQTT Reconnect Count", None, None, "mdi:connection"),
+        ("vsd_comms_status", "VSD Communications Status", None, None, "mdi:connection"),
+        ("error_code", "AC Error Code", None, None, "mdi:alert-circle-outline"),
+        ("supply_voltage", "Supply Voltage", "V", "voltage", "mdi:flash"),
+        ("supply_current", "Supply Current", "A", "current", "mdi:flash"),
+        ("supply_power", "Supply Power", "W", "power", "mdi:flash"),
+        ("eev_opening", "EEV Opening", "%", None, "mdi:valve"),
+        ("superheat", "Superheat", "°C", "temperature", "mdi:thermometer"),
+        ("indoor_firmware", "Indoor Unit Firmware", None, None, "mdi:chip"),
+        ("outdoor_firmware", "Outdoor Unit Firmware", None, None, "mdi:chip"),
+        ("outdoor_family", "Outdoor Unit Family", None, None, "mdi:air-conditioner"),
+        ("system_capacity_kw", "System Capacity", "kW", None, "mdi:gauge"),
+        ("wifi_firmware", "Wi-Fi Firmware", None, None, "mdi:chip"),
     ]
-    for key, name, unit, device_class in diagnostic_sensors:
+    for key, name, unit, device_class, icon in diagnostic_sensors:
         _state_sensor(
             client,
             serial=serial,
@@ -262,14 +265,15 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             name=name,
             unit=unit,
             device_class=device_class,
+            icon=icon,
             enabled_by_default=False,
             diagnostic=True,
         )
 
-    for key, name, device_class in [
-        ("compressor_running", "Compressor Running", "running"),
-        ("lp_fault", "Low Pressure Fault", "problem"),
-        ("hp_fault", "High Pressure Fault", "problem"),
+    for key, name, device_class, icon in [
+        ("compressor_running", "Compressor Running", "running", "mdi:engine"),
+        ("lp_fault", "Low Pressure Fault", "problem", "mdi:alert"),
+        ("hp_fault", "High Pressure Fault", "problem", "mdi:alert"),
     ]:
         _state_binary_sensor(
             client,
@@ -280,6 +284,7 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             key=key,
             name=name,
             device_class=device_class,
+            icon=icon,
             enabled_by_default=False,
             diagnostic=True,
         )
