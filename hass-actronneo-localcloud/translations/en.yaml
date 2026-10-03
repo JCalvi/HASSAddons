@@ -8,6 +8,12 @@ configuration:
   neo_mqtt_port:
     name: NEO MQTT port
     description: Host TCP port advertised to NEO controllers for local TLS MQTT. The add-on Network host port for container port 8883 must match this value. Default 28883 avoids the standard Mosquitto 8883 port.
+  nimbus_account_delay_ip:
+    name: Nimbus account delay target IP
+    description: Diagnostic only. If set, delay only /client/account responses from this NEO source IP. Leave blank for normal operation.
+  nimbus_account_delay_seconds:
+    name: Nimbus account delay seconds
+    description: Diagnostic only. Number of seconds to hold the targeted /client/account response. Set to 0 for normal operation.
   topic_prefix:
     name: MQTT topic prefix
     description: Root MQTT topic used by the add-on for normalized state and Home Assistant command topics.
