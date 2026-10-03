@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.4
+
+- Changes duplicate NEO MQTT `CONNECT` handling from a synthetic local CONNACK to a genuine fresh Mosquitto session.
+- When firmware 2.6.x sends a second `CONNECT` on the existing TLS stream, the proxy now retires the old backend MQTT session, opens a new one, rewrites credentials, and returns the new broker's real CONNACK to the NEO.
+- Subsequent NEO `SUBSCRIBE` packets are therefore handled by the replacement Mosquitto session and receive a real SUBACK, matching the controller's observed Clean Session behaviour more closely.
+- Keeps the outer NEO TLS connection and Home Assistant logical device connection alive while the backend MQTT session is replaced.
+- Retains the 5-second pre-CONNECT timeout from 1.0.3 for controllers that establish TLS but stall before sending the first MQTT packet.
+- Adds INFO/DEBUG logging for broker-session replacement and post-replacement MQTT packet flow so restart behaviour can be verified safely without payload logging.
+
 ## 1.0.3
 
 - Adds a 5-second timeout between successful NEO TLS establishment and receipt of the initial MQTT `CONNECT` packet.
