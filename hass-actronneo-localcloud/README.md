@@ -56,7 +56,9 @@ Additional engineering and diagnostic entities are published **disabled by defau
 
 The NEO itself decides when to publish native `status-change` broadcasts. Moving MQTT locally removes the Internet/cloud path, but it does not make the controller spontaneously publish compressor telemetry more frequently.
 
-Version 1.0 therefore supplements native push updates with a lightweight local `getAll` refresh: approximately every **10 seconds while the system is on** and every **60 seconds while off**. Native status changes are still processed immediately, so the periodic refresh is only a maximum-staleness backstop for values such as compressor power and speed.
+Version 1.0 therefore supplements native push updates with a lightweight local `getAll` refresh: approximately every **5 seconds while the system is on** and every **30 seconds while off**. Native status changes are still processed immediately, so the periodic refresh is only a maximum-staleness backstop for values such as compressor power and speed.
+
+The NEO can retain its last non-zero compressor telemetry after the compressor stops. Version 1.0 therefore reports compressor power, speed and capacity as zero whenever the unit/compressor state says the compressor is not running, instead of displaying stale historical values.
 
 NTW/Inverter controllers also use scaled telemetry values. In particular, raw `CompPower` is multiplied by 100 for the Home Assistant watt value, so a raw value of `40` is reported as approximately `4000 W`. Supply voltage uses the corresponding NTW x10 scaling.
 
