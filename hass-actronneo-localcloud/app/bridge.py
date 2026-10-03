@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
+import time
 import uuid
 from copy import deepcopy
 from typing import Any
@@ -23,6 +25,7 @@ from discovery import publish_discovery
 from state import deep_merge, extract_event, ha_to_neo_mode, normalize_state, set_path
 
 _LOGGER = logging.getLogger("actronneo-localcloud.bridge")
+_COMMAND_SETTLE_SECONDS = 6.0
 
 
 class HomeAssistantBridge:
@@ -31,6 +34,8 @@ class HomeAssistantBridge:
         self._user_ids: dict[str, str] = {}
         self._connection_state: dict[str, bool] = {}
         self._known_devices: dict[str, dict[str, str]] = self._load_known_devices()
+        self._suppress_until: dict[str, float] = {}
+        self._suppress_lock = threading.Lock()
         self._client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"actronneo-localcloud-{uuid.uuid4().hex[:8]}",
@@ -81,6 +86,8 @@ class HomeAssistantBridge:
         if online:
             _LOGGER.info("NEO %s connected to local MQTT", serial)
         else:
+            with self._suppress_lock:
+                self._suppress_until.pop(serial, None)
             _LOGGER.info("NEO %s disconnected from local MQTT", serial)
             self._publish_availability(serial, False)
 
@@ -114,6 +121,13 @@ class HomeAssistantBridge:
                 len(payload_bytes),
                 len(body),
             )
+            if self._is_command_settling(serial):
+                _LOGGER.debug(
+                    "NEO %s full-status suppressed during %.1fs command settling window",
+                    serial,
+                    _COMMAND_SETTLE_SECONDS,
+                )
+                return
             self._states[serial] = body
             self._publish_device(serial)
             return
@@ -126,6 +140,13 @@ class HomeAssistantBridge:
             if serial not in self._states:
                 _LOGGER.info("NEO %s status-change arrived before full-status; requesting getAll", serial)
                 self._request_get_all(serial)
+                return
+            if self._is_command_settling(serial):
+                _LOGGER.debug(
+                    "NEO %s status-change suppressed during %.1fs command settling window",
+                    serial,
+                    _COMMAND_SETTLE_SECONDS,
+                )
                 return
             for key, value in body.items():
                 if key == "type":
@@ -183,6 +204,7 @@ class HomeAssistantBridge:
 
         if command is not None:
             self._send_command(serial, user_id, command)
+            self._begin_command_settle(serial, command)
 
     def _build_system_command(
         self, state: dict[str, Any], command_name: str, text: str
@@ -293,6 +315,71 @@ class HomeAssistantBridge:
             return {"command": cmd}
 
         return None
+
+    def _begin_command_settle(self, serial: str, command: dict[str, Any]) -> None:
+        """Publish the requested state optimistically and ignore stale echoes briefly.
+
+        NEO can emit one or more status-change broadcasts containing the previous
+        value while a set-settings command is being applied. Publishing those
+        immediately makes Home Assistant controls flip back, then forward again.
+        The older QUE bridge solved the same race with a short optimistic publish
+        and suppression window, so mirror that behaviour here.
+        """
+        state = self._states.get(serial)
+        body = command.get("command")
+        if state is None or not isinstance(body, dict):
+            return
+
+        changed_paths: list[str] = []
+        for key, value in body.items():
+            if key == "type":
+                continue
+            set_path(state, key, value)
+            changed_paths.append(key)
+
+        if not changed_paths:
+            return
+
+        expiry = time.monotonic() + _COMMAND_SETTLE_SECONDS
+        with self._suppress_lock:
+            self._suppress_until[serial] = expiry
+
+        _LOGGER.debug(
+            "NEO %s optimistic command state applied (%s); suppressing native state for %.1fs",
+            serial,
+            ", ".join(changed_paths),
+            _COMMAND_SETTLE_SECONDS,
+        )
+        self._publish_device(serial)
+
+        timer = threading.Timer(
+            _COMMAND_SETTLE_SECONDS,
+            self._finish_command_settle,
+            args=(serial, expiry),
+        )
+        timer.daemon = True
+        timer.start()
+
+    def _is_command_settling(self, serial: str) -> bool:
+        with self._suppress_lock:
+            expiry = self._suppress_until.get(serial)
+            return expiry is not None and expiry > time.monotonic()
+
+    def _finish_command_settle(self, serial: str, expiry: float) -> None:
+        with self._suppress_lock:
+            current = self._suppress_until.get(serial)
+            if current != expiry:
+                return
+            self._suppress_until.pop(serial, None)
+
+        if not self._connection_state.get(serial, False):
+            return
+
+        _LOGGER.debug(
+            "NEO %s command settling window expired; requesting canonical full state",
+            serial,
+        )
+        self._request_get_all(serial)
 
     def _send_command(self, serial: str, user_id: str, command: dict[str, Any]) -> None:
         command = deepcopy(command)
