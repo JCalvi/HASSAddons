@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0
+
+- Promotes Actron NEO Local Cloud from experimental to stable status.
+- Adds live HVAC action to the main climate entity so Home Assistant can show `off`, `idle`, `heating`, `cooling`, `drying` and `fan` independently of the selected HVAC mode.
+- Adds disabled-by-default engineering diagnostics for compressor capacity, indoor fan RPM/PWM, compressor running state, coil inlet/outdoor coil/discharge/suction/VSD temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD communications status, AC error code, LP/HP faults, supply voltage/current/power, EEV opening and superheat.
+- Adds disabled-by-default equipment information entities for indoor unit firmware, outdoor unit firmware/family/capacity and Wi-Fi firmware.
+- Keeps the normal device page compact; all new engineering/information entities are published as Home Assistant diagnostic entities and can be enabled individually when wanted.
+- Updates the local Nimbus service identifier to 1.0 and expands README/DOCS for the stable release.
+
 ## 0.1.7
 
 - Adds optimistic command state plus a 6-second per-NEO settling/suppression window to prevent Home Assistant controls from bouncing back to stale values immediately after commands.
