@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7
+
+- Adds optimistic command state plus a 6-second per-NEO settling/suppression window to prevent Home Assistant controls from bouncing back to stale values immediately after commands.
+- Mirrors the proven anti-bounce approach used by the Actron QUE bridge: the requested command state is published immediately, stale NEO `status-change`/`full-status` echoes are ignored briefly, then a canonical `getAll` refresh is requested when the settling window expires.
+- Command settling is tracked independently per NEO, so simultaneous control of multiple locally connected units does not interfere across systems.
+- Clears command suppression if a NEO disconnects, ensuring reconnect/full-status data is accepted normally.
+
 ## 0.1.6
 
 - Fixes NEO MQTT `full-status-broadcast` and `status-change-broadcast` event unwrapping. The previous parser incorrectly returned only the first nested dictionary from `event`, which commonly discarded `UserAirconSettings`, `RemoteZoneInfo`, temperatures and other state.
