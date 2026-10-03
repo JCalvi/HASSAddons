@@ -21,19 +21,19 @@ NEO controller
 
 No separate Home Assistant custom integration is required. The standard Mosquitto Broker add-on/integration is required.
 
-## Nimbus UserId
+## Nimbus bootstrap identity
 
-`nimbus_user_id` is optional. Leave it blank for normal installations.
+Nimbus requires a `UserId` field during bootstrap, but the controller does not require that field to contain its real Actron/Nimbus UUID.
 
-Once a NEO connects, the add-on learns the controller's real Actron/Nimbus UserId automatically from its native MQTT topic and uses that value for commands. Before MQTT is established, the local Nimbus bootstrap response still requires a UserId field, so the add-on generates and persists a private local UUID for that bootstrap response only.
+The add-on creates and persists a private local UUID automatically in its data directory and uses that only for the local Nimbus bootstrap response. There is no Nimbus User ID option to configure.
 
-If you deliberately use the override, the value is the UUID used in topics such as:
+Once a NEO connects, it publishes native MQTT traffic under topics such as:
 
 ```text
 actron-cloud/<UserId>/neo/<serial>/...
 ```
 
-It is not an email address, OAuth token, refresh token, password, pairing code or MQTT password.
+The add-on learns the controller's real Actron/Nimbus UserId from that topic and uses the learned value for commands. The bootstrap UUID and the learned MQTT UserId therefore serve separate purposes.
 
 ## Ports
 
@@ -73,19 +73,17 @@ If you change one, change the other.
 1. Install/start the standard **Mosquitto Broker** add-on and confirm the HA MQTT integration is working.
 2. Install **Actron NEO Local Cloud**.
 3. Set `local_ip` to the Home Assistant LAN address reachable by the NEO controller(s).
-4. Leave `nimbus_user_id` blank unless intentionally using the advanced override.
-5. Leave `neo_mqtt_port: 28883` unless you intentionally change the host port mapping.
-6. Confirm the add-on Network mappings are `443/tcp -> 443` and `8883/tcp -> 28883`.
-7. Start the add-on.
-8. Add the firewall allow rule from the NEO controller IPs to the HA host.
-9. Add the DNS override for `nimbus.actronair.com.au`.
-10. Reconnect/reboot one NEO first and watch the add-on log. Move the remaining NEOs only after the first one is stable.
+4. Leave `neo_mqtt_port: 28883` unless you intentionally change the host port mapping.
+5. Confirm the add-on Network mappings are `443/tcp -> 443` and `8883/tcp -> 28883`.
+6. Start the add-on.
+7. Add the firewall allow rule from the NEO controller IPs to the HA host.
+8. Add the DNS override for `nimbus.actronair.com.au`.
+9. Reconnect/reboot one NEO first and watch the add-on log. Move the remaining NEOs only after the first one is stable.
 
 Typical options:
 
 ```yaml
 local_ip: 192.168.0.18
-nimbus_user_id: ""
 neo_mqtt_port: 28883
 topic_prefix: hass-actronneo-localcloud
 discovery_prefix: homeassistant
@@ -149,7 +147,7 @@ NEO <serial> heart-beat received
 
 NEO firmware 2.6.x can send a second MQTT CONNECT on an already-established TLS/MQTT stream. Standard Mosquitto rejects that as a protocol error, so the add-on absorbs the duplicate CONNECT and acknowledges it locally while keeping the existing broker session.
 
-The controller also uses an approximately **30-second retry interval** after an established MQTT connection is lost. A controlled forced disconnect against the real Actron MQTT service produced the same roughly 31-second delay before the first replacement connection, confirming that this timer is part of the NEO reconnect behaviour rather than a Home Assistant delay.
+The controller also uses an approximately **30-second retry interval** after an established MQTT connection is lost. Controlled forced-disconnect testing against the real Actron MQTT service reproduced the same roughly 31-second first retry and also an occasional failed first reconnect followed by another firmware retry. This confirms that the retry behaviour is not unique to the local broker.
 
 During a local add-on restart a controller may occasionally need more than one retry slot before reaching a stable session. Once `full-status` and heartbeats arrive, normal operation has remained stable.
 
@@ -254,7 +252,7 @@ If every ordinary add-on restart logs `Generating persistent local Nimbus TLS ce
 
 ### Connects, then retries
 
-A NEO may take one or more approximately 30-second retry slots after an MQTT service interruption. The same first-retry interval was observed against the real Actron MQTT service, so the add-on intentionally leaves the firmware retry timer alone.
+A NEO may take one or more approximately 30-second retry slots after an MQTT service interruption. The same first-retry interval and occasional second retry were observed against the real Actron MQTT service, so the add-on intentionally leaves the firmware retry timer alone.
 
 If a later attempt reaches `full-status` and heartbeats continue, the local session is usable.
 
