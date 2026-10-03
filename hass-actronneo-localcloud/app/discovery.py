@@ -15,6 +15,69 @@ def _publish(client: mqtt.Client, component: str, object_id: str, payload: dict[
     client.publish(topic, json.dumps(payload, separators=(",", ":"), allow_nan=False), retain=True)
 
 
+def _state_sensor(
+    client: mqtt.Client,
+    *,
+    serial: str,
+    state_topic: str,
+    availability: str,
+    device: dict[str, Any],
+    key: str,
+    name: str,
+    unit: str | None = None,
+    device_class: str | None = None,
+    enabled_by_default: bool = True,
+    diagnostic: bool = False,
+) -> None:
+    payload: dict[str, Any] = {
+        "name": name,
+        "unique_id": f"actronneo_{serial}_{key}",
+        "device": device,
+        "availability_topic": availability,
+        "state_topic": state_topic,
+        "value_template": f"{{{{ value_json.{key} }}}}",
+        "enabled_by_default": enabled_by_default,
+    }
+    if unit:
+        payload["unit_of_measurement"] = unit
+    if device_class:
+        payload["device_class"] = device_class
+    if diagnostic:
+        payload["entity_category"] = "diagnostic"
+    _publish(client, "sensor", f"actronneo_{serial}_{key}", payload)
+
+
+def _state_binary_sensor(
+    client: mqtt.Client,
+    *,
+    serial: str,
+    state_topic: str,
+    availability: str,
+    device: dict[str, Any],
+    key: str,
+    name: str,
+    device_class: str | None = None,
+    enabled_by_default: bool = True,
+    diagnostic: bool = False,
+) -> None:
+    payload: dict[str, Any] = {
+        "name": name,
+        "unique_id": f"actronneo_{serial}_{key}",
+        "device": device,
+        "availability_topic": availability,
+        "state_topic": state_topic,
+        "value_template": f"{{{{ 'ON' if value_json.{key} else 'OFF' }}}}",
+        "payload_on": "ON",
+        "payload_off": "OFF",
+        "enabled_by_default": enabled_by_default,
+    }
+    if device_class:
+        payload["device_class"] = device_class
+    if diagnostic:
+        payload["entity_category"] = "diagnostic"
+    _publish(client, "binary_sensor", f"actronneo_{serial}_{key}", payload)
+
+
 def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -> None:
     base = f"{TOPIC_PREFIX}/{serial}"
     availability = f"{base}/availability"
@@ -44,6 +107,8 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         "mode_state_topic": state_topic,
         "mode_state_template": "{{ value_json.mode }}",
         "mode_command_topic": f"{base}/set/mode",
+        "action_topic": state_topic,
+        "action_template": "{{ value_json.hvac_action }}",
         "temperature_state_topic": state_topic,
         "temperature_state_template": "{{ value_json.target_temperature }}",
         "temperature_command_topic": f"{base}/set/temperature",
@@ -96,45 +161,131 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         }
         _publish(client, "switch", f"actronneo_{serial}_{key}", payload)
 
-    sensors = {
-        "outdoor_temperature": ("Outdoor Temperature", "°C", "temperature"),
-        "humidity": ("Humidity", "%", "humidity"),
-        "compressor_power": ("Compressor Power", "W", "power"),
-        "compressor_speed": ("Compressor Speed", None, None),
-    }
-    for key, (name, unit, device_class) in sensors.items():
-        payload = {
-            "name": name,
-            "unique_id": f"actronneo_{serial}_{key}",
-            "device": device,
-            "availability_topic": availability,
-            "state_topic": state_topic,
-            "value_template": f"{{{{ value_json.{key} }}}}",
-        }
-        if unit:
-            payload["unit_of_measurement"] = unit
-        if device_class:
-            payload["device_class"] = device_class
-        _publish(client, "sensor", f"actronneo_{serial}_{key}", payload)
+    # Everyday sensors remain enabled by default.
+    _state_sensor(
+        client,
+        serial=serial,
+        state_topic=state_topic,
+        availability=availability,
+        device=device,
+        key="outdoor_temperature",
+        name="Outdoor Temperature",
+        unit="°C",
+        device_class="temperature",
+    )
+    _state_sensor(
+        client,
+        serial=serial,
+        state_topic=state_topic,
+        availability=availability,
+        device=device,
+        key="humidity",
+        name="Humidity",
+        unit="%",
+        device_class="humidity",
+    )
+    _state_sensor(
+        client,
+        serial=serial,
+        state_topic=state_topic,
+        availability=availability,
+        device=device,
+        key="compressor_power",
+        name="Compressor Power",
+        unit="W",
+        device_class="power",
+    )
+    _state_sensor(
+        client,
+        serial=serial,
+        state_topic=state_topic,
+        availability=availability,
+        device=device,
+        key="compressor_speed",
+        name="Compressor Speed",
+    )
 
-    binaries = {
-        "clean_filter": ("Clean Filter", "problem"),
-        "defrosting": ("Defrosting", None),
-    }
-    for key, (name, device_class) in binaries.items():
-        payload = {
-            "name": name,
-            "unique_id": f"actronneo_{serial}_{key}",
-            "device": device,
-            "availability_topic": availability,
-            "state_topic": state_topic,
-            "value_template": f"{{{{ 'ON' if value_json.{key} else 'OFF' }}}}",
-            "payload_on": "ON",
-            "payload_off": "OFF",
-        }
-        if device_class:
-            payload["device_class"] = device_class
-        _publish(client, "binary_sensor", f"actronneo_{serial}_{key}", payload)
+    _state_binary_sensor(
+        client,
+        serial=serial,
+        state_topic=state_topic,
+        availability=availability,
+        device=device,
+        key="clean_filter",
+        name="Clean Filter",
+        device_class="problem",
+    )
+    _state_binary_sensor(
+        client,
+        serial=serial,
+        state_topic=state_topic,
+        availability=availability,
+        device=device,
+        key="defrosting",
+        name="Defrosting",
+    )
+
+    # Engineering/diagnostic entities are intentionally disabled by default so
+    # the normal device page stays compact. Users can enable whichever values
+    # they want from the Home Assistant device/entity page.
+    diagnostic_sensors = [
+        ("compressor_capacity", "Compressor Capacity", "%", None),
+        ("indoor_fan_rpm", "Indoor Fan RPM", "rpm", None),
+        ("indoor_fan_pwm", "Indoor Fan PWM", "%", None),
+        ("coil_inlet_temperature", "Coil Inlet Temperature", "°C", "temperature"),
+        ("outdoor_coil_temperature", "Outdoor Coil Temperature", "°C", "temperature"),
+        ("discharge_temperature", "Discharge Temperature", "°C", "temperature"),
+        ("suction_temperature", "Suction Temperature", "°C", "temperature"),
+        ("drive_temperature", "Drive / VSD Temperature", "°C", "temperature"),
+        ("wifi_signal", "Wi-Fi Signal", "dBm", "signal_strength"),
+        ("controller_uptime", "Controller Uptime", "s", "duration"),
+        ("mqtt_session_uptime", "MQTT Session Uptime", "s", "duration"),
+        ("mqtt_reconnect_count", "MQTT Reconnect Count", None, None),
+        ("vsd_comms_status", "VSD Communications Status", None, None),
+        ("error_code", "AC Error Code", None, None),
+        ("supply_voltage", "Supply Voltage", "V", "voltage"),
+        ("supply_current", "Supply Current", "A", "current"),
+        ("supply_power", "Supply Power", "W", "power"),
+        ("eev_opening", "EEV Opening", "%", None),
+        ("superheat", "Superheat", "°C", "temperature"),
+        ("indoor_firmware", "Indoor Unit Firmware", None, None),
+        ("outdoor_firmware", "Outdoor Unit Firmware", None, None),
+        ("outdoor_family", "Outdoor Unit Family", None, None),
+        ("system_capacity_kw", "System Capacity", "kW", None),
+        ("wifi_firmware", "Wi-Fi Firmware", None, None),
+    ]
+    for key, name, unit, device_class in diagnostic_sensors:
+        _state_sensor(
+            client,
+            serial=serial,
+            state_topic=state_topic,
+            availability=availability,
+            device=device,
+            key=key,
+            name=name,
+            unit=unit,
+            device_class=device_class,
+            enabled_by_default=False,
+            diagnostic=True,
+        )
+
+    for key, name, device_class in [
+        ("compressor_running", "Compressor Running", "running"),
+        ("lp_fault", "Low Pressure Fault", "problem"),
+        ("hp_fault", "High Pressure Fault", "problem"),
+    ]:
+        _state_binary_sensor(
+            client,
+            serial=serial,
+            state_topic=state_topic,
+            availability=availability,
+            device=device,
+            key=key,
+            name=name,
+            device_class=device_class,
+            enabled_by_default=False,
+            diagnostic=True,
+        )
 
     for zone in state["zones"]:
         idx = int(zone["id"])
