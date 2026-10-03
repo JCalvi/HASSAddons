@@ -48,14 +48,22 @@ If you change the host-side mapping for add-on container port `8883/tcp`, set `n
 
 The normal device page includes the main climate entity, Quiet/Turbo/Away/Continuous Fan controls, outdoor temperature, humidity, compressor power/speed, Clean Filter, Defrosting and any configured zones.
 
-Version 1.0 also reports the climate's live HVAC action (`off`, `idle`, `heating`, `cooling`, `drying` or `fan`).
+Version 1.0 reports the climate's live HVAC action (`off`, `idle`, `heating`, `cooling`, `drying` or `fan`). Compressor Speed is exposed as a percentage with a speedometer icon.
 
 Additional engineering and diagnostic entities are published **disabled by default** so they do not clutter a normal installation. They include compressor capacity/running state, indoor fan RPM/PWM, coil/discharge/suction/VSD temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD communications state, current AC error code, LP/HP fault states, supply voltage/current/power, EEV opening, superheat, indoor/outdoor/Wi-Fi firmware, outdoor unit family and rated system capacity. Enable only the ones you want from the Home Assistant device entity list.
+
+### Live telemetry refresh
+
+The NEO itself decides when to publish native `status-change` broadcasts. Moving MQTT locally removes the Internet/cloud path, but it does not make the controller spontaneously publish compressor telemetry more frequently.
+
+Version 1.0 therefore supplements native push updates with a lightweight local `getAll` refresh: approximately every **10 seconds while the system is on** and every **60 seconds while off**. Native status changes are still processed immediately, so the periodic refresh is only a maximum-staleness backstop for values such as compressor power and speed.
+
+NTW/Inverter controllers also use scaled telemetry values. In particular, raw `CompPower` is multiplied by 100 for the Home Assistant watt value, so a raw value of `40` is reported as approximately `4000 W`. Supply voltage uses the corresponding NTW x10 scaling.
 
 ### UniFi DNS note
 
 A UniFi **Host (A)** DNS record is normally visible to clients that use the UniFi gateway as DNS; it is not inherently scoped to only the NEO devices. Restricting firewall access to the Home Assistant host on TCP 443/28883 to the NEO IPs provides the important access control. If you require the redirection itself to be source-specific, use a source-restricted DNAT design instead, understanding that DNAT to a public Nimbus IP can be less robust if that public IP changes.
 
-A gateway-wide DNS override also affects Home Assistant itself if HA uses that gateway for DNS. If the official Home Assistant **Actron Air** cloud integration remains enabled, it may then try to connect to the local Nimbus emulator instead of Actron's public service. Disable the old cloud integration while testing the local replacement, or use source-scoped DNS/DNAT if both must coexist.
+A gateway-wide DNS override also affects Home Assistant itself if HA uses that gateway for DNS. If the official Home Assistant **Actron Air** cloud integration remains enabled, it may then try to connect to the local Nimbus emulator instead of Actron's public service. Disable the old cloud integration while using the local replacement, or use source-scoped DNS/DNAT if both must coexist.
 
 See [DOCS.md](DOCS.md) for the full network setup, installation sequence, expected logs and troubleshooting information.
