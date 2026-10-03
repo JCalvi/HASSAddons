@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+- Adds a `nimbus_user_id` option so an already cloud-paired NEO can be presented with the same Nimbus account/UserId it used before the local cutover.
+- Persists a configured Nimbus UserId in the add-on data directory without printing it in normal logs.
+- Retains the generated local UUID fallback for development/new-pairing scenarios, with a warning when no Nimbus UserId is configured.
+- Expands the README and installation/troubleshooting documentation to explain the paired UserId requirement, how it differs from tokens/passwords, and why a mismatched account ID can cause repeated MQTT re-initialization.
+- Documents that a gateway-wide DNS override for `nimbus.actronair.com.au` can also redirect Home Assistant's official Actron Air cloud integration to the local emulator.
+
 ## 0.1.4
 
 - Fixes Home Assistant warnings such as `Invalid fan_modes mode:` when a NEO status snapshot omits `UserAirconSettings.FanMode`.
