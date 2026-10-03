@@ -14,6 +14,9 @@ configuration:
   nimbus_account_delay_seconds:
     name: Nimbus account delay seconds
     description: Diagnostic only. Number of seconds to hold the targeted /client/account response. Set to 0 for normal operation.
+  nimbus_synthetic_jwt:
+    name: Nimbus synthetic OAuth JWT
+    description: Diagnostic only. When enabled, /oauth/token returns a locally signed RS256 JWT with the claim names, roles and MQTT ACL structure observed from real Nimbus. Leave disabled for normal operation.
   topic_prefix:
     name: MQTT topic prefix
     description: Root MQTT topic used by the add-on for normalized state and Home Assistant command topics.

@@ -10,6 +10,7 @@ LOCAL_USER_ID = os.environ["LOCAL_USER_ID"]
 NEO_MQTT_PORT = int(os.getenv("NEO_MQTT_PORT", "28883"))
 NIMBUS_ACCOUNT_DELAY_IP = os.getenv("NIMBUS_ACCOUNT_DELAY_IP", "").strip()
 NIMBUS_ACCOUNT_DELAY_SECONDS = int(os.getenv("NIMBUS_ACCOUNT_DELAY_SECONDS", "0"))
+NIMBUS_SYNTHETIC_JWT = os.getenv("NIMBUS_SYNTHETIC_JWT", "false").lower() == "true"
 MQTT_HOST = os.environ["MQTT_HOST"]
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
