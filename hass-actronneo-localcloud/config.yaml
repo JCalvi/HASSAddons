@@ -1,5 +1,5 @@
 name: "Actron NEO Local Cloud"
-version: "1.1.0"
+version: "1.1.1"
 slug: "hass-actronneo-localcloud"
 description: "Local Nimbus/MQTT cloud replacement for ActronAir NEO controllers with Home Assistant MQTT Discovery"
 url: "https://github.com/JCalvi/HASSAddons/tree/master/hass-actronneo-localcloud"
@@ -24,7 +24,6 @@ ports_description:
 
 options:
   local_ip: ""
-  nimbus_user_id: ""
   neo_mqtt_port: 28883
   topic_prefix: "hass-actronneo-localcloud"
   discovery_prefix: "homeassistant"
@@ -33,7 +32,6 @@ options:
 
 schema:
   local_ip: str
-  nimbus_user_id: str?
   neo_mqtt_port: int(1,65535)
   topic_prefix: str
   discovery_prefix: str
