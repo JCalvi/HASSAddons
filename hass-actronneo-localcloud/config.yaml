@@ -1,5 +1,5 @@
 name: "Actron NEO Local Cloud"
-version: "0.1.1"
+version: "0.1.2"
 slug: "hass-actronneo-localcloud"
 description: "Local Nimbus/MQTT cloud replacement for ActronAir NEO controllers with Home Assistant MQTT Discovery"
 url: "https://github.com/JCalvi/HASSAddons/tree/master/hass-actronneo-localcloud"
@@ -20,7 +20,7 @@ ports:
   8883/tcp: 28883
 ports_description:
   443/tcp: "Local Nimbus HTTPS endpoint used by NEO controllers"
-  8883/tcp: "Local TLS MQTT endpoint used by NEO controllers (host port must match NEO MQTT port option)"
+  8883/tcp: "NEO TLS MQTT listener; default host port 28883 must match neo_mqtt_port"
 
 options:
   local_ip: ""
