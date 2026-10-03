@@ -108,6 +108,12 @@ class HomeAssistantBridge:
                 return
             body = deepcopy(body)
             body.pop("type", None)
+            _LOGGER.info(
+                "NEO %s full-status received (%d bytes, %d top-level sections)",
+                serial,
+                len(payload_bytes),
+                len(body),
+            )
             self._states[serial] = body
             self._publish_device(serial)
             return
@@ -116,7 +122,9 @@ class HomeAssistantBridge:
             body = extract_event(payload)
             if body is None:
                 return
+            _LOGGER.debug("NEO %s status-change received (%d keys)", serial, len(body))
             if serial not in self._states:
+                _LOGGER.info("NEO %s status-change arrived before full-status; requesting getAll", serial)
                 self._request_get_all(serial)
                 return
             for key, value in body.items():
@@ -132,13 +140,18 @@ class HomeAssistantBridge:
             return
 
         if message_type == "heart-beat":
+            _LOGGER.debug("NEO %s heart-beat received", serial)
             self._publish_availability(serial, True)
             if serial not in self._states:
+                _LOGGER.info("NEO %s heartbeat arrived before full-status; requesting getAll", serial)
                 self._request_get_all(serial)
             return
 
         if message_type == "cmd-response":
             _LOGGER.debug("Command response from NEO %s: %s", serial, topic)
+            return
+
+        _LOGGER.debug("NEO %s message on unhandled mwc topic: %s", serial, topic)
 
     def _handle_ha_command(self, topic: str, payload_bytes: bytes) -> None:
         parts = topic.split("/")
@@ -291,6 +304,7 @@ class HomeAssistantBridge:
     def _request_get_all(self, serial: str) -> None:
         user_id = self._user_ids.get(serial)
         if user_id:
+            _LOGGER.info("Requesting full NEO state from %s with getAll", serial)
             self._send_command(serial, user_id, {"command": {"type": "getAll"}})
 
     def _publish_availability(self, serial: str, online: bool) -> None:
@@ -305,6 +319,14 @@ class HomeAssistantBridge:
         if not raw:
             return
         normalized = normalize_state(serial, raw)
+        _LOGGER.debug(
+            "Publishing NEO %s state: power=%s mode=%s fan=%s zones=%d",
+            serial,
+            normalized.get("power"),
+            normalized.get("mode"),
+            normalized.get("fan_mode"),
+            len(normalized.get("zones", [])),
+        )
         publish_discovery(self._client, serial, normalized)
         self._client.publish(
             f"{TOPIC_PREFIX}/{serial}/state",
