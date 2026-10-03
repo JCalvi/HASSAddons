@@ -1,18 +1,15 @@
 # Changelog
 
-## 0.1.8
-
-- Marks `nimbus_user_id` as genuinely optional in the Home Assistant add-on schema and adds a clear UI description explaining that normal installations should leave it blank.
-- Documents that the bridge learns each controller's real Actron/Nimbus UserId automatically from the native MQTT topic after connection and uses that learned value for commands.
-- Keeps a private persistent generated UUID only for the local Nimbus bootstrap response when no override is supplied.
-- Fixes clearing `nimbus_user_id`: older versions could keep using a previously persisted override even after the UI field was emptied; 0.1.8 separates the generated bootstrap identity from the optional override so blank really means no override.
-
 ## 0.1.7
 
 - Adds optimistic command state plus a 6-second per-NEO settling/suppression window to prevent Home Assistant controls from bouncing back to stale values immediately after commands.
 - Mirrors the proven anti-bounce approach used by the Actron QUE bridge: the requested command state is published immediately, stale NEO `status-change`/`full-status` echoes are ignored briefly, then a canonical `getAll` refresh is requested when the settling window expires.
 - Command settling is tracked independently per NEO, so simultaneous control of multiple locally connected units does not interfere across systems.
 - Clears command suppression if a NEO disconnects, ensuring reconnect/full-status data is accepted normally.
+- Marks `nimbus_user_id` as genuinely optional in the Home Assistant add-on schema and adds a clear UI description explaining that normal installations should leave it blank.
+- Documents that the bridge learns each controller's real Actron/Nimbus UserId automatically from the native MQTT topic after connection and uses that learned value for commands.
+- Keeps a private persistent generated UUID only for the local Nimbus bootstrap response when no override is supplied.
+- Fixes clearing `nimbus_user_id` so a previously persisted override is no longer silently reused; blank now really means no manual override.
 
 ## 0.1.6
 
