@@ -147,6 +147,7 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     indoor = aircon.get("IndoorUnit") or {}
     outdoor_config = aircon.get("OutdoorUnit") or {}
     nv = raw.get("NV_SystemSettings") or {}
+    schedule = raw.get("NV_Schedule") or {}
     alerts = raw.get("Alerts") or {}
     cloud = raw.get("Cloud") or {}
     cloud_connection = cloud.get("Connection") or {}
@@ -289,6 +290,7 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "quiet": bool(settings.get("QuietModeEnabled", False)),
         "turbo": turbo,
         "away": bool(settings.get("AwayMode", False)),
+        "schedule": bool(schedule.get("Enabled", False)),
         "compressor_mode": live.get("CompressorMode"),
         "compressor_power": compressor_power,
         "compressor_speed": compressor_speed,

@@ -265,6 +265,7 @@ class HomeAssistantBridge:
             "quiet": "UserAirconSettings.QuietModeEnabled",
             "away": "UserAirconSettings.AwayMode",
             "turbo": "UserAirconSettings.TurboMode.Enabled",
+            "schedule": "NV_Schedule.Enabled",
         }
         if command_name in switch_paths:
             return {

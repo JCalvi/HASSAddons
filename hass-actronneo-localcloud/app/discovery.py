@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import paho.mqtt.client as mqtt
@@ -10,7 +11,53 @@ import paho.mqtt.client as mqtt
 from config import DISCOVERY_PREFIX, TOPIC_PREFIX
 
 
+def _slug(value: Any) -> str:
+    return re.sub(r"[^a-z0-9_]", "_", str(value or "").lower()).strip("_")
+
+
+def _default_entity_id(component: str, object_id: str, payload: dict[str, Any]) -> str | None:
+    """Build a deterministic entity ID from NEO serial and system name."""
+    device = payload.get("device") or {}
+    identifiers = device.get("identifiers") or []
+    serial = ""
+    for identifier in identifiers:
+        text = str(identifier)
+        if text.startswith("actronneo_"):
+            serial = text[len("actronneo_") :]
+            break
+    if not serial:
+        return None
+
+    system_name = _slug(device.get("name"))
+    serial_slug = _slug(serial)
+    if not system_name or not serial_slug:
+        return None
+
+    base = f"{component}.actron_neo_{serial_slug}_{system_name}"
+    prefix = f"actronneo_{serial}"
+    if object_id == prefix:
+        return base
+
+    suffix = object_id
+    if suffix.startswith(prefix + "_"):
+        suffix = suffix[len(prefix) + 1 :]
+    suffix = _slug(suffix)
+    if not suffix:
+        return base
+
+    if component == "climate" and re.fullmatch(r"zone_\d+", suffix):
+        zone_name = _slug(payload.get("name"))
+        if zone_name:
+            return f"{base}_{suffix}_{zone_name}"
+
+    return f"{base}_{suffix}"
+
+
 def _publish(client: mqtt.Client, component: str, object_id: str, payload: dict[str, Any]) -> None:
+    payload = dict(payload)
+    default_entity_id = _default_entity_id(component, object_id, payload)
+    if default_entity_id:
+        payload["default_entity_id"] = default_entity_id
     topic = f"{DISCOVERY_PREFIX}/{component}/{object_id}/config"
     client.publish(topic, json.dumps(payload, separators=(",", ":"), allow_nan=False), retain=True)
 
@@ -142,6 +189,7 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         "turbo": ("Turbo Mode", "turbo"),
         "away": ("Away Mode", "away"),
         "continuous_fan": ("Continuous Fan", "continuous_fan"),
+        "schedule": ("Schedule", "schedule"),
     }
     for key, (name, value_key) in switches.items():
         payload = {
@@ -157,6 +205,8 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             "state_on": "ON",
             "state_off": "OFF",
         }
+        if key == "schedule":
+            payload["icon"] = "mdi:calendar-clock"
         _publish(client, "switch", f"actronneo_{serial}_{key}", payload)
 
     # Everyday sensors remain enabled by default.

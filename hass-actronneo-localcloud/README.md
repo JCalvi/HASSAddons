@@ -27,9 +27,13 @@ The add-on maps its internal MQTT/TLS port `8883` to host port `28883` by defaul
 
 ## Home Assistant entities
 
-The normal device page includes the main climate entity, Quiet/Turbo/Away/Continuous Fan controls, outdoor temperature, humidity, compressor power/speed, Clean Filter, Defrosting and any configured zones.
+The normal device page includes the main climate entity, Quiet/Turbo/Away/Continuous Fan/Schedule controls, outdoor temperature, humidity, compressor power/speed, Clean Filter, Defrosting and any configured zones.
+
+The Schedule switch controls the NEO's existing master schedule enable flag; it does not alter the configured schedule events.
 
 The main climate entity reports live HVAC action (`off`, `idle`, `heating`, `cooling`, `drying` or `fan`) separately from the selected HVAC mode.
+
+Discovery publishes deterministic default entity IDs using the controller serial and NEO system name, for example `climate.actron_neo_26d03211_north_end_pac`. Home Assistant keeps entity IDs already stored in its entity registry, so existing entities may need a one-time rename/recreation to adopt the canonical IDs; new entities use the canonical format automatically.
 
 Additional engineering entities are published **disabled by default** so they do not clutter a normal installation. They include compressor capacity/running state, indoor fan RPM/PWM, coil/discharge/suction/VSD temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD communications state, AC error code, LP/HP fault states, supply voltage/current/power, EEV opening, superheat, indoor/outdoor/Wi-Fi firmware, outdoor unit family and rated system capacity.
 

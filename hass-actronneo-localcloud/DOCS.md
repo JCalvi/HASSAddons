@@ -204,7 +204,7 @@ For example, a raw `CompPower` value of `40` is exposed as approximately `4000 W
 Enabled by default:
 
 - Main climate entity with HVAC mode, target/current temperature, fan mode and live HVAC action.
-- Quiet Mode, Turbo Mode, Away Mode and Continuous Fan switches.
+- Quiet Mode, Turbo Mode, Away Mode, Continuous Fan and Schedule switches.
 - Outdoor Temperature.
 - Humidity.
 - Compressor Power.
@@ -212,7 +212,23 @@ Enabled by default:
 - Clean Filter and Defrosting binary sensors.
 - Per-zone climate/humidity entities when the NEO reports configured zones.
 
+The Schedule switch maps to the master `NV_Schedule.Enabled` flag. Turning it off disables execution of the NEO's existing schedule; turning it back on re-enables the same stored events. The add-on does not edit schedule event times, days, setpoints or per-event enable flags.
+
 Additional engineering/information entities are published **disabled by default** and can be enabled individually from the Home Assistant device page. These include compressor capacity, fan RPM/PWM, compressor running state, multiple temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD status, AC error code, pressure faults, supply electrical values, EEV opening, superheat, firmware, outdoor unit family and rated capacity.
+
+### Canonical entity IDs
+
+MQTT Discovery publishes a deterministic `default_entity_id` for every NEO entity using the controller serial and system name. For example:
+
+```text
+climate.actron_neo_26d03211_north_end_pac
+switch.actron_neo_26d03211_north_end_pac_schedule
+sensor.actron_neo_26d03211_north_end_pac_outdoor_temperature
+```
+
+This prevents entity IDs from depending on which name happened to be present on the first discovery message. Stable MQTT `unique_id` values are unchanged.
+
+Home Assistant does not normally rename an entity ID that is already stored in its entity registry just because a later discovery payload provides a different default. Existing installations may therefore need a one-time manual rename, or entity removal/re-discovery, to adopt the canonical IDs. New/recreated entities use the canonical format automatically.
 
 Normalized state is retained at:
 
