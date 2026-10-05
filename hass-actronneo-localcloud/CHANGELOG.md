@@ -37,14 +37,14 @@
 
 ## 1.0.8
 
-- Mirrors the HAL-style `_links` object observed in a real Nimbus `/client/account` response while keeping all account values local/synthetic.
+- Mirrors the HAL-style `_links` object observed in a real Nimbus `/api/v0/client/account` response while keeping all account values local/synthetic.
 - Adds the real `self`, `change-email`, `change-password`, `update-details`, `register-account`, `forgot-password`, and `reset-password` link relations and titles.
 - Leaves the top-level account fields, MQTT handling, response timing, and optional 1.0.7 delay diagnostic unchanged so this is a controlled response-structure experiment.
 - Intended to test whether the previously empty local `_links` object contributes to NEO 2.6.x duplicate-CONNECT/retry behaviour after `/client/account` is processed.
 
 ## 1.0.7
 
-- Adds a controlled Nimbus bootstrap timing diagnostic to test whether the NEO's `/client/account` response triggers or resets its MQTT reconnect state machine.
+- Adds a controlled Nimbus bootstrap timing diagnostic to test whether the NEO's `/api/v0/client/account` response triggers or resets its MQTT reconnect state machine.
 - Adds `nimbus_account_delay_ip` and `nimbus_account_delay_seconds` options. With both set, only `/client/account` responses from the selected NEO source IP are delayed; all other controllers and Nimbus endpoints are unchanged.
 - Passes the real NEO source address from nginx to the local Nimbus emulator using `X-Real-IP`, allowing one controller to be isolated while the others remain live controls.
 - Logs the exact start and end of a targeted delay so the subsequent duplicate MQTT CONNECT can be timed against release of the unchanged account response.
