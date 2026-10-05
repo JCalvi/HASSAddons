@@ -287,11 +287,23 @@ class HomeAssistantBridge:
                 requested += "+CONT"
             return {"command": {"UserAirconSettings.FanMode": requested, "type": "set-settings"}}
 
+        if command_name == "schedule":
+            schedule = state.get("NV_Schedule")
+            if not isinstance(schedule, dict):
+                raise ValueError("NEO schedule state is unavailable")
+            updated_schedule = deepcopy(schedule)
+            updated_schedule["Enabled"] = text.upper() == "ON"
+            return {
+                "command": {
+                    "NV_Schedule": updated_schedule,
+                    "type": "set-settings",
+                }
+            }
+
         switch_paths = {
             "quiet": "UserAirconSettings.QuietModeEnabled",
             "away": "UserAirconSettings.AwayMode",
             "turbo": "UserAirconSettings.TurboMode.Enabled",
-            "schedule": "NV_Schedule.Enabled",
         }
         if command_name in switch_paths:
             return {
