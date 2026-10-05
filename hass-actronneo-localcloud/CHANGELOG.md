@@ -1,15 +1,19 @@
 # Changelog
 
+## 1.2
+
+- Adds an enabled-by-default Schedule switch that controls the NEO master `NV_Schedule.Enabled` flag without altering stored schedule events.
+- Adds deterministic MQTT Discovery `default_entity_id` values for all NEO entities using the controller serial and system name, for example `climate.actron_neo_26d03211_north_end_pac`.
+- Keeps existing MQTT `unique_id` values unchanged; Home Assistant may retain already-registered entity IDs until they are renamed or recreated once.
+- Updates README and full installation documentation to describe schedule control and the canonical entity ID format.
+
 ## 1.1.1
 
 - Removes the `nimbus_user_id` add-on option from the Home Assistant schema, options UI, translation metadata and startup path.
 - Always creates and persists a private local UUID for the Nimbus bootstrap `UserId`; no real Actron/Nimbus account UUID needs to be entered or retained.
 - Keeps command routing unchanged: once a NEO connects, the bridge learns the controller's real Actron/Nimbus UserId from its native MQTT topic and uses that learned value for commands.
 - Existing configured `nimbus_user_id` values are no longer read after upgrading to 1.1.1 and can be discarded.
-- Adds an enabled-by-default Schedule switch that controls the NEO master `NV_Schedule.Enabled` flag without altering stored schedule events.
-- Adds deterministic MQTT Discovery `default_entity_id` values for all NEO entities using the controller serial and system name, for example `climate.actron_neo_26d03211_north_end_pac`.
-- Keeps existing MQTT `unique_id` values unchanged; Home Assistant may retain already-registered entity IDs until they are renamed or recreated once.
-- Updates README and full installation documentation to describe the automatic bootstrap identity, schedule control and canonical entity ID format, and removes obsolete Nimbus ID setup steps/examples.
+- Updates README and full installation documentation to describe the automatic bootstrap identity and removes obsolete Nimbus ID setup steps/examples.
 - Expands reconnect documentation with the completed real-cloud test result: the production Actron service also showed an occasional failed first reconnect followed by another firmware retry slot.
 
 ## 1.1.0
@@ -33,14 +37,14 @@
 
 ## 1.0.8
 
-- Mirrors the HAL-style `_links` object observed in a real Nimbus `/api/v0/client/account` response while keeping all account values local/synthetic.
+- Mirrors the HAL-style `_links` object observed in a real Nimbus `/client/account` response while keeping all account values local/synthetic.
 - Adds the real `self`, `change-email`, `change-password`, `update-details`, `register-account`, `forgot-password`, and `reset-password` link relations and titles.
 - Leaves the top-level account fields, MQTT handling, response timing, and optional 1.0.7 delay diagnostic unchanged so this is a controlled response-structure experiment.
 - Intended to test whether the previously empty local `_links` object contributes to NEO 2.6.x duplicate-CONNECT/retry behaviour after `/client/account` is processed.
 
 ## 1.0.7
 
-- Adds a controlled Nimbus bootstrap timing diagnostic to test whether the NEO's `/api/v0/client/account` response triggers or resets its MQTT reconnect state machine.
+- Adds a controlled Nimbus bootstrap timing diagnostic to test whether the NEO's `/client/account` response triggers or resets its MQTT reconnect state machine.
 - Adds `nimbus_account_delay_ip` and `nimbus_account_delay_seconds` options. With both set, only `/client/account` responses from the selected NEO source IP are delayed; all other controllers and Nimbus endpoints are unchanged.
 - Passes the real NEO source address from nginx to the local Nimbus emulator using `X-Real-IP`, allowing one controller to be isolated while the others remain live controls.
 - Logs the exact start and end of a targeted delay so the subsequent duplicate MQTT CONNECT can be timed against release of the unchanged account response.
