@@ -6,7 +6,10 @@
 - Always creates and persists a private local UUID for the Nimbus bootstrap `UserId`; no real Actron/Nimbus account UUID needs to be entered or retained.
 - Keeps command routing unchanged: once a NEO connects, the bridge learns the controller's real Actron/Nimbus UserId from its native MQTT topic and uses that learned value for commands.
 - Existing configured `nimbus_user_id` values are no longer read after upgrading to 1.1.1 and can be discarded.
-- Updates README and full installation documentation to describe the automatic bootstrap identity and removes obsolete Nimbus ID setup steps/examples.
+- Adds an enabled-by-default Schedule switch that controls the NEO master `NV_Schedule.Enabled` flag without altering stored schedule events.
+- Adds deterministic MQTT Discovery `default_entity_id` values for all NEO entities using the controller serial and system name, for example `climate.actron_neo_26d03211_north_end_pac`.
+- Keeps existing MQTT `unique_id` values unchanged; Home Assistant may retain already-registered entity IDs until they are renamed or recreated once.
+- Updates README and full installation documentation to describe the automatic bootstrap identity, schedule control and canonical entity ID format, and removes obsolete Nimbus ID setup steps/examples.
 - Expands reconnect documentation with the completed real-cloud test result: the production Actron service also showed an occasional failed first reconnect followed by another firmware retry slot.
 
 ## 1.1.0
