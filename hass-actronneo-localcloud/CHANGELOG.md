@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2
+
+- Fixes the Home Assistant Schedule switch write path. Native NEO testing showed schedule ON/OFF changes are emitted as the compound `NV_Schedule` object (`Enabled` together with `Events`), rather than as an independently writable `NV_Schedule.Enabled` setting.
+- Schedule commands now send the controller's complete current `NV_Schedule` object with only the master `Enabled` value changed, preserving all existing schedule events, times, days, modes, setpoints and zone selections.
+- Keeps the 1.2.1 DEBUG field-path diagnostics available for further protocol work.
+
 ## 1.2.1
 
 - Adds DEBUG-only NEO `status-change` field-path logging to identify undocumented controller settings such as the native schedule enable control.
