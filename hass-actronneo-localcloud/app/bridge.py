@@ -276,6 +276,13 @@ class HomeAssistantBridge:
                 command = self._build_zone_command(state, zone_index, command_name, text)
             else:
                 command_name = parts[3]
+                if command_name == "schedule":
+                    _LOGGER.warning(
+                        "Ignoring Schedule command for NEO %s: schedule writes are disabled pending protocol confirmation",
+                        serial,
+                    )
+                    self._publish_device(serial)
+                    return
                 command = self._build_system_command(state, command_name, text)
         except (ValueError, TypeError, IndexError) as exc:
             _LOGGER.warning("Invalid HA command %s: %s", topic, exc)
@@ -325,19 +332,6 @@ class HomeAssistantBridge:
             if "+CONT" in current or "-CONT" in current:
                 requested += "+CONT"
             return {"command": {"UserAirconSettings.FanMode": requested, "type": "set-settings"}}
-
-        if command_name == "schedule":
-            schedule = state.get("NV_Schedule")
-            if not isinstance(schedule, dict):
-                raise ValueError("NEO schedule state is unavailable")
-            updated_schedule = deepcopy(schedule)
-            updated_schedule["Enabled"] = text.upper() == "ON"
-            return {
-                "command": {
-                    "NV_Schedule": updated_schedule,
-                    "type": "set-settings",
-                }
-            }
 
         switch_paths = {
             "quiet": "UserAirconSettings.QuietModeEnabled",
