@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1
+
+- Adds DEBUG-only NEO `status-change` field-path logging to identify undocumented controller settings such as the native schedule enable control.
+- Boolean changes include their `true`/`false` value so ON/OFF transitions can be distinguished; arbitrary string and numeric payload values are intentionally not logged.
+- Field diagnostics are emitted before the command-settling suppression check, allowing native controller responses during the 6-second anti-bounce window to be inspected without changing normal state handling.
+
 ## 1.2
 
 - Adds an enabled-by-default Schedule switch that controls the NEO master `NV_Schedule.Enabled` flag without altering stored schedule events.

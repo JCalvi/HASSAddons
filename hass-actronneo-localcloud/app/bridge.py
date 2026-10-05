@@ -31,6 +31,26 @@ _IDLE_REFRESH_SECONDS = 30.0
 _REFRESH_LOOP_SECONDS = 1.0
 
 
+def _debug_change_fields(value: Any, prefix: str = "") -> list[str]:
+    """Return changed field paths while exposing values only for booleans.
+
+    This is deliberately conservative for DEBUG logging: nested field names are
+    useful when mapping undocumented NEO controls, while arbitrary string or
+    numeric payload values are not emitted.
+    """
+    if isinstance(value, dict):
+        fields: list[str] = []
+        for key, nested in value.items():
+            if key == "type":
+                continue
+            path = f"{prefix}.{key}" if prefix else str(key)
+            fields.extend(_debug_change_fields(nested, path))
+        return fields
+    if isinstance(value, bool):
+        return [f"{prefix}={'true' if value else 'false'}"] if prefix else []
+    return [prefix] if prefix else []
+
+
 class HomeAssistantBridge:
     def __init__(self) -> None:
         self._states: dict[str, dict[str, Any]] = {}
@@ -150,7 +170,13 @@ class HomeAssistantBridge:
             body = extract_event(payload)
             if body is None:
                 return
-            _LOGGER.debug("NEO %s status-change received (%d keys)", serial, len(body))
+            changed_fields = _debug_change_fields(body)
+            _LOGGER.debug(
+                "NEO %s status-change received (%d keys): %s",
+                serial,
+                len(body),
+                ", ".join(changed_fields) if changed_fields else "<none>",
+            )
             if serial not in self._states:
                 _LOGGER.info("NEO %s status-change arrived before full-status; requesting getAll", serial)
                 self._request_get_all(serial)
