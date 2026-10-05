@@ -204,7 +204,8 @@ For example, a raw `CompPower` value of `40` is exposed as approximately `4000 W
 Enabled by default:
 
 - Main climate entity with HVAC mode, target/current temperature, fan mode and live HVAC action.
-- Quiet Mode, Turbo Mode, Away Mode, Continuous Fan and Schedule switches.
+- Quiet Mode, Turbo Mode, Away Mode and Continuous Fan switches.
+- Schedule state reporting from the NEO master `NV_Schedule.Enabled` flag. The existing MQTT Schedule switch may still be present on upgraded systems, but writes are blocked in 1.2.3 for safety.
 - Outdoor Temperature.
 - Humidity.
 - Compressor Power.
@@ -212,7 +213,7 @@ Enabled by default:
 - Clean Filter and Defrosting binary sensors.
 - Per-zone climate/humidity entities when the NEO reports configured zones.
 
-The Schedule switch maps to the master `NV_Schedule.Enabled` flag. Turning it off disables execution of the NEO's existing schedule; turning it back on re-enables the same stored events. The add-on does not edit schedule event times, days, setpoints or per-event enable flags.
+**Schedule write safety:** testing of the previously assumed schedule command forms showed that toggling Schedule could unexpectedly change unrelated HVAC settings, including selecting HEAT and a 30 °C setpoint. Version 1.2.3 therefore ignores Schedule write commands and immediately republishes the controller's current canonical state. Readback from `NV_Schedule.Enabled` is retained while the native write protocol is investigated.
 
 Additional engineering/information entities are published **disabled by default** and can be enabled individually from the Home Assistant device page. These include compressor capacity, fan RPM/PWM, compressor running state, multiple temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD status, AC error code, pressure faults, supply electrical values, EEV opening, superheat, firmware, outdoor unit family and rated capacity.
 
@@ -250,7 +251,11 @@ Home Assistant commands are translated to native NEO `set-settings` payloads and
 actron-cloud/<UserId>/neo/<serial>/app/cmd
 ```
 
+Schedule is the current exception: 1.2.3 blocks schedule writes pending confirmation of the native write format because the previous experimental payloads altered unrelated HVAC mode/setpoint state on tested controllers.
+
 The NEO replies on `mwc/cmd-response/...`. State changes are reflected back through `status-change` broadcasts and merged into the retained HA state.
+
+At DEBUG level, 1.2.3 logs a bounded/redacted preview of native command-response payloads before JSON parsing. This is intended for protocol diagnosis and avoids reproducing account tokens, credentials, email addresses, JWTs and UUIDs in the log.
 
 The bridge uses a short 6-second optimistic settling window after commands to prevent stale NEO echoes from making HA controls bounce back. At the end of that window it requests canonical full state with `getAll`.
 
