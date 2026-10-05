@@ -27,9 +27,9 @@ The add-on maps its internal MQTT/TLS port `8883` to host port `28883` by defaul
 
 ## Home Assistant entities
 
-The normal device page includes the main climate entity, Quiet/Turbo/Away/Continuous Fan/Schedule controls, outdoor temperature, humidity, compressor power/speed, Clean Filter, Defrosting and any configured zones.
+The normal device page includes the main climate entity, Quiet/Turbo/Away/Continuous Fan controls, Schedule state, outdoor temperature, humidity, compressor power/speed, Clean Filter, Defrosting and any configured zones.
 
-The Schedule switch controls the NEO's existing master schedule enable flag; it does not alter the configured schedule events.
+**Schedule write safety:** the add-on still reports the NEO master schedule state from `NV_Schedule.Enabled`, but Schedule writes are temporarily blocked in 1.2.3. Testing of the previously assumed schedule command forms showed that toggling Schedule could unexpectedly change unrelated HVAC settings, including selecting HEAT and a 30 °C setpoint. The write control will remain disabled until the native NEO schedule command is confirmed.
 
 The main climate entity reports live HVAC action (`off`, `idle`, `heating`, `cooling`, `drying` or `fan`) separately from the selected HVAC mode.
 
