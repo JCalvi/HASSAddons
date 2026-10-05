@@ -2,9 +2,10 @@
 
 ## 1.2.3
 
-- Captures native NEO `cmd-response` payloads at DEBUG level before attempting JSON decoding, so firmware command rejections can be inspected instead of appearing only as `Invalid JSON` warnings.
+- Captures native NEO `cmd-response` payloads at DEBUG level before attempting JSON decoding, so firmware command responses can be inspected instead of appearing only as `Invalid JSON` warnings.
 - Command-response diagnostics are bounded to 512 characters and redact obvious tokens, passwords/secrets, email addresses, JWTs and UUIDs before logging.
-- Leaves the 1.2.2 schedule write behaviour unchanged while gathering the exact controller response needed to determine the accepted schedule command format.
+- Disables Schedule writes as a safety measure. Testing of the 1.2.1/1.2.2 schedule command forms showed that toggling Schedule could unexpectedly change unrelated HVAC settings, including selecting HEAT and a 30 °C setpoint.
+- Existing MQTT Schedule switch commands are ignored and the current canonical state is immediately republished until the native schedule write protocol is confirmed. Schedule state reporting from `NV_Schedule.Enabled` remains available.
 
 ## 1.2.2
 
@@ -82,7 +83,7 @@
 - Packetises Mosquitto responses so the replacement-session `SUBACK` can be observed directly instead of being hidden inside arbitrary TCP reads.
 - Logs the NEO `SUBSCRIBE` packet identifier, the matching Mosquitto `SUBACK` identifier/result codes, whether the IDs match, and the broker response latency.
 - Includes the last observed SUBSCRIBE/SUBACK identifiers and SUBACK result codes in the duplicate-session close summary so an immediate NEO disconnect can be distinguished from a missing or rejected SUBACK.
-- Keeps the 1.0.4 replacement-session behaviour and the 1.0.3 pre-CONNECT timeout unchanged; this release is diagnostic only apart from packet-aware forwarding of the same MQTT bytes.
+- Keeps the 1.0.4/1.0.5 replacement-session behaviour and the 1.0.3 pre-CONNECT timeout unchanged; this release is diagnostic only apart from packet-aware forwarding of the same MQTT bytes.
 
 ## 1.0.4
 
