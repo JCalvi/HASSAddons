@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3
+
+- Captures native NEO `cmd-response` payloads at DEBUG level before attempting JSON decoding, so firmware command rejections can be inspected instead of appearing only as `Invalid JSON` warnings.
+- Command-response diagnostics are bounded to 512 characters and redact obvious tokens, passwords/secrets, email addresses, JWTs and UUIDs before logging.
+- Leaves the 1.2.2 schedule write behaviour unchanged while gathering the exact controller response needed to determine the accepted schedule command format.
+
 ## 1.2.2
 
 - Fixes the Home Assistant Schedule switch write path. Native NEO testing showed schedule ON/OFF changes are emitted as the compound `NV_Schedule` object (`Enabled` together with `Events`), rather than as an independently writable `NV_Schedule.Enabled` setting.
@@ -163,7 +169,7 @@
 - Validates the real Mosquitto CONNACK before announcing a NEO as connected, so the add-on log now distinguishes TLS/CONNECT arrival from successful broker acceptance.
 - Keeps normal MQTT packets flowing through the existing Mosquitto session after the duplicate CONNECT workaround.
 - Expands README and installation documentation with the required host/container port mapping, `neo_mqtt_port` matching requirement, destination-port firewall rules, DNS override behaviour, UniFi/UDM notes, install order and troubleshooting guidance.
-- Clarifies that Home Assistant MQTT Discovery creates NEO devices automatically after usable state is received; the manual **Add MQTT device** flow is not used.
+- Clarifies that Home Assistant MQTT Discovery creates the NEO device automatically after usable state is received; the manual **Add MQTT device** flow is not used.
 
 ## 0.1.1
 
