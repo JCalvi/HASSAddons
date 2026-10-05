@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 import uuid
@@ -29,6 +30,7 @@ _COMMAND_SETTLE_SECONDS = 6.0
 _ACTIVE_REFRESH_SECONDS = 5.0
 _IDLE_REFRESH_SECONDS = 30.0
 _REFRESH_LOOP_SECONDS = 1.0
+_CMD_RESPONSE_PREVIEW_CHARS = 512
 
 
 def _debug_change_fields(value: Any, prefix: str = "") -> list[str]:
@@ -49,6 +51,38 @@ def _debug_change_fields(value: Any, prefix: str = "") -> list[str]:
     if isinstance(value, bool):
         return [f"{prefix}={'true' if value else 'false'}"] if prefix else []
     return [prefix] if prefix else []
+
+
+def _safe_cmd_response_preview(payload_bytes: bytes) -> str:
+    """Return a bounded, redacted representation of a native command response."""
+    text = payload_bytes.decode("utf-8", errors="replace").strip()
+    if not text:
+        return "<empty>"
+
+    text = re.sub(
+        r"(?i)(access[_-]?token|refresh[_-]?token|authorization|password|secret)(\s*[\"'=:\-]+\s*)([^,\s}\"]+)",
+        r"\1\2<redacted>",
+        text,
+    )
+    text = re.sub(
+        r"[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}",
+        "<redacted-jwt>",
+        text,
+    )
+    text = re.sub(
+        r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
+        "<redacted-email>",
+        text,
+    )
+    text = re.sub(
+        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+        "<uuid>",
+        text,
+    )
+
+    if len(text) > _CMD_RESPONSE_PREVIEW_CHARS:
+        return text[:_CMD_RESPONSE_PREVIEW_CHARS] + "...<truncated>"
+    return text
 
 
 class HomeAssistantBridge:
@@ -135,6 +169,15 @@ class HomeAssistantBridge:
         message_type = parts[5]
         self._user_ids[serial] = user_id
 
+        if message_type == "cmd-response":
+            _LOGGER.debug(
+                "Command response from NEO %s (%d bytes): %r",
+                serial,
+                len(payload_bytes),
+                _safe_cmd_response_preview(payload_bytes),
+            )
+            return
+
         try:
             payload = json.loads(payload_bytes.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -206,10 +249,6 @@ class HomeAssistantBridge:
             if serial not in self._states:
                 _LOGGER.info("NEO %s heartbeat arrived before full-status; requesting getAll", serial)
                 self._request_get_all(serial)
-            return
-
-        if message_type == "cmd-response":
-            _LOGGER.debug("Command response from NEO %s: %s", serial, topic)
             return
 
         _LOGGER.debug("NEO %s message on unhandled mwc topic: %s", serial, topic)
