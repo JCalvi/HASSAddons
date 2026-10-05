@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.4
+
+- Disables Home Assistant Schedule writes pending confirmation of the NEO firmware's accepted schedule command format.
+- Schedule ON/OFF requests are now safely ignored and the current device state is republished instead of sending the unconfirmed `NV_Schedule` write that could be rejected by the controller.
+- Keeps Schedule state reporting/readback available while preventing unsafe writes; the 1.2.3 DEBUG command-response diagnostics remain available for further protocol investigation.
+
 ## 1.2.3
 
 - Captures native NEO `cmd-response` payloads at DEBUG level before attempting JSON decoding, so firmware command rejections can be inspected instead of appearing only as `Invalid JSON` warnings.
