@@ -360,6 +360,12 @@ class HomeAssistantBridge:
             value = f"{base}+CONT" if text.upper() == "ON" else base
             return {"command": {"UserAirconSettings.FanMode": value, "type": "set-settings"}}
 
+        if command_name in ("away_heat_setpoint", "away_cool_setpoint"):
+            value = float(text)
+            suffix = "Heat" if command_name == "away_heat_setpoint" else "Cool"
+            path = f"NV_SystemSettings.AwayMode.TemperatureSetpoint_{suffix}_oC"
+            return {"command": {path: value, "type": "set-settings"}}
+
         if command_name == "schedule":
             requested = text.upper()
             if requested not in ("ON", "OFF"):
@@ -405,18 +411,10 @@ class HomeAssistantBridge:
         mode = str(settings.get("Mode", "AUTO")).upper()
 
         if command_name == "mode":
-            enabled = list(settings.get("EnabledZones") or [])
-            while len(enabled) <= zone_index:
-                enabled.append(False)
-            if text.lower() == "off":
-                enabled[zone_index] = False
-                return {"command": {"UserAirconSettings.EnabledZones": enabled, "type": "set-settings"}}
-            enabled[zone_index] = True
+            enabled = text.lower() != "off"
             return {
                 "command": {
-                    "UserAirconSettings.EnabledZones": enabled,
-                    "UserAirconSettings.isOn": True,
-                    "UserAirconSettings.Mode": ha_to_neo_mode(text),
+                    f"UserAirconSettings.EnabledZones[{zone_index}]": enabled,
                     "type": "set-settings",
                 }
             }
@@ -438,6 +436,26 @@ class HomeAssistantBridge:
                 raise ValueError(f"cannot set zone temperature in mode {mode}")
             return {"command": cmd}
 
+        if command_name == "airflow":
+            value = float(text)
+            return {
+                "command": {
+                    f"RemoteZoneInfo[{zone_index}].AirflowSetpoint": value,
+                    "type": "set-settings",
+                }
+            }
+
+        if command_name == "name":
+            value = text.strip()
+            if not value:
+                raise ValueError("zone name cannot be empty")
+            return {
+                "command": {
+                    f"RemoteZoneInfo[{zone_index}].NV_Title": value,
+                    "type": "set-settings",
+                }
+            }
+
         return None
 
     def _begin_command_settle(self, serial: str, command: dict[str, Any]) -> None:
@@ -448,11 +466,22 @@ class HomeAssistantBridge:
             return
 
         changed_paths: list[str] = []
+        schedule_enabled: bool | None = None
         for key, value in body.items():
             if key == "type":
                 continue
             set_path(state, key, value)
             changed_paths.append(key)
+            if re.fullmatch(r"NV_Schedule\\.Events\\[\\d+\\]\\.Enabled", key):
+                schedule_enabled = bool(value)
+
+        # NEO Connect toggles schedule events individually. The controller then
+        # derives NV_Schedule.Enabled, which is the value exposed to HA. Mirror
+        # that derived master state during the settling window to prevent the
+        # Schedule switch bouncing back to its stale pre-command state.
+        if schedule_enabled is not None:
+            set_path(state, "NV_Schedule.Enabled", schedule_enabled)
+            changed_paths.append("NV_Schedule.Enabled")
 
         if not changed_paths:
             return
