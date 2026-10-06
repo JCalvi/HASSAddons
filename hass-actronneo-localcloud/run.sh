@@ -1,7 +1,9 @@
 #!/usr/bin/with-contenv bashio
 set -euo pipefail
 
-bashio::log.info "Starting Actron NEO Local Cloud..."
+ADDON_VERSION="$(bashio::addon.version)"
+bashio::log.info "Starting Actron NEO Local Cloud v${ADDON_VERSION}"
+bashio::log.info "Diagnostic instrumentation: raw NEO MQTT RX/TX logging ENABLED at DEBUG level (16 KiB payload preview, sensitive fields redacted)"
 
 LOCAL_IP="$(bashio::config 'local_ip')"
 if [ -z "${LOCAL_IP}" ]; then
