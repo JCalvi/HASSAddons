@@ -209,6 +209,37 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             payload["icon"] = "mdi:calendar-clock"
         _publish(client, "switch", f"actronneo_{serial}_{key}", payload)
 
+    schedule_test_button = {
+        "name": "Schedule EndTime Self-Test",
+        "unique_id": f"actronneo_{serial}_schedule_endtime_test",
+        "device": device,
+        "availability_topic": availability,
+        "command_topic": f"{base}/set/schedule_endtime_test",
+        "payload_press": "PRESS",
+        "icon": "mdi:test-tube",
+        "entity_category": "diagnostic",
+        "enabled_by_default": True,
+    }
+    _publish(
+        client,
+        "button",
+        f"actronneo_{serial}_schedule_endtime_test",
+        schedule_test_button,
+    )
+
+    _state_sensor(
+        client,
+        serial=serial,
+        state_topic=state_topic,
+        availability=availability,
+        device=device,
+        key="schedule_endtime_test_result",
+        name="Schedule EndTime Self-Test Result",
+        icon="mdi:test-tube",
+        enabled_by_default=True,
+        diagnostic=True,
+    )
+
     for key, name in (
         ("away_heat_setpoint", "Away Heating Setpoint"),
         ("away_cool_setpoint", "Away Cooling Setpoint"),
