@@ -204,7 +204,7 @@ class HomeAssistantBridge:
                 response_payload = None
             if isinstance(response_payload, dict):
                 correlation_id = str(response_payload.get("correlationId") or "")
-                if correlation_id:
+                if correlation_id.startswith("HA_DIAG/"):
                     with self._diag_condition:
                         self._diag_cmd_responses[(serial, correlation_id)] = deepcopy(response_payload)
                         self._diag_condition.notify_all()
@@ -725,9 +725,11 @@ class HomeAssistantBridge:
                         full_status=True,
                         since=restore_getall_started,
                     )
+                    # Restoring may be a no-op if the test write was rejected,
+                    # in which case firmware need not emit a status-change.
+                    # Canonical getAll persistence is the restore authority.
                     restore_ok = (
                         restore_ack
-                        and restore_status
                         and restore_getall_ack
                         and restore_persisted
                     )
@@ -880,6 +882,9 @@ class HomeAssistantBridge:
                     continue
                 if self._is_command_settling(serial):
                     continue
+                with self._diag_condition:
+                    if serial in self._schedule_test_running:
+                        continue
 
                 raw = self._states[serial]
                 settings = raw.get("UserAirconSettings") or {}
