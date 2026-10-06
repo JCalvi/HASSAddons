@@ -1,3 +1,16 @@
+## 1.2.11
+
+- Replaces the single-format Schedule EndTime test with a comprehensive guarded **Schedule Write Probe**.
+- Tests nine plausible NEO `set-settings` representations for changing only Event 0 `EndTime`: scalar EndTime; scalar EndTime plus the current Enabled flag; all Event 0 fields flattened to indexed scalar paths; the flattened event plus the current master Enabled flag; a complete indexed Event 0 object; the indexed event object without ID; the complete Events array; master Enabled plus the complete Events array; and the complete NV_Schedule object.
+- Uses canonical `getAll` persistence as the authoritative success criterion. ACK/status-change behavior is logged for diagnosis but does not override canonical state.
+- Captures diagnostic command responses from the MQTT response topic even when the NEO returns malformed JSON, allowing the known truncated/empty ACK-like response for unsupported schedule properties to be distinguished from a timeout.
+- Starts with a canonical baseline check, verifies the original EndTime remains intact after each failed candidate, and stops immediately when a confirmed writable representation is found.
+- If any candidate changes the schedule, the probe restores the exact original schedule before reporting success. Restore first uses the working method and then falls back through every probe representation if required.
+- Final restore safety is judged by canonical `getAll`: an unchanged/original schedule is accepted as safe even if a no-op restore command receives an empty or malformed ACK-like response.
+- Stops further probing and reports a CRITICAL result if a mutation is detected but the original EndTime cannot be restored.
+- Keeps normal periodic telemetry polling suspended for the tested NEO while the probe runs to make the result unambiguous.
+- This is intended as the final broad schedule-write investigation: if all nine representations fail while the original state remains confirmed, schedule editing will be considered unsupported through the known local `set-settings` interface.
+
 ## 1.2.10
 
 - Adds a temporary Home Assistant diagnostic button, **Schedule EndTime Self-Test**, to prove whether `NV_Schedule.Events[0].EndTime` is writable before implementing schedule editing.
