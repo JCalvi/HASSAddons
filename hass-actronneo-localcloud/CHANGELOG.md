@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.5
+
+- Adds DEBUG logging of the raw native NEO MQTT `status-change` payload before parsing, preserving the complete schedule event structure needed to investigate `NV_Schedule.Enabled` writes.
+- Logs the redacted native MQTT topic, payload byte count and up to 16 KiB of payload data; Nimbus user IDs, UUIDs, email addresses, JWTs and obvious credential/token fields are redacted.
+- Adds equivalent DEBUG logging for commands transmitted by the bridge to the NEO so command payloads and native responses can be compared directly.
+- Retains raw `cmd-response` diagnostics using the same expanded safe payload logger.
+- Schedule writes remain disabled while this diagnostic capture establishes the firmware's accepted schedule representation.
+
 ## 1.2.4
 
 - Disables Home Assistant Schedule writes pending confirmation of the NEO firmware's accepted schedule command format.
