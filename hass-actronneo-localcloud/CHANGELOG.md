@@ -1,3 +1,11 @@
+## 1.3.0
+
+- Removes the temporary Schedule EndTime Self-Test / Schedule Write Probe button, result sensor, probe state tracking, response-correlation capture, and all associated schedule-edit diagnostic code.
+- Retains the proven native Schedule ON/OFF control using indexed `NV_Schedule.Events[n].Enabled` writes and the 1.2.9 optimistic master-state debounce fix.
+- Records the schedule-edit investigation as closed for the known local `set-settings` interface: the 1.2.11 guarded probe tested nine plausible write representations and none produced canonical `getAll` persistence for an Event 0 EndTime change.
+- Promotes **Indoor Fan RPM** from a disabled engineering diagnostic to a normal enabled-by-default sensor on the NEO device page.
+- Leaves Indoor Fan PWM and the remaining engineering/information telemetry as disabled-by-default diagnostic entities.
+
 ## 1.2.11
 
 - Replaces the single-format Schedule EndTime test with a comprehensive guarded **Schedule Write Probe**.
