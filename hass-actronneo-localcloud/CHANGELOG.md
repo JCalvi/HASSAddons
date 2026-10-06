@@ -4,7 +4,10 @@
 
 - Adds explicit startup logging of the running Home Assistant add-on version.
 - Adds an explicit startup confirmation that raw NEO MQTT RX/TX diagnostic instrumentation is present and is emitted when the add-on log level is DEBUG.
-- Keeps Schedule writes disabled; this release only removes ambiguity about which diagnostic build is actually running.
+- Re-enables the Home Assistant Schedule switch as a guarded protocol test based on the captured native NEO schedule representation.
+- Schedule writes preserve the complete learned `NV_Schedule.Events` array and change only `NV_Schedule.Enabled` plus each existing event's `Enabled` field.
+- Refuses Schedule writes if a valid learned `NV_Schedule.Events` array is unavailable or an event lacks its native `Enabled` field; no schedule times, days, zones, modes, fan modes or setpoints are invented.
+- Raw MQTT TX/RX diagnostics remain enabled at DEBUG so the test command, ACK/rejection and resulting native state can be verified.
 
 ## 1.2.5
 
