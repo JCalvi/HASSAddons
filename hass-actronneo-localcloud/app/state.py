@@ -147,7 +147,8 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     indoor = aircon.get("IndoorUnit") or {}
     outdoor_config = aircon.get("OutdoorUnit") or {}
     nv = raw.get("NV_SystemSettings") or {}
-    schedule = raw.get("NV_Schedule") or {}\n    away_settings = nv.get("AwayMode") or {}
+    schedule = raw.get("NV_Schedule") or {}
+    away_settings = nv.get("AwayMode") or {}
     alerts = raw.get("Alerts") or {}
     cloud = raw.get("Cloud") or {}
     cloud_connection = cloud.get("Connection") or {}
@@ -206,7 +207,9 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
                 "humidity": zone.get("LiveHumidity_pc"),
                 "position": zone.get("ZonePosition"),
                 "itc": bool(zone.get("NV_ITC", False)),
-                "vav": bool(zone.get("NV_VAV", False)),\n                "airflow_setpoint": zone.get("AirflowSetpoint"),\n                "airflow_locked": bool(zone.get("AirflowControlLocked", False)),
+                "vav": bool(zone.get("NV_VAV", False)),
+                "airflow_setpoint": zone.get("AirflowSetpoint"),
+                "airflow_locked": bool(zone.get("AirflowControlLocked", False)),
             }
         )
 
@@ -289,7 +292,9 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "continuous_fan": "+CONT" in fan_raw or "-CONT" in fan_raw,
         "quiet": bool(settings.get("QuietModeEnabled", False)),
         "turbo": turbo,
-        "away": bool(settings.get("AwayMode", False)),\n        "away_heat_setpoint": away_settings.get("TemperatureSetpoint_Heat_oC"),\n        "away_cool_setpoint": away_settings.get("TemperatureSetpoint_Cool_oC"),
+        "away": bool(settings.get("AwayMode", False)),
+        "away_heat_setpoint": away_settings.get("TemperatureSetpoint_Heat_oC"),
+        "away_cool_setpoint": away_settings.get("TemperatureSetpoint_Cool_oC"),
         "schedule": bool(schedule.get("Enabled", False)),
         "compressor_mode": live.get("CompressorMode"),
         "compressor_power": compressor_power,
