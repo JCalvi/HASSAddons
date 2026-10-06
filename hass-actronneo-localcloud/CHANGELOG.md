@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.6
+
+- Adds explicit startup logging of the running Home Assistant add-on version.
+- Adds an explicit startup confirmation that raw NEO MQTT RX/TX diagnostic instrumentation is present and is emitted when the add-on log level is DEBUG.
+- Keeps Schedule writes disabled; this release only removes ambiguity about which diagnostic build is actually running.
+
 ## 1.2.5
 
 - Adds DEBUG logging of the raw native NEO MQTT `status-change` payload before parsing, preserving the complete schedule event structure needed to investigate `NV_Schedule.Enabled` writes.
