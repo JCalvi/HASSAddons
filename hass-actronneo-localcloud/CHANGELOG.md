@@ -1,3 +1,9 @@
+## 1.3.1
+
+- Corrects the add-on startup status messages so they report the configured log level and whether retained raw NEO state publishing is enabled or disabled.
+- Raw NEO MQTT RX/TX diagnostics are now described as enabled only when the configured log level is `DEBUG`; at INFO/WARNING/ERROR startup explicitly says those DEBUG payload diagnostics are disabled.
+- No runtime control, MQTT, discovery, Schedule, HVAC or telemetry behaviour changes.
+
 ## 1.3.0
 
 - Removes the temporary Schedule EndTime Self-Test / Schedule Write Probe button, result sensor, probe state tracking, response-correlation capture, and all associated schedule-edit diagnostic code.
