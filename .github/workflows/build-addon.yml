@@ -217,11 +217,13 @@ jobs:
                 echo "Deleted old tag: ${TAG}"
                 ;;
               *)
-                echo "Failed to delete tag ${TAG} (HTTP ${HTTP_STATUS})."
+                echo "::warning::Failed to delete tag ${TAG} (HTTP ${HTTP_STATUS}). Docker image build/push succeeded; cleanup will be skipped."
                 cat "$DELETE_RESPONSE"
                 echo
-                echo "If this is HTTP 403, ensure DOCKERHUB_TOKEN has Delete permission."
-                exit 1
+                if [ "$HTTP_STATUS" = "403" ]; then
+                  echo "::warning::DOCKERHUB_TOKEN does not have Delete permission. Create a Docker Hub PAT with Delete access and replace the GitHub DOCKERHUB_TOKEN secret."
+                fi
+                exit 0
                 ;;
             esac
           done
