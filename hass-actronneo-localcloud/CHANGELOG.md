@@ -1,3 +1,13 @@
+## 1.2.8
+
+- Fixes the Home Assistant Schedule switch bounce after a successful NEO Connect-style schedule command. During the existing six-second command settling window, indexed `NV_Schedule.Events[n].Enabled` writes now also mirror the controller-derived `NV_Schedule.Enabled` master state used by the HA switch.
+- Changes zone ON/OFF writes to the official NEO Connect indexed `UserAirconSettings.EnabledZones[n]` property instead of rewriting the complete EnabledZones array. Zone enable no longer implicitly powers on the complete system or changes its operating mode.
+- Adds capability-driven Away heating and cooling setpoint controls using the APK-confirmed `NV_SystemSettings.AwayMode.TemperatureSetpoint_Heat_oC` and `TemperatureSetpoint_Cool_oC` paths when those settings are present in controller state.
+- Adds per-zone airflow setpoint controls when `RemoteZoneInfo[n].AirflowSetpoint` is present, using the APK-confirmed indexed property path.
+- Adds per-zone name controls using the APK-confirmed `RemoteZoneInfo[n].NV_Title` property.
+- Quick Timer is intentionally not exposed yet: NEO Connect confirms `NV_QuickTimer` / `NV_QuickTimer.Master[0]`, but the complete serialized timer write shape has not yet been proven and the add-on will not guess it.
+- Retains the raw MQTT TX/RX DEBUG diagnostics for first-use verification of the new controls.
+
 ## 1.2.7
 
 - Fixes Schedule ON/OFF commands to match the command serialization used by the official NEO Connect 2.0.1 (1526) Android app.
