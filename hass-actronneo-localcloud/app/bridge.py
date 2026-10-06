@@ -103,6 +103,12 @@ class HomeAssistantBridge:
         self._suppress_lock = threading.Lock()
         self._last_full_status: dict[str, float] = {}
         self._last_getall_request: dict[str, float] = {}
+        self._diag_condition = threading.Condition()
+        self._diag_cmd_responses: dict[tuple[str, str], dict[str, Any]] = {}
+        self._diag_status_events: dict[str, list[tuple[float, dict[str, Any]]]] = {}
+        self._diag_full_events: dict[str, list[tuple[float, dict[str, Any]]]] = {}
+        self._schedule_test_running: set[str] = set()
+        self._schedule_test_results: dict[str, str] = {}
         self._client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"actronneo-localcloud-{uuid.uuid4().hex[:8]}",
@@ -192,6 +198,16 @@ class HomeAssistantBridge:
                 len(payload_bytes),
                 _safe_mqtt_preview(payload_bytes),
             )
+            try:
+                response_payload = json.loads(payload_bytes.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                response_payload = None
+            if isinstance(response_payload, dict):
+                correlation_id = str(response_payload.get("correlationId") or "")
+                if correlation_id:
+                    with self._diag_condition:
+                        self._diag_cmd_responses[(serial, correlation_id)] = deepcopy(response_payload)
+                        self._diag_condition.notify_all()
             return
 
         try:
@@ -213,6 +229,11 @@ class HomeAssistantBridge:
                 len(payload_bytes),
                 len(body),
             )
+            with self._diag_condition:
+                events = self._diag_full_events.setdefault(serial, [])
+                events.append((time.monotonic(), deepcopy(body)))
+                del events[:-20]
+                self._diag_condition.notify_all()
             if self._is_command_settling(serial):
                 _LOGGER.debug(
                     "NEO %s full-status suppressed during %.1fs command settling window",
@@ -236,6 +257,11 @@ class HomeAssistantBridge:
                 len(body),
                 ", ".join(changed_fields) if changed_fields else "<none>",
             )
+            with self._diag_condition:
+                events = self._diag_status_events.setdefault(serial, [])
+                events.append((time.monotonic(), deepcopy(body)))
+                del events[:-50]
+                self._diag_condition.notify_all()
             if serial not in self._states:
                 _LOGGER.info("NEO %s status-change arrived before full-status; requesting getAll", serial)
                 self._request_get_all(serial)
@@ -292,6 +318,11 @@ class HomeAssistantBridge:
                 command = self._build_zone_command(state, zone_index, command_name, text)
             else:
                 command_name = parts[3]
+                if command_name == "schedule_endtime_test":
+                    if text.upper() not in ("PRESS", "RUN", "ON"):
+                        raise ValueError("schedule EndTime test expects PRESS")
+                    self._start_schedule_endtime_test(serial, user_id)
+                    return
                 command = self._build_system_command(state, command_name, text)
         except (ValueError, TypeError, IndexError) as exc:
             _LOGGER.warning("Invalid HA command %s: %s", topic, exc)
@@ -458,6 +489,274 @@ class HomeAssistantBridge:
 
         return None
 
+    @staticmethod
+    def _schedule_endtime_from_state(state: dict[str, Any]) -> str | None:
+        schedule = state.get("NV_Schedule")
+        if not isinstance(schedule, dict):
+            return None
+        events = schedule.get("Events")
+        if not isinstance(events, list) or not events or not isinstance(events[0], dict):
+            return None
+        value = events[0].get("EndTime")
+        return str(value) if value is not None else None
+
+    @staticmethod
+    def _schedule_endtime_from_change(body: dict[str, Any]) -> str | None:
+        direct = body.get("NV_Schedule.Events[0].EndTime")
+        if direct is not None:
+            return str(direct)
+        events = body.get("NV_Schedule.Events")
+        if isinstance(events, list) and events and isinstance(events[0], dict):
+            value = events[0].get("EndTime")
+            if value is not None:
+                return str(value)
+        return HomeAssistantBridge._schedule_endtime_from_state(body)
+
+    @staticmethod
+    def _schedule_test_time(original: str) -> str:
+        match = re.fullmatch(r"T(\d{2}):(\d{2})(?::(\d{2}))?", original)
+        if not match:
+            raise ValueError(f"unsupported EndTime format {original!r}")
+        hour, minute = int(match.group(1)), int(match.group(2))
+        if hour > 23 or minute > 59:
+            raise ValueError(f"invalid EndTime {original!r}")
+        total = (hour * 60 + minute + 5) % (24 * 60)
+        suffix = f":{match.group(3)}" if match.group(3) is not None else ""
+        return f"T{total // 60:02d}:{total % 60:02d}{suffix}"
+
+    def _set_schedule_test_result(self, serial: str, result: str) -> None:
+        with self._diag_condition:
+            self._schedule_test_results[serial] = result
+        self._publish_device(serial)
+
+    def _start_schedule_endtime_test(self, serial: str, user_id: str) -> None:
+        with self._diag_condition:
+            if serial in self._schedule_test_running:
+                _LOGGER.warning("NEO %s Schedule EndTime self-test already running", serial)
+                return
+            self._schedule_test_running.add(serial)
+            self._schedule_test_results[serial] = "RUNNING"
+        self._publish_device(serial)
+        thread = threading.Thread(
+            target=self._run_schedule_endtime_test,
+            args=(serial, user_id),
+            name=f"schedule-endtime-test-{serial}",
+            daemon=True,
+        )
+        thread.start()
+
+    def _wait_diag_response(
+        self, serial: str, correlation_id: str, timeout: float = 4.0
+    ) -> dict[str, Any] | None:
+        deadline = time.monotonic() + timeout
+        key = (serial, correlation_id)
+        with self._diag_condition:
+            while True:
+                response = self._diag_cmd_responses.pop(key, None)
+                if response is not None:
+                    return response
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return None
+                self._diag_condition.wait(remaining)
+
+    def _wait_diag_endtime(
+        self,
+        serial: str,
+        expected: str,
+        *,
+        full_status: bool,
+        since: float,
+        timeout: float = 4.0,
+    ) -> bool:
+        deadline = time.monotonic() + timeout
+        store = self._diag_full_events if full_status else self._diag_status_events
+        extractor = (
+            self._schedule_endtime_from_state
+            if full_status
+            else self._schedule_endtime_from_change
+        )
+        with self._diag_condition:
+            while True:
+                for timestamp, body in store.get(serial, []):
+                    if timestamp >= since and extractor(body) == expected:
+                        return True
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                self._diag_condition.wait(remaining)
+
+    @staticmethod
+    def _diag_ack_matches(
+        response: dict[str, Any] | None, path: str, expected: Any
+    ) -> bool:
+        if not isinstance(response, dict):
+            return False
+        command_response = response.get("commandResponse")
+        if not isinstance(command_response, dict) or command_response.get("type") != "ack":
+            return False
+        value = command_response.get("value")
+        return isinstance(value, dict) and value.get(path) == expected
+
+    @staticmethod
+    def _diag_getall_ack(response: dict[str, Any] | None) -> bool:
+        if not isinstance(response, dict):
+            return False
+        command_response = response.get("commandResponse")
+        if not isinstance(command_response, dict) or command_response.get("type") != "ack":
+            return False
+        value = command_response.get("value")
+        return isinstance(value, dict) and value.get("getAll") is True
+
+    def _run_schedule_endtime_test(self, serial: str, user_id: str) -> None:
+        path = "NV_Schedule.Events[0].EndTime"
+        failures: list[str] = []
+        original: str | None = None
+        test_value: str | None = None
+
+        try:
+            state = self._states.get(serial)
+            if not isinstance(state, dict):
+                raise ValueError("no current NEO state")
+            original = self._schedule_endtime_from_state(state)
+            if original is None:
+                raise ValueError("NV_Schedule.Events[0].EndTime not present")
+            test_value = self._schedule_test_time(original)
+
+            _LOGGER.warning(
+                "NEO %s Schedule EndTime SELF-TEST START original=%s test=%s",
+                serial,
+                original,
+                test_value,
+            )
+
+            write_started = time.monotonic()
+            write_corr = f"HA_DIAG/endtime-write/{uuid.uuid4()}"
+            self._send_command(
+                serial,
+                user_id,
+                {"command": {"type": "set-settings", path: test_value}},
+                correlation_id=write_corr,
+            )
+            write_ack = self._diag_ack_matches(
+                self._wait_diag_response(serial, write_corr), path, test_value
+            )
+            _LOGGER.warning(
+                "NEO %s Schedule EndTime TEST write ACK: %s",
+                serial,
+                "PASS" if write_ack else "FAIL",
+            )
+            if not write_ack:
+                failures.append("write_ack")
+
+            status_ok = self._wait_diag_endtime(
+                serial, test_value, full_status=False, since=write_started
+            )
+            _LOGGER.warning(
+                "NEO %s Schedule EndTime TEST status-change: %s",
+                serial,
+                "PASS" if status_ok else "FAIL",
+            )
+            if not status_ok:
+                failures.append("status_change")
+
+            getall_started = time.monotonic()
+            getall_corr = f"HA_DIAG/endtime-getall/{uuid.uuid4()}"
+            self._send_command(
+                serial,
+                user_id,
+                {"command": {"type": "getAll"}},
+                correlation_id=getall_corr,
+            )
+            getall_ack = self._diag_getall_ack(
+                self._wait_diag_response(serial, getall_corr)
+            )
+            persisted = self._wait_diag_endtime(
+                serial, test_value, full_status=True, since=getall_started
+            )
+            _LOGGER.warning(
+                "NEO %s Schedule EndTime TEST getAll ACK=%s persistence=%s",
+                serial,
+                "PASS" if getall_ack else "FAIL",
+                "PASS" if persisted else "FAIL",
+            )
+            if not getall_ack:
+                failures.append("getall_ack")
+            if not persisted:
+                failures.append("persistence")
+
+        except Exception as exc:
+            failures.append(f"test_error:{exc}")
+            _LOGGER.exception("NEO %s Schedule EndTime self-test error", serial)
+
+        finally:
+            restore_ok = False
+            if original is not None:
+                try:
+                    restore_started = time.monotonic()
+                    restore_corr = f"HA_DIAG/endtime-restore/{uuid.uuid4()}"
+                    self._send_command(
+                        serial,
+                        user_id,
+                        {"command": {"type": "set-settings", path: original}},
+                        correlation_id=restore_corr,
+                    )
+                    restore_ack = self._diag_ack_matches(
+                        self._wait_diag_response(serial, restore_corr), path, original
+                    )
+                    restore_status = self._wait_diag_endtime(
+                        serial, original, full_status=False, since=restore_started
+                    )
+
+                    restore_getall_started = time.monotonic()
+                    restore_getall_corr = f"HA_DIAG/endtime-restore-getall/{uuid.uuid4()}"
+                    self._send_command(
+                        serial,
+                        user_id,
+                        {"command": {"type": "getAll"}},
+                        correlation_id=restore_getall_corr,
+                    )
+                    restore_getall_ack = self._diag_getall_ack(
+                        self._wait_diag_response(serial, restore_getall_corr)
+                    )
+                    restore_persisted = self._wait_diag_endtime(
+                        serial,
+                        original,
+                        full_status=True,
+                        since=restore_getall_started,
+                    )
+                    restore_ok = (
+                        restore_ack
+                        and restore_status
+                        and restore_getall_ack
+                        and restore_persisted
+                    )
+                    _LOGGER.warning(
+                        "NEO %s Schedule EndTime RESTORE ACK=%s status-change=%s getAll_ACK=%s persistence=%s",
+                        serial,
+                        "PASS" if restore_ack else "FAIL",
+                        "PASS" if restore_status else "FAIL",
+                        "PASS" if restore_getall_ack else "FAIL",
+                        "PASS" if restore_persisted else "FAIL",
+                    )
+                except Exception:
+                    _LOGGER.exception(
+                        "NEO %s Schedule EndTime RESTORE raised an exception", serial
+                    )
+
+            if not restore_ok:
+                failures.append("RESTORE_FAILED")
+
+            result = "PASS" if not failures else "FAIL: " + ",".join(failures)
+            _LOGGER.warning(
+                "NEO %s Schedule EndTime SELF-TEST RESULT: %s",
+                serial,
+                result,
+            )
+            with self._diag_condition:
+                self._schedule_test_running.discard(serial)
+            self._set_schedule_test_result(serial, result)
+
     def _begin_command_settle(self, serial: str, command: dict[str, Any]) -> None:
         """Publish the requested state optimistically and ignore stale echoes briefly."""
         state = self._states.get(serial)
@@ -532,9 +831,17 @@ class HomeAssistantBridge:
         )
         self._request_get_all(serial)
 
-    def _send_command(self, serial: str, user_id: str, command: dict[str, Any]) -> None:
+    def _send_command(
+        self,
+        serial: str,
+        user_id: str,
+        command: dict[str, Any],
+        *,
+        correlation_id: str | None = None,
+    ) -> str:
         command = deepcopy(command)
-        command["correlationId"] = f"HA_LOCAL/{uuid.uuid4()}"
+        correlation_id = correlation_id or f"HA_LOCAL/{uuid.uuid4()}"
+        command["correlationId"] = correlation_id
         command["OptOutOfLogging"] = True
         topic = f"actron-cloud/{user_id}/neo/{serial}/app/cmd"
         payload = json.dumps(command, separators=(",", ":"))
@@ -545,6 +852,7 @@ class HomeAssistantBridge:
             _safe_mqtt_preview(payload.encode("utf-8")),
         )
         self._client.publish(topic, payload, qos=0)
+        return correlation_id
 
     def _request_get_all(self, serial: str, *, periodic: bool = False) -> None:
         user_id = self._user_ids.get(serial)
@@ -595,6 +903,7 @@ class HomeAssistantBridge:
         if not raw:
             return
         normalized = normalize_state(serial, raw)
+        normalized["schedule_endtime_test_result"] = self._schedule_test_results.get(serial, "NOT RUN")
         _LOGGER.debug(
             "Publishing NEO %s state: power=%s mode=%s action=%s fan=%s power_w=%s speed=%s zones=%d",
             serial,
