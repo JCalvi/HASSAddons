@@ -1,3 +1,10 @@
+## 1.2.7
+
+- Fixes Schedule ON/OFF commands to match the command serialization used by the official NEO Connect 2.0.1 (1526) Android app.
+- Sends each learned schedule event as an individual `NV_Schedule.Events[index].Enabled` setting inside the native `set-settings` command.
+- Removes the unsuccessful 1.2.6 write of `NV_Schedule.Enabled` and the complete `NV_Schedule.Events` array; schedule times, days, zones, modes, fan modes and temperature setpoints are no longer transmitted when toggling Schedule.
+- Retains fail-closed validation against the currently learned `NV_Schedule.Events` state and keeps raw MQTT TX/RX DEBUG diagnostics for verification.
+
 # Changelog
 
 ## 1.2.6
