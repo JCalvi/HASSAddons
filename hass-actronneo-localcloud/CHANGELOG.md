@@ -1,3 +1,12 @@
+## 1.2.10
+
+- Adds a temporary Home Assistant diagnostic button, **Schedule EndTime Self-Test**, to prove whether `NV_Schedule.Events[0].EndTime` is writable before implementing schedule editing.
+- The test reads and preserves the exact current Event 0 `EndTime`, writes a temporary value five minutes later, verifies the command ACK, waits for a matching native status-change, requests `getAll`, and verifies canonical persistence.
+- The original EndTime is restored in a `finally` path even when an earlier test stage fails. Restore success is verified by command ACK plus canonical `getAll` persistence; a restore status-change is logged but is not required when the test write was ignored and the original value never changed.
+- Adds an enabled diagnostic result sensor showing `RUNNING`, `PASS`, or a concise `FAIL: ...` reason, while the add-on log records each stage independently.
+- Suppresses normal periodic telemetry refreshes for the tested controller while the self-test is running to reduce ambiguity in the diagnostic capture.
+- This is diagnostic-only functionality intended to be removed once the NEO schedule write format is confirmed.
+
 ## 1.2.9
 
 - Fixes the Schedule optimistic-state matcher introduced in 1.2.8. The regular expression was double-escaped and therefore did not recognize indexed `NV_Schedule.Events[n].Enabled` command paths.
