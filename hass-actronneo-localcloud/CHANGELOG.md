@@ -1,3 +1,10 @@
+## 1.2.9
+
+- Fixes the Schedule optimistic-state matcher introduced in 1.2.8. The regular expression was double-escaped and therefore did not recognize indexed `NV_Schedule.Events[n].Enabled` command paths.
+- Schedule ON/OFF now immediately mirrors the controller-derived `NV_Schedule.Enabled` master state during the existing six-second command settling window, preventing the Home Assistant Schedule switch from bouncing to its previous state.
+- Adds an explicit DEBUG log entry when the optimistic Schedule master state is mirrored, making this debounce path directly verifiable.
+- No changes to the other 1.2.8 controls.
+
 ## 1.2.8
 
 - Fixes the Home Assistant Schedule switch bounce after a successful NEO Connect-style schedule command. During the existing six-second command settling window, indexed `NV_Schedule.Events[n].Enabled` writes now also mirror the controller-derived `NV_Schedule.Enabled` master state used by the HA switch.
