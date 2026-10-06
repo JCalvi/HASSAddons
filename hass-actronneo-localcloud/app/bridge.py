@@ -472,7 +472,7 @@ class HomeAssistantBridge:
                 continue
             set_path(state, key, value)
             changed_paths.append(key)
-            if re.fullmatch(r"NV_Schedule\\.Events\\[\\d+\\]\\.Enabled", key):
+            if re.fullmatch(r"NV_Schedule\.Events\[\d+\]\.Enabled", key):
                 schedule_enabled = bool(value)
 
         # NEO Connect toggles schedule events individually. The controller then
@@ -482,6 +482,11 @@ class HomeAssistantBridge:
         if schedule_enabled is not None:
             set_path(state, "NV_Schedule.Enabled", schedule_enabled)
             changed_paths.append("NV_Schedule.Enabled")
+            _LOGGER.debug(
+                "NEO %s Schedule optimistic master state=%s",
+                serial,
+                schedule_enabled,
+            )
 
         if not changed_paths:
             return
