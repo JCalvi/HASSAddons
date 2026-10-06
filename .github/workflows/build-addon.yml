@@ -140,3 +140,88 @@ jobs:
             jcrfc/${{ steps.meta.outputs.image }}-${{ matrix.ha_arch }}:${{ steps.meta.outputs.version }}
           cache-from: type=gha,scope=${{ inputs.addon }}-${{ matrix.ha_arch }}
           cache-to: type=gha,mode=max,scope=${{ inputs.addon }}-${{ matrix.ha_arch }}
+
+
+      - name: Prune old Docker Hub tags
+        shell: bash
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          NAMESPACE="jcrfc"
+          REPOSITORY="${{ steps.meta.outputs.image }}-${{ matrix.ha_arch }}"
+          KEEP_VERSION_TAGS=3
+
+          echo "Pruning ${NAMESPACE}/${REPOSITORY}: keeping latest + ${KEEP_VERSION_TAGS} newest version tags"
+
+          AUTH_RESPONSE="$(curl --fail --silent --show-error \
+            --request POST \
+            --header 'Accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --data "$(jq -nc \
+              --arg identifier "$NAMESPACE" \
+              --arg secret "$DOCKERHUB_TOKEN" \
+              '{identifier: $identifier, secret: $secret}')" \
+            'https://hub.docker.com/v2/auth/token')"
+
+          HUB_TOKEN="$(jq -r '.access_token // empty' <<<"$AUTH_RESPONSE")"
+          if [ -z "$HUB_TOKEN" ]; then
+            echo "Docker Hub authentication succeeded but no access token was returned."
+            exit 1
+          fi
+
+          TAG_FILE="$(mktemp)"
+          DELETE_RESPONSE="$(mktemp)"
+          trap 'rm -f "$TAG_FILE" "$DELETE_RESPONSE"' EXIT
+
+          URL="https://hub.docker.com/v2/namespaces/${NAMESPACE}/repositories/${REPOSITORY}/tags?page_size=100"
+
+          while [ -n "$URL" ]; do
+            PAGE="$(curl --fail --silent --show-error \
+              --header "Authorization: Bearer ${HUB_TOKEN}" \
+              --header 'Accept: application/json' \
+              "$URL")"
+
+            jq -c '.results[]' <<<"$PAGE" >> "$TAG_FILE"
+            URL="$(jq -r '.next // empty' <<<"$PAGE")"
+          done
+
+          mapfile -t OLD_TAGS < <(
+            jq -s -r --argjson keep "$KEEP_VERSION_TAGS" '
+              map(select(.name != "latest"))
+              | sort_by(.tag_last_pushed // .last_updated // "")
+              | reverse
+              | .[$keep:]
+              | .[].name
+            ' "$TAG_FILE"
+          )
+
+          if [ "${#OLD_TAGS[@]}" -eq 0 ]; then
+            echo "Nothing to delete."
+            exit 0
+          fi
+
+          for TAG in "${OLD_TAGS[@]}"; do
+            ENCODED_TAG="$(jq -rn --arg value "$TAG" '$value | @uri')"
+
+            HTTP_STATUS="$(curl --silent --show-error \
+              --output "$DELETE_RESPONSE" \
+              --write-out '%{http_code}' \
+              --request DELETE \
+              --header "Authorization: Bearer ${HUB_TOKEN}" \
+              "https://hub.docker.com/v2/repositories/${NAMESPACE}/${REPOSITORY}/tags/${ENCODED_TAG}/")"
+
+            case "$HTTP_STATUS" in
+              200|202|204)
+                echo "Deleted old tag: ${TAG}"
+                ;;
+              *)
+                echo "Failed to delete tag ${TAG} (HTTP ${HTTP_STATUS})."
+                cat "$DELETE_RESPONSE"
+                echo
+                echo "If this is HTTP 403, ensure DOCKERHUB_TOKEN has Delete permission."
+                exit 1
+                ;;
+            esac
+          done
