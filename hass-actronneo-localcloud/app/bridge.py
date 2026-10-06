@@ -60,22 +60,22 @@ def _safe_mqtt_preview(payload_bytes: bytes) -> str:
         return "<empty>"
 
     text = re.sub(
-        r'(?i)(access[_-]?token|refresh[_-]?token|authorization|password|secret)(\\s*["\'=:\\-]+\\s*)([^,\\s}"]+)',
-        r"\\1\\2<redacted>",
+        r'(?i)(access[_-]?token|refresh[_-]?token|authorization|password|secret)(\s*["\'=:\-]+\s*)([^,\s}"]+)',
+        r"\1\2<redacted>",
         text,
     )
     text = re.sub(
-        r"[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}",
+        r"[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}",
         "<redacted-jwt>",
         text,
     )
     text = re.sub(
-        r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}",
+        r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
         "<redacted-email>",
         text,
     )
     text = re.sub(
-        r"\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b",
+        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
         "<uuid>",
         text,
     )
