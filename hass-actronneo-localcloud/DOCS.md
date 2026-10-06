@@ -209,12 +209,13 @@ Enabled by default:
 - Humidity.
 - Compressor Power.
 - Compressor Speed (%).
+- Indoor Fan RPM.
 - Clean Filter and Defrosting binary sensors.
 - Per-zone climate/humidity entities when the NEO reports configured zones.
 
 The Schedule switch maps to the master `NV_Schedule.Enabled` flag. Turning it off disables execution of the NEO's existing schedule; turning it back on re-enables the same stored events. The add-on does not edit schedule event times, days, setpoints or per-event enable flags.
 
-Additional engineering/information entities are published **disabled by default** and can be enabled individually from the Home Assistant device page. These include compressor capacity, fan RPM/PWM, compressor running state, multiple temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD status, AC error code, pressure faults, supply electrical values, EEV opening, superheat, firmware, outdoor unit family and rated capacity.
+Additional engineering/information entities are published **disabled by default** and can be enabled individually from the Home Assistant device page. These include compressor capacity, fan PWM, compressor running state, multiple temperatures, Wi-Fi signal, controller/MQTT uptime, MQTT reconnect count, VSD status, AC error code, pressure faults, supply electrical values, EEV opening, superheat, firmware, outdoor unit family and rated capacity.
 
 ### Canonical entity IDs
 
