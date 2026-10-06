@@ -209,6 +209,28 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             payload["icon"] = "mdi:calendar-clock"
         _publish(client, "switch", f"actronneo_{serial}_{key}", payload)
 
+    for key, name in (
+        ("away_heat_setpoint", "Away Heating Setpoint"),
+        ("away_cool_setpoint", "Away Cooling Setpoint"),
+    ):
+        if state.get(key) is not None:
+            payload = {
+                "name": name,
+                "unique_id": f"actronneo_{serial}_{key}",
+                "device": device,
+                "availability_topic": availability,
+                "state_topic": state_topic,
+                "value_template": f"{{{{ value_json.{key} }}}}",
+                "command_topic": f"{base}/set/{key}",
+                "min": state["min_temp"],
+                "max": state["max_temp"],
+                "step": 0.5,
+                "unit_of_measurement": "°C",
+                "device_class": "temperature",
+                "mode": "box",
+            }
+            _publish(client, "number", f"actronneo_{serial}_{key}", payload)
+
     # Everyday sensors remain enabled by default.
     _state_sensor(
         client,
@@ -363,6 +385,36 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             "temperature_unit": "C",
         }
         _publish(client, "climate", f"actronneo_{serial}_zone_{idx}", zone_climate)
+
+        if zone.get("airflow_setpoint") is not None:
+            airflow = {
+                "name": f"{zone_name} Airflow",
+                "unique_id": f"actronneo_{serial}_zone_{idx}_airflow",
+                "device": device,
+                "availability_topic": availability,
+                "state_topic": state_topic,
+                "value_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='airflow_setpoint') | first }}}}",
+                "command_topic": f"{zone_base}/set/airflow",
+                "min": 0,
+                "max": 100,
+                "step": 5,
+                "unit_of_measurement": "%",
+                "mode": "slider",
+                "enabled_by_default": not bool(zone.get("airflow_locked", False)),
+            }
+            _publish(client, "number", f"actronneo_{serial}_zone_{idx}_airflow", airflow)
+
+        zone_name_control = {
+            "name": f"{zone_name} Name",
+            "unique_id": f"actronneo_{serial}_zone_{idx}_name",
+            "device": device,
+            "availability_topic": availability,
+            "state_topic": state_topic,
+            "value_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='name') | first }}}}",
+            "command_topic": f"{zone_base}/set/name",
+            "icon": "mdi:rename-box",
+        }
+        _publish(client, "text", f"actronneo_{serial}_zone_{idx}_name", zone_name_control)
 
         humidity = {
             "name": f"{zone_name} Humidity",
