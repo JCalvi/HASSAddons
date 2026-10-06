@@ -210,7 +210,7 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         _publish(client, "switch", f"actronneo_{serial}_{key}", payload)
 
     schedule_test_button = {
-        "name": "Schedule EndTime Self-Test",
+        "name": "Schedule Write Probe",
         "unique_id": f"actronneo_{serial}_schedule_endtime_test",
         "device": device,
         "availability_topic": availability,
@@ -234,7 +234,7 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         availability=availability,
         device=device,
         key="schedule_endtime_test_result",
-        name="Schedule EndTime Self-Test Result",
+        name="Schedule Write Probe Result",
         icon="mdi:test-tube",
         enabled_by_default=True,
         diagnostic=True,
