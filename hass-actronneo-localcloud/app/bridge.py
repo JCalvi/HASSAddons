@@ -292,13 +292,6 @@ class HomeAssistantBridge:
                 command = self._build_zone_command(state, zone_index, command_name, text)
             else:
                 command_name = parts[3]
-                if command_name == "schedule":
-                    _LOGGER.warning(
-                        "Ignoring Schedule command for NEO %s: schedule writes are disabled pending protocol confirmation",
-                        serial,
-                    )
-                    self._publish_device(serial)
-                    return
                 command = self._build_system_command(state, command_name, text)
         except (ValueError, TypeError, IndexError) as exc:
             _LOGGER.warning("Invalid HA command %s: %s", topic, exc)
@@ -366,6 +359,41 @@ class HomeAssistantBridge:
             base = str(settings.get("FanMode", "AUTO")).replace("+CONT", "").replace("-CONT", "")
             value = f"{base}+CONT" if text.upper() == "ON" else base
             return {"command": {"UserAirconSettings.FanMode": value, "type": "set-settings"}}
+
+        if command_name == "schedule":
+            requested = text.upper()
+            if requested not in ("ON", "OFF"):
+                raise ValueError("schedule command must be ON or OFF")
+
+            schedule = state.get("NV_Schedule")
+            if not isinstance(schedule, dict):
+                raise ValueError("no learned NV_Schedule state; refusing to construct schedule data")
+
+            events = schedule.get("Events")
+            if not isinstance(events, list) or not events:
+                raise ValueError("no learned NV_Schedule.Events; refusing to construct schedule data")
+
+            enabled = requested == "ON"
+            updated_events = deepcopy(events)
+            for index, event in enumerate(updated_events):
+                if not isinstance(event, dict) or "Enabled" not in event:
+                    raise ValueError(
+                        f"NV_Schedule.Events[{index}] has no Enabled field; refusing schedule write"
+                    )
+                event["Enabled"] = enabled
+
+            _LOGGER.info(
+                "NEO Schedule write: preserving %d learned event(s), setting master/event Enabled=%s",
+                len(updated_events),
+                enabled,
+            )
+            return {
+                "command": {
+                    "NV_Schedule.Enabled": enabled,
+                    "NV_Schedule.Events": updated_events,
+                    "type": "set-settings",
+                }
+            }
 
         return None
 
