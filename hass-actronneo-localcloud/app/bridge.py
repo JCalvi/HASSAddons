@@ -30,7 +30,7 @@ _COMMAND_SETTLE_SECONDS = 6.0
 _ACTIVE_REFRESH_SECONDS = 5.0
 _IDLE_REFRESH_SECONDS = 30.0
 _REFRESH_LOOP_SECONDS = 1.0
-_CMD_RESPONSE_PREVIEW_CHARS = 512
+_RAW_MQTT_PREVIEW_CHARS = 16384
 
 
 def _debug_change_fields(value: Any, prefix: str = "") -> list[str]:
@@ -53,36 +53,44 @@ def _debug_change_fields(value: Any, prefix: str = "") -> list[str]:
     return [prefix] if prefix else []
 
 
-def _safe_cmd_response_preview(payload_bytes: bytes) -> str:
-    """Return a bounded, redacted representation of a native command response."""
+def _safe_mqtt_preview(payload_bytes: bytes) -> str:
+    """Return a generously bounded, redacted representation of an MQTT payload."""
     text = payload_bytes.decode("utf-8", errors="replace").strip()
     if not text:
         return "<empty>"
 
     text = re.sub(
-        r"(?i)(access[_-]?token|refresh[_-]?token|authorization|password|secret)(\s*[\"'=:\-]+\s*)([^,\s}\"]+)",
-        r"\1\2<redacted>",
+        r'(?i)(access[_-]?token|refresh[_-]?token|authorization|password|secret)(\\s*["\'=:\\-]+\\s*)([^,\\s}"]+)',
+        r"\\1\\2<redacted>",
         text,
     )
     text = re.sub(
-        r"[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}",
+        r"[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}",
         "<redacted-jwt>",
         text,
     )
     text = re.sub(
-        r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
+        r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}",
         "<redacted-email>",
         text,
     )
     text = re.sub(
-        r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+        r"\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b",
         "<uuid>",
         text,
     )
 
-    if len(text) > _CMD_RESPONSE_PREVIEW_CHARS:
-        return text[:_CMD_RESPONSE_PREVIEW_CHARS] + "...<truncated>"
+    if len(text) > _RAW_MQTT_PREVIEW_CHARS:
+        return text[:_RAW_MQTT_PREVIEW_CHARS] + "...<truncated>"
     return text
+
+
+def _safe_neo_topic(topic: str) -> str:
+    """Redact the Nimbus user/account identifier while retaining routing context."""
+    parts = topic.split("/")
+    if len(parts) > 1 and parts[0] == "actron-cloud":
+        parts[1] = "<user-id>"
+    return "/".join(parts)
 
 
 class HomeAssistantBridge:
@@ -169,12 +177,20 @@ class HomeAssistantBridge:
         message_type = parts[5]
         self._user_ids[serial] = user_id
 
+        if message_type in ("status-change", "cmd-response"):
+            _LOGGER.debug(
+                "Raw NEO MQTT RX topic=%s bytes=%d payload=%s",
+                _safe_neo_topic(topic),
+                len(payload_bytes),
+                _safe_mqtt_preview(payload_bytes),
+            )
+
         if message_type == "cmd-response":
             _LOGGER.debug(
                 "Command response from NEO %s (%d bytes): %r",
                 serial,
                 len(payload_bytes),
-                _safe_cmd_response_preview(payload_bytes),
+                _safe_mqtt_preview(payload_bytes),
             )
             return
 
@@ -465,7 +481,14 @@ class HomeAssistantBridge:
         command["correlationId"] = f"HA_LOCAL/{uuid.uuid4()}"
         command["OptOutOfLogging"] = True
         topic = f"actron-cloud/{user_id}/neo/{serial}/app/cmd"
-        self._client.publish(topic, json.dumps(command, separators=(",", ":")), qos=0)
+        payload = json.dumps(command, separators=(",", ":"))
+        _LOGGER.debug(
+            "Raw NEO MQTT TX topic=%s bytes=%d payload=%s",
+            _safe_neo_topic(topic),
+            len(payload.encode("utf-8")),
+            _safe_mqtt_preview(payload.encode("utf-8")),
+        )
+        self._client.publish(topic, payload, qos=0)
 
     def _request_get_all(self, serial: str, *, periodic: bool = False) -> None:
         user_id = self._user_ids.get(serial)
