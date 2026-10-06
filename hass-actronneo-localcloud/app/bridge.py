@@ -367,33 +367,27 @@ class HomeAssistantBridge:
 
             schedule = state.get("NV_Schedule")
             if not isinstance(schedule, dict):
-                raise ValueError("no learned NV_Schedule state; refusing to construct schedule data")
+                raise ValueError("no learned NV_Schedule state; refusing schedule write")
 
             events = schedule.get("Events")
             if not isinstance(events, list) or not events:
-                raise ValueError("no learned NV_Schedule.Events; refusing to construct schedule data")
+                raise ValueError("no learned NV_Schedule.Events; refusing schedule write")
 
             enabled = requested == "ON"
-            updated_events = deepcopy(events)
-            for index, event in enumerate(updated_events):
+            cmd: dict[str, Any] = {"type": "set-settings"}
+            for index, event in enumerate(events):
                 if not isinstance(event, dict) or "Enabled" not in event:
                     raise ValueError(
                         f"NV_Schedule.Events[{index}] has no Enabled field; refusing schedule write"
                     )
-                event["Enabled"] = enabled
+                cmd[f"NV_Schedule.Events[{index}].Enabled"] = enabled
 
             _LOGGER.info(
-                "NEO Schedule write: preserving %d learned event(s), setting master/event Enabled=%s",
-                len(updated_events),
+                "NEO Schedule write: setting %d learned event(s) Enabled=%s using NEO Connect property paths",
+                len(events),
                 enabled,
             )
-            return {
-                "command": {
-                    "NV_Schedule.Enabled": enabled,
-                    "NV_Schedule.Events": updated_events,
-                    "type": "set-settings",
-                }
-            }
+            return {"command": cmd}
 
         return None
 
