@@ -3,7 +3,6 @@ set -euo pipefail
 
 ADDON_VERSION="$(bashio::addon.version)"
 bashio::log.info "Starting Actron NEO Local Cloud v${ADDON_VERSION}"
-bashio::log.info "Diagnostic instrumentation: raw NEO MQTT RX/TX logging ENABLED at DEBUG level (16 KiB payload preview, sensitive fields redacted)"
 
 LOCAL_IP="$(bashio::config 'local_ip')"
 if [ -z "${LOCAL_IP}" ]; then
@@ -17,6 +16,23 @@ export TOPIC_PREFIX="$(bashio::config 'topic_prefix')"
 export DISCOVERY_PREFIX="$(bashio::config 'discovery_prefix')"
 export PUBLISH_RAW_STATE="$(bashio::config 'publish_raw_state')"
 export LOG_LEVEL="$(bashio::config 'log_level')"
+
+case "${PUBLISH_RAW_STATE,,}" in
+    true|1|yes|on)
+        RAW_STATE_STATUS="enabled"
+        ;;
+    *)
+        RAW_STATE_STATUS="disabled"
+        ;;
+esac
+
+bashio::log.info "Configured log level: ${LOG_LEVEL}"
+bashio::log.info "Raw NEO state publishing: ${RAW_STATE_STATUS}"
+if [ "${LOG_LEVEL^^}" = "DEBUG" ]; then
+    bashio::log.info "Raw NEO MQTT RX/TX diagnostics: enabled (16 KiB payload preview, sensitive fields redacted)"
+else
+    bashio::log.info "Raw NEO MQTT RX/TX diagnostics: disabled at ${LOG_LEVEL}; select DEBUG to enable"
+fi
 
 export MQTT_HOST="$(bashio::services mqtt 'host')"
 export MQTT_PORT="$(bashio::services mqtt 'port')"
