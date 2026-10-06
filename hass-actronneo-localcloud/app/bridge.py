@@ -103,13 +103,6 @@ class HomeAssistantBridge:
         self._suppress_lock = threading.Lock()
         self._last_full_status: dict[str, float] = {}
         self._last_getall_request: dict[str, float] = {}
-        self._diag_condition = threading.Condition()
-        self._diag_cmd_responses: dict[tuple[str, str], dict[str, Any]] = {}
-        self._diag_raw_responses: dict[tuple[str, str], str] = {}
-        self._diag_status_events: dict[str, list[tuple[float, dict[str, Any]]]] = {}
-        self._diag_full_events: dict[str, list[tuple[float, dict[str, Any]]]] = {}
-        self._schedule_test_running: set[str] = set()
-        self._schedule_test_results: dict[str, str] = {}
         self._client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
             client_id=f"actronneo-localcloud-{uuid.uuid4().hex[:8]}",
@@ -193,34 +186,12 @@ class HomeAssistantBridge:
             )
 
         if message_type == "cmd-response":
-            raw_response = payload_bytes.decode("utf-8", errors="replace")
             _LOGGER.debug(
                 "Command response from NEO %s (%d bytes): %r",
                 serial,
                 len(payload_bytes),
                 _safe_mqtt_preview(payload_bytes),
             )
-            try:
-                response_payload = json.loads(raw_response)
-            except json.JSONDecodeError:
-                response_payload = None
-
-            # Diagnostic correlation IDs contain slashes, so recover the exact
-            # ID from the MQTT topic even when firmware returns malformed JSON.
-            topic_correlation_id = "/".join(parts[6:]) if len(parts) > 6 else ""
-            payload_correlation_id = (
-                str(response_payload.get("correlationId") or "")
-                if isinstance(response_payload, dict)
-                else ""
-            )
-            correlation_id = payload_correlation_id or topic_correlation_id
-            if correlation_id.startswith("HA_DIAG/"):
-                key = (serial, correlation_id)
-                with self._diag_condition:
-                    self._diag_raw_responses[key] = raw_response
-                    if isinstance(response_payload, dict):
-                        self._diag_cmd_responses[key] = deepcopy(response_payload)
-                    self._diag_condition.notify_all()
             return
 
         try:
@@ -242,11 +213,6 @@ class HomeAssistantBridge:
                 len(payload_bytes),
                 len(body),
             )
-            with self._diag_condition:
-                events = self._diag_full_events.setdefault(serial, [])
-                events.append((time.monotonic(), deepcopy(body)))
-                del events[:-20]
-                self._diag_condition.notify_all()
             if self._is_command_settling(serial):
                 _LOGGER.debug(
                     "NEO %s full-status suppressed during %.1fs command settling window",
@@ -270,11 +236,6 @@ class HomeAssistantBridge:
                 len(body),
                 ", ".join(changed_fields) if changed_fields else "<none>",
             )
-            with self._diag_condition:
-                events = self._diag_status_events.setdefault(serial, [])
-                events.append((time.monotonic(), deepcopy(body)))
-                del events[:-50]
-                self._diag_condition.notify_all()
             if serial not in self._states:
                 _LOGGER.info("NEO %s status-change arrived before full-status; requesting getAll", serial)
                 self._request_get_all(serial)
@@ -331,11 +292,6 @@ class HomeAssistantBridge:
                 command = self._build_zone_command(state, zone_index, command_name, text)
             else:
                 command_name = parts[3]
-                if command_name == "schedule_endtime_test":
-                    if text.upper() not in ("PRESS", "RUN", "ON"):
-                        raise ValueError("schedule write probe expects PRESS")
-                    self._start_schedule_write_probe(serial, user_id)
-                    return
                 command = self._build_system_command(state, command_name, text)
         except (ValueError, TypeError, IndexError) as exc:
             _LOGGER.warning("Invalid HA command %s: %s", topic, exc)
@@ -502,485 +458,6 @@ class HomeAssistantBridge:
 
         return None
 
-    @staticmethod
-    def _schedule_endtime_from_state(state: dict[str, Any]) -> str | None:
-        schedule = state.get("NV_Schedule")
-        if not isinstance(schedule, dict):
-            return None
-        events = schedule.get("Events")
-        if not isinstance(events, list) or not events or not isinstance(events[0], dict):
-            return None
-        value = events[0].get("EndTime")
-        return str(value) if value is not None else None
-
-    @staticmethod
-    def _schedule_endtime_from_change(body: dict[str, Any]) -> str | None:
-        direct = body.get("NV_Schedule.Events[0].EndTime")
-        if direct is not None:
-            return str(direct)
-
-        indexed_event = body.get("NV_Schedule.Events[0]")
-        if isinstance(indexed_event, dict):
-            value = indexed_event.get("EndTime")
-            if value is not None:
-                return str(value)
-
-        events = body.get("NV_Schedule.Events")
-        if isinstance(events, list) and events and isinstance(events[0], dict):
-            value = events[0].get("EndTime")
-            if value is not None:
-                return str(value)
-
-        return HomeAssistantBridge._schedule_endtime_from_state(body)
-
-    @staticmethod
-    def _schedule_test_time(original: str) -> str:
-        match = re.fullmatch(r"T(\d{2}):(\d{2})(?::(\d{2}))?", original)
-        if not match:
-            raise ValueError(f"unsupported EndTime format {original!r}")
-        hour, minute = int(match.group(1)), int(match.group(2))
-        if hour > 23 or minute > 59:
-            raise ValueError(f"invalid EndTime {original!r}")
-        total = (hour * 60 + minute + 5) % (24 * 60)
-        suffix = f":{match.group(3)}" if match.group(3) is not None else ""
-        return f"T{total // 60:02d}:{total % 60:02d}{suffix}"
-
-    def _set_schedule_test_result(self, serial: str, result: str) -> None:
-        with self._diag_condition:
-            self._schedule_test_results[serial] = result
-        self._publish_device(serial)
-
-    def _start_schedule_write_probe(self, serial: str, user_id: str) -> None:
-        with self._diag_condition:
-            if serial in self._schedule_test_running:
-                _LOGGER.warning("NEO %s Schedule write probe already running", serial)
-                return
-            self._schedule_test_running.add(serial)
-            self._schedule_test_results[serial] = "RUNNING"
-        self._publish_device(serial)
-        thread = threading.Thread(
-            target=self._run_schedule_write_probe,
-            args=(serial, user_id),
-            name=f"schedule-write-probe-{serial}",
-            daemon=True,
-        )
-        thread.start()
-
-    def _wait_diag_response(
-        self, serial: str, correlation_id: str, timeout: float = 2.0
-    ) -> tuple[dict[str, Any] | None, str | None]:
-        deadline = time.monotonic() + timeout
-        key = (serial, correlation_id)
-        with self._diag_condition:
-            while True:
-                if key in self._diag_raw_responses:
-                    raw = self._diag_raw_responses.pop(key)
-                    parsed = self._diag_cmd_responses.pop(key, None)
-                    return parsed, raw
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    self._diag_cmd_responses.pop(key, None)
-                    self._diag_raw_responses.pop(key, None)
-                    return None, None
-                self._diag_condition.wait(remaining)
-
-    @staticmethod
-    def _diag_response_summary(
-        parsed: dict[str, Any] | None, raw: str | None
-    ) -> str:
-        if raw is None:
-            return "NO_RESPONSE"
-        if not isinstance(parsed, dict):
-            return "MALFORMED"
-        command_response = parsed.get("commandResponse")
-        if not isinstance(command_response, dict):
-            return "JSON_NO_COMMAND_RESPONSE"
-        response_type = str(command_response.get("type") or "").upper()
-        value = command_response.get("value")
-        if response_type != "ACK":
-            return response_type or "UNKNOWN"
-        if value == {}:
-            return "ACK_EMPTY"
-        return "ACK"
-
-    def _wait_diag_endtime(
-        self,
-        serial: str,
-        expected: str,
-        *,
-        full_status: bool,
-        since: float,
-        timeout: float = 2.0,
-    ) -> bool:
-        deadline = time.monotonic() + timeout
-        store = self._diag_full_events if full_status else self._diag_status_events
-        extractor = (
-            self._schedule_endtime_from_state
-            if full_status
-            else self._schedule_endtime_from_change
-        )
-        with self._diag_condition:
-            while True:
-                for timestamp, body in store.get(serial, []):
-                    if timestamp >= since and extractor(body) == expected:
-                        return True
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    return False
-                self._diag_condition.wait(remaining)
-
-    def _diag_getall(
-        self,
-        serial: str,
-        user_id: str,
-        expected_endtime: str,
-        label: str,
-    ) -> tuple[str, bool]:
-        started = time.monotonic()
-        correlation_id = f"HA_DIAG/{label}-getall/{uuid.uuid4()}"
-        self._send_command(
-            serial,
-            user_id,
-            {"command": {"type": "getAll"}},
-            correlation_id=correlation_id,
-        )
-        parsed, raw = self._wait_diag_response(serial, correlation_id)
-        response_summary = self._diag_response_summary(parsed, raw)
-        persisted = self._wait_diag_endtime(
-            serial,
-            expected_endtime,
-            full_status=True,
-            since=started,
-            timeout=3.0,
-        )
-        return response_summary, persisted
-
-    @staticmethod
-    def _schedule_probe_commands(
-        schedule: dict[str, Any],
-    ) -> list[tuple[str, dict[str, Any]]]:
-        events = schedule.get("Events")
-        if not isinstance(events, list) or not events or not isinstance(events[0], dict):
-            raise ValueError("NV_Schedule.Events[0] not available")
-
-        event = deepcopy(events[0])
-        event_no_id = deepcopy(event)
-        event_no_id.pop("ID", None)
-        endtime = event.get("EndTime")
-        if endtime is None:
-            raise ValueError("NV_Schedule.Events[0].EndTime not available")
-
-        flattened_event: dict[str, Any] = {"type": "set-settings"}
-        for key, value in event.items():
-            flattened_event[f"NV_Schedule.Events[0].{key}"] = deepcopy(value)
-
-        flattened_schedule = deepcopy(flattened_event)
-        flattened_schedule["NV_Schedule.Enabled"] = bool(schedule.get("Enabled", False))
-
-        scalar_plus_enabled: dict[str, Any] = {
-            "type": "set-settings",
-            "NV_Schedule.Events[0].EndTime": endtime,
-        }
-        if "Enabled" in event:
-            scalar_plus_enabled["NV_Schedule.Events[0].Enabled"] = bool(event["Enabled"])
-
-        return [
-            (
-                "scalar_endtime",
-                {
-                    "command": {
-                        "type": "set-settings",
-                        "NV_Schedule.Events[0].EndTime": endtime,
-                    }
-                },
-            ),
-            ("scalar_plus_enabled", {"command": scalar_plus_enabled}),
-            ("flattened_event", {"command": flattened_event}),
-            ("flattened_schedule", {"command": flattened_schedule}),
-            (
-                "indexed_event_object",
-                {
-                    "command": {
-                        "type": "set-settings",
-                        "NV_Schedule.Events[0]": deepcopy(event),
-                    }
-                },
-            ),
-            (
-                "indexed_event_no_id",
-                {
-                    "command": {
-                        "type": "set-settings",
-                        "NV_Schedule.Events[0]": event_no_id,
-                    }
-                },
-            ),
-            (
-                "events_array",
-                {
-                    "command": {
-                        "type": "set-settings",
-                        "NV_Schedule.Events": deepcopy(events),
-                    }
-                },
-            ),
-            (
-                "master_plus_events",
-                {
-                    "command": {
-                        "type": "set-settings",
-                        "NV_Schedule.Enabled": bool(schedule.get("Enabled", False)),
-                        "NV_Schedule.Events": deepcopy(events),
-                    }
-                },
-            ),
-            (
-                "schedule_object",
-                {
-                    "command": {
-                        "type": "set-settings",
-                        "NV_Schedule": deepcopy(schedule),
-                    }
-                },
-            ),
-        ]
-
-    def _diag_try_schedule_command(
-        self,
-        serial: str,
-        user_id: str,
-        method: str,
-        command: dict[str, Any],
-        expected_endtime: str,
-        *,
-        phase: str,
-    ) -> tuple[str, bool, str, bool]:
-        started = time.monotonic()
-        correlation_id = f"HA_DIAG/{phase}-{method}/{uuid.uuid4()}"
-        self._send_command(
-            serial,
-            user_id,
-            command,
-            correlation_id=correlation_id,
-        )
-        parsed, raw = self._wait_diag_response(serial, correlation_id)
-        response_summary = self._diag_response_summary(parsed, raw)
-        status_change = self._wait_diag_endtime(
-            serial,
-            expected_endtime,
-            full_status=False,
-            since=started,
-            timeout=1.5,
-        )
-        getall_summary, persisted = self._diag_getall(
-            serial,
-            user_id,
-            expected_endtime,
-            f"{phase}-{method}",
-        )
-        _LOGGER.warning(
-            "NEO %s Schedule probe %s/%s response=%s status-change=%s getAll=%s persistence=%s",
-            serial,
-            phase,
-            method,
-            response_summary,
-            "PASS" if status_change else "NONE",
-            getall_summary,
-            "PASS" if persisted else "FAIL",
-        )
-        return response_summary, status_change, getall_summary, persisted
-
-    def _restore_schedule_after_probe(
-        self,
-        serial: str,
-        user_id: str,
-        original_schedule: dict[str, Any],
-        preferred_method: str,
-    ) -> tuple[bool, str]:
-        original_endtime = self._schedule_endtime_from_state(
-            {"NV_Schedule": original_schedule}
-        )
-        if original_endtime is None:
-            return False, "original EndTime unavailable"
-
-        commands = dict(self._schedule_probe_commands(original_schedule))
-        methods = [preferred_method] + [
-            name for name in commands if name != preferred_method
-        ]
-
-        for method in methods:
-            _, _, _, persisted = self._diag_try_schedule_command(
-                serial,
-                user_id,
-                method,
-                commands[method],
-                original_endtime,
-                phase="restore",
-            )
-            if persisted:
-                _LOGGER.warning(
-                    "NEO %s Schedule probe restore verified using %s",
-                    serial,
-                    method,
-                )
-                return True, method
-
-        # A rejected test write can leave the original schedule untouched. Final
-        # canonical persistence is authoritative even if every restore write was
-        # rejected or produced malformed empty ACKs.
-        getall_summary, persisted = self._diag_getall(
-            serial,
-            user_id,
-            original_endtime,
-            "restore-final",
-        )
-        _LOGGER.warning(
-            "NEO %s Schedule probe final restore check getAll=%s persistence=%s",
-            serial,
-            getall_summary,
-            "PASS" if persisted else "FAIL",
-        )
-        return persisted, "already-original" if persisted else "FAILED"
-
-    def _run_schedule_write_probe(self, serial: str, user_id: str) -> None:
-        attempted: list[str] = []
-        result = "FAIL: probe did not start"
-
-        try:
-            state = self._states.get(serial)
-            if not isinstance(state, dict):
-                raise ValueError("no current NEO state")
-            schedule = state.get("NV_Schedule")
-            if not isinstance(schedule, dict):
-                raise ValueError("NV_Schedule not present")
-            events = schedule.get("Events")
-            if not isinstance(events, list) or not events or not isinstance(events[0], dict):
-                raise ValueError("NV_Schedule.Events[0] not present")
-
-            original_schedule = deepcopy(schedule)
-            original_endtime = self._schedule_endtime_from_state(
-                {"NV_Schedule": original_schedule}
-            )
-            if original_endtime is None:
-                raise ValueError("NV_Schedule.Events[0].EndTime not present")
-
-            test_schedule = deepcopy(original_schedule)
-            test_endtime = self._schedule_test_time(original_endtime)
-            test_schedule["Events"][0]["EndTime"] = test_endtime
-
-            _LOGGER.warning(
-                "NEO %s Schedule WRITE PROBE START original=%s test=%s methods=9",
-                serial,
-                original_endtime,
-                test_endtime,
-            )
-
-            baseline_summary, baseline_ok = self._diag_getall(
-                serial,
-                user_id,
-                original_endtime,
-                "probe-baseline",
-            )
-            _LOGGER.warning(
-                "NEO %s Schedule probe baseline getAll=%s original=%s",
-                serial,
-                baseline_summary,
-                "PASS" if baseline_ok else "FAIL",
-            )
-            if not baseline_ok:
-                raise RuntimeError("baseline getAll did not confirm original EndTime")
-
-            for method, command in self._schedule_probe_commands(test_schedule):
-                attempted.append(method)
-                _LOGGER.warning(
-                    "NEO %s Schedule probe TRY %d/9: %s",
-                    serial,
-                    len(attempted),
-                    method,
-                )
-                _, _, _, persisted = self._diag_try_schedule_command(
-                    serial,
-                    user_id,
-                    method,
-                    command,
-                    test_endtime,
-                    phase="test",
-                )
-                if not persisted:
-                    # Verify the failed candidate did not leave a delayed mutation.
-                    _, original_still_ok = self._diag_getall(
-                        serial,
-                        user_id,
-                        original_endtime,
-                        f"postfail-{method}",
-                    )
-                    if not original_still_ok:
-                        restore_ok, restore_method = self._restore_schedule_after_probe(
-                            serial,
-                            user_id,
-                            original_schedule,
-                            method,
-                        )
-                        if not restore_ok:
-                            result = f"CRITICAL: {method} changed schedule; restore failed"
-                            break
-                        _LOGGER.warning(
-                            "NEO %s Schedule probe delayed mutation restored using %s",
-                            serial,
-                            restore_method,
-                        )
-                    continue
-
-                _LOGGER.warning(
-                    "NEO %s Schedule probe WRITE METHOD FOUND: %s",
-                    serial,
-                    method,
-                )
-                restore_ok, restore_method = self._restore_schedule_after_probe(
-                    serial,
-                    user_id,
-                    original_schedule,
-                    method,
-                )
-                if restore_ok:
-                    result = f"PASS: {method}"
-                else:
-                    result = f"CRITICAL: {method} works; restore failed"
-                break
-            else:
-                final_summary, final_original = self._diag_getall(
-                    serial,
-                    user_id,
-                    original_endtime,
-                    "probe-final",
-                )
-                _LOGGER.warning(
-                    "NEO %s Schedule probe exhausted all methods final getAll=%s original=%s",
-                    serial,
-                    final_summary,
-                    "PASS" if final_original else "FAIL",
-                )
-                result = (
-                    "FAIL: no writable schedule format (9 tried)"
-                    if final_original
-                    else "CRITICAL: no method found and original state not confirmed"
-                )
-
-        except Exception as exc:
-            result = f"FAIL: {exc}"
-            _LOGGER.exception("NEO %s Schedule write probe error", serial)
-
-        finally:
-            _LOGGER.warning(
-                "NEO %s Schedule WRITE PROBE RESULT: %s; attempted=%s",
-                serial,
-                result,
-                ",".join(attempted) if attempted else "<none>",
-            )
-            with self._diag_condition:
-                self._schedule_test_running.discard(serial)
-            self._set_schedule_test_result(serial, result)
-
     def _begin_command_settle(self, serial: str, command: dict[str, Any]) -> None:
         """Publish the requested state optimistically and ignore stale echoes briefly."""
         state = self._states.get(serial)
@@ -1055,17 +532,9 @@ class HomeAssistantBridge:
         )
         self._request_get_all(serial)
 
-    def _send_command(
-        self,
-        serial: str,
-        user_id: str,
-        command: dict[str, Any],
-        *,
-        correlation_id: str | None = None,
-    ) -> str:
+    def _send_command(self, serial: str, user_id: str, command: dict[str, Any]) -> None:
         command = deepcopy(command)
-        correlation_id = correlation_id or f"HA_LOCAL/{uuid.uuid4()}"
-        command["correlationId"] = correlation_id
+        command["correlationId"] = f"HA_LOCAL/{uuid.uuid4()}"
         command["OptOutOfLogging"] = True
         topic = f"actron-cloud/{user_id}/neo/{serial}/app/cmd"
         payload = json.dumps(command, separators=(",", ":"))
@@ -1076,7 +545,6 @@ class HomeAssistantBridge:
             _safe_mqtt_preview(payload.encode("utf-8")),
         )
         self._client.publish(topic, payload, qos=0)
-        return correlation_id
 
     def _request_get_all(self, serial: str, *, periodic: bool = False) -> None:
         user_id = self._user_ids.get(serial)
@@ -1104,10 +572,6 @@ class HomeAssistantBridge:
                     continue
                 if self._is_command_settling(serial):
                     continue
-                with self._diag_condition:
-                    if serial in self._schedule_test_running:
-                        continue
-
                 raw = self._states[serial]
                 settings = raw.get("UserAirconSettings") or {}
                 live = raw.get("LiveAircon") or {}
@@ -1130,7 +594,6 @@ class HomeAssistantBridge:
         if not raw:
             return
         normalized = normalize_state(serial, raw)
-        normalized["schedule_endtime_test_result"] = self._schedule_test_results.get(serial, "NOT RUN")
         _LOGGER.debug(
             "Publishing NEO %s state: power=%s mode=%s action=%s fan=%s power_w=%s speed=%s zones=%d",
             serial,
