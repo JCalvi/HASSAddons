@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import threading
 import time
@@ -361,10 +362,51 @@ class HomeAssistantBridge:
             return {"command": {"UserAirconSettings.FanMode": value, "type": "set-settings"}}
 
         if command_name in ("away_heat_setpoint", "away_cool_setpoint"):
-            value = float(text)
-            suffix = "Heat" if command_name == "away_heat_setpoint" else "Cool"
-            path = f"NV_SystemSettings.AwayMode.TemperatureSetpoint_{suffix}_oC"
-            return {"command": {path: value, "type": "set-settings"}}
+            nv_settings = state.get("NV_SystemSettings")
+            if not isinstance(nv_settings, dict):
+                raise ValueError(
+                    "no learned NV_SystemSettings state; refusing Away setpoint write"
+                )
+
+            away_settings = nv_settings.get("AwayMode")
+            if not isinstance(away_settings, dict):
+                raise ValueError(
+                    "no learned NV_SystemSettings.AwayMode state; refusing Away setpoint write"
+                )
+
+            heat_raw = away_settings.get("TemperatureSetpoint_Heat_oC")
+            cool_raw = away_settings.get("TemperatureSetpoint_Cool_oC")
+            if heat_raw is None or cool_raw is None:
+                raise ValueError(
+                    "both learned Away heat/cool setpoints are required; refusing write"
+                )
+
+            try:
+                heat = float(heat_raw)
+                cool = float(cool_raw)
+                requested = float(text)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Away heat/cool setpoints must both be numeric; refusing write"
+                ) from exc
+
+            if not all(math.isfinite(value) for value in (heat, cool, requested)):
+                raise ValueError(
+                    "Away heat/cool setpoints must both be finite numbers; refusing write"
+                )
+
+            if command_name == "away_heat_setpoint":
+                heat = requested
+            else:
+                cool = requested
+
+            return {
+                "command": {
+                    "NV_SystemSettings.AwayMode.TemperatureSetpoint_Heat_oC": heat,
+                    "NV_SystemSettings.AwayMode.TemperatureSetpoint_Cool_oC": cool,
+                    "type": "set-settings",
+                }
+            }
 
         if command_name == "schedule":
             requested = text.upper()
