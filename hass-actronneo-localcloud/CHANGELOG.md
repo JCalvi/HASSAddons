@@ -1,3 +1,10 @@
+## 1.3.2
+
+- Fixes Away heating/cooling setpoint writes to match the official NEO Connect command behavior: both Away setpoints are now sent together atomically whenever either value is changed.
+- Reads the current learned `NV_SystemSettings.AwayMode.TemperatureSetpoint_Heat_oC` and `TemperatureSetpoint_Cool_oC` values from NEO state, replaces only the requested side, and sends the pair in one native `set-settings` command.
+- Fails closed instead of guessing if the Away settings object is unavailable, either current setpoint is missing/non-numeric, or any requested/current value is non-finite.
+- The existing six-second optimistic settling logic now applies both Away paths together, so Home Assistant keeps the requested pair visible while canonical NEO state is refreshed.
+
 ## 1.3.1
 
 - Corrects the add-on startup status messages so they report the configured log level and whether retained raw NEO state publishing is enabled or disabled.
