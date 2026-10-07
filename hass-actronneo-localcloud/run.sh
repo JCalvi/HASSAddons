@@ -34,13 +34,36 @@ else
     bashio::log.info "Raw NEO MQTT RX/TX diagnostics: disabled at ${LOG_LEVEL}; select DEBUG to enable"
 fi
 
-export MQTT_HOST="$(bashio::services mqtt 'host')"
-export MQTT_PORT="$(bashio::services mqtt 'port')"
-export MQTT_USERNAME="$(bashio::services mqtt 'username')"
-export MQTT_PASSWORD="$(bashio::services mqtt 'password')"
+MQTT_READY=false
+bashio::log.info "Waiting for Supervisor MQTT service..."
 
-if [ -z "${MQTT_USERNAME}" ]; then
-    bashio::log.fatal "MQTT service did not provide a username. The Mosquitto Broker add-on/integration must be available."
+for attempt in $(seq 1 60); do
+    if bashio::services.available 'mqtt' >/dev/null 2>&1; then
+        MQTT_HOST="$(bashio::services mqtt 'host' 2>/dev/null || true)"
+        MQTT_PORT="$(bashio::services mqtt 'port' 2>/dev/null || true)"
+        MQTT_USERNAME="$(bashio::services mqtt 'username' 2>/dev/null || true)"
+        MQTT_PASSWORD="$(bashio::services mqtt 'password' 2>/dev/null || true)"
+
+        if [ -n "${MQTT_HOST}" ]             && [ -n "${MQTT_PORT}" ]             && [ -n "${MQTT_USERNAME}" ]             && [ -n "${MQTT_PASSWORD}" ]; then
+            export MQTT_HOST MQTT_PORT MQTT_USERNAME MQTT_PASSWORD
+            MQTT_READY=true
+            bashio::log.info "MQTT service available at ${MQTT_HOST}:${MQTT_PORT}"
+            break
+        fi
+    fi
+
+    if [ "${attempt}" -eq 60 ]; then
+        break
+    fi
+
+    if [ $((attempt % 10)) -eq 0 ]; then
+        bashio::log.warning "MQTT service is still unavailable after $((attempt * 2)) seconds; continuing to wait"
+    fi
+    sleep 2
+done
+
+if [ "${MQTT_READY}" != "true" ]; then
+    bashio::log.fatal "MQTT service did not become ready within 120 seconds. Ensure the Mosquitto Broker add-on/integration is enabled."
     exit 1
 fi
 
