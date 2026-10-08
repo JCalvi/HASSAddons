@@ -1,3 +1,14 @@
+## 1.3.3
+
+- Aligns the remaining proven Home Assistant command shapes with NEO Connect 2.0.1 (1526).
+- HVAC mode changes now send only `UserAirconSettings.Mode` while the system is already on. When Home Assistant selects a non-off mode while the unit is off, `UserAirconSettings.isOn=true` is also sent so normal HA climate semantics still turn the unit on.
+- Main temperature writes now match NEO Connect: HEAT writes only `TemperatureSetpoint_Heat_oC`; COOL, AUTO and DRY write only `TemperatureSetpoint_Cool_oC`; FAN rejects temperature writes.
+- Zone ON/OFF now sends the complete learned `UserAirconSettings.EnabledZones` array with only the requested zone changed, matching the APK serializer instead of using an indexed scalar path.
+- Zone temperature writes now use one indexed setpoint property per command: HEAT writes the heat target, while COOL/AUTO/DRY write the cool target.
+- Fixes Away number ranges to use the NEO's dedicated `NV_SystemSettings.AwayMode` limits rather than normal thermostat limits. This prevents valid Away states such as 10 °C heat from being rejected by Home Assistant when normal user setpoints are limited to 16–30 °C.
+- Away writes remain atomic heat+cool pairs and now fail closed if the controller-provided Away limits are missing, invalid, or the requested/current pair is outside those limits.
+- Keeps the proven local MQTT shortcut for zone airflow/name writes: their APK property paths are exact, although the official app reaches them through Actron's HTTP command relay rather than publishing directly to the controller MQTT topic.
+
 ## 1.3.2
 
 - Fixes Away heating/cooling setpoint writes to match the official NEO Connect command behavior: both Away setpoints are now sent together atomically whenever either value is changed.
