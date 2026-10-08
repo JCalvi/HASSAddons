@@ -209,11 +209,25 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             payload["icon"] = "mdi:calendar-clock"
         _publish(client, "switch", f"actronneo_{serial}_{key}", payload)
 
-    for key, name in (
-        ("away_heat_setpoint", "Away Heating Setpoint"),
-        ("away_cool_setpoint", "Away Cooling Setpoint"),
-    ):
-        if state.get(key) is not None:
+    away_numbers = (
+        (
+            "away_heat_setpoint",
+            "Away Heating Setpoint",
+            "away_heat_min_temp",
+            "away_heat_max_temp",
+        ),
+        (
+            "away_cool_setpoint",
+            "Away Cooling Setpoint",
+            "away_cool_min_temp",
+            "away_cool_max_temp",
+        ),
+    )
+    for key, name, min_key, max_key in away_numbers:
+        value = state.get(key)
+        minimum = state.get(min_key)
+        maximum = state.get(max_key)
+        if value is not None and minimum is not None and maximum is not None:
             payload = {
                 "name": name,
                 "unique_id": f"actronneo_{serial}_{key}",
@@ -222,8 +236,8 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
                 "state_topic": state_topic,
                 "value_template": f"{{{{ value_json.{key} }}}}",
                 "command_topic": f"{base}/set/{key}",
-                "min": state["min_temp"],
-                "max": state["max_temp"],
+                "min": minimum,
+                "max": maximum,
                 "step": 0.5,
                 "unit_of_measurement": "°C",
                 "device_class": "temperature",
