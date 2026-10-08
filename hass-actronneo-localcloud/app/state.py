@@ -230,8 +230,45 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         supported_modes.append(mode)
 
     limits = (raw.get("NV_Limits") or {}).get("UserSetpoint_oC") or {}
-    min_temp = min(float(limits.get("setCool_Min", 16.0)), float(limits.get("setHeat_Min", 16.0)))
-    max_temp = max(float(limits.get("setCool_Max", 30.0)), float(limits.get("setHeat_Max", 30.0)))
+    cool_min_temp = _float_or_none(limits.get("setCool_Min"))
+    cool_max_temp = _float_or_none(limits.get("setCool_Max"))
+    heat_min_temp = _float_or_none(limits.get("setHeat_Min"))
+    heat_max_temp = _float_or_none(limits.get("setHeat_Max"))
+
+    # NEO Connect maps AUTO and DRY to the cooling target/range. HEAT uses the
+    # heating range. FAN has no writable temperature target, so the cooling
+    # range is retained only as harmless discovery metadata while in FAN mode.
+    if cool_min_temp is None:
+        cool_min_temp = 16.0
+    if cool_max_temp is None:
+        cool_max_temp = 30.0
+    if heat_min_temp is None:
+        heat_min_temp = 16.0
+    if heat_max_temp is None:
+        heat_max_temp = 30.0
+
+    if neo_mode.upper() == "HEAT":
+        min_temp = heat_min_temp
+        max_temp = heat_max_temp
+        zone_base_target = _float_or_none(settings.get("TemperatureSetpoint_Heat_oC"))
+    else:
+        min_temp = cool_min_temp
+        max_temp = cool_max_temp
+        zone_base_target = _float_or_none(settings.get("TemperatureSetpoint_Cool_oC"))
+
+    # NEO Connect derives zone target limits from the current master target
+    # plus/minus ZoneTemperatureSetpointVariance_oC rather than from the global
+    # user-setpoint limits.
+    zone_variance = _float_or_none(settings.get("ZoneTemperatureSetpointVariance_oC"))
+    if zone_base_target is not None and zone_variance is not None and zone_variance >= 0:
+        zone_min_temp = zone_base_target - zone_variance
+        zone_max_temp = zone_base_target + zone_variance
+    else:
+        zone_min_temp = min_temp
+        zone_max_temp = max_temp
+    for zone in zones:
+        zone["min_temp"] = zone_min_temp
+        zone["max_temp"] = zone_max_temp
 
     # Away mode has its own controller-provided limits; they are not the same
     # as the normal UserSetpoint_oC limits. NEO Connect models these limits
@@ -241,7 +278,18 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     away_cool_min_temp = _float_or_none(away_settings.get("TemperatureMinLimit_Cool_oC"))
     away_cool_max_temp = _float_or_none(away_settings.get("TemperatureMaxLimit_Cool_oC"))
 
-    fan_modes = ["auto", "low", "med", "medium", "high"]
+    # NEO Connect maps NV_SupportedFanModes as follows:
+    #   1 -> FIXED only
+    #   3 -> LOW/MED/HIGH
+    #   otherwise -> AUTO/LOW/MED/HIGH
+    # The wire value for the middle speed is MED (not MEDIUM).
+    supported_fan_speeds = _int_or_none(indoor.get("NV_SupportedFanModes"))
+    if supported_fan_speeds == 1:
+        fan_modes = ["fixed"]
+    elif supported_fan_speeds == 3:
+        fan_modes = ["low", "med", "high"]
+    else:
+        fan_modes = ["auto", "low", "med", "high"]
     if fan_mode and fan_mode not in fan_modes:
         fan_modes.append(fan_mode)
 
