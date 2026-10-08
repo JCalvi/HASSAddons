@@ -171,6 +171,13 @@ Status changes use the same `event` wrapper with `type: status-change-broadcast`
 
 The bridge keeps the complete full-status tree and merges partial status-change paths into it before normalizing Home Assistant state.
 
+Temperature/fan normalization follows the same controller fields used by NEO Connect:
+
+- HEAT uses the learned heat setpoint limits; COOL, AUTO and DRY use the learned cooling limits.
+- Zone target limits use the current master target plus/minus `UserAirconSettings.ZoneTemperatureSetpointVariance_oC`.
+- Away Heat and Away Cool use their dedicated `NV_SystemSettings.AwayMode` min/max limits independently.
+- Fan choices are derived from `AirconSystem.IndoorUnit.NV_SupportedFanModes`; the controller wire value for Medium is `MED`, not `MEDIUM`.
+
 ## Live telemetry refresh
 
 Moving the connection local removes Internet/cloud latency, but the NEO firmware still decides when it emits native status-change broadcasts. Compressor telemetry is not guaranteed to be pushed every time the underlying value changes.
