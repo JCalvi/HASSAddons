@@ -94,6 +94,77 @@ def _safe_neo_topic(topic: str) -> str:
     return "/".join(parts)
 
 
+def _finite_float(value: Any, label: str) -> float:
+    """Parse one finite numeric command/state value or fail closed."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label} must be numeric") from exc
+    if not math.isfinite(number):
+        raise ValueError(f"{label} must be a finite number")
+    return number
+
+
+def _normal_temperature_limits(
+    state: dict[str, Any], mode: str
+) -> tuple[float, float]:
+    """Return the APK-equivalent writable range for the current HVAC mode."""
+    if mode == "HEAT":
+        suffix = "Heat"
+    elif mode in ("COOL", "AUTO", "DRY"):
+        suffix = "Cool"
+    else:
+        raise ValueError(f"mode {mode} has no writable temperature target")
+
+    limits = (state.get("NV_Limits") or {}).get("UserSetpoint_oC")
+    if not isinstance(limits, dict):
+        raise ValueError("no learned NV_Limits.UserSetpoint_oC state")
+
+    minimum = _finite_float(limits.get(f"set{suffix}_Min"), f"{mode} minimum setpoint")
+    maximum = _finite_float(limits.get(f"set{suffix}_Max"), f"{mode} maximum setpoint")
+    if minimum > maximum:
+        raise ValueError(f"invalid learned {mode} temperature limits")
+    return minimum, maximum
+
+
+def _validate_range(value: float, minimum: float, maximum: float, label: str) -> None:
+    if not minimum <= value <= maximum:
+        raise ValueError(
+            f"{label} must be between {minimum:g} and {maximum:g} °C"
+        )
+
+
+def _fan_speed_wire_value(value: str) -> str:
+    """Map HA/display fan speed names to the exact NEO wire strings."""
+    base = value.upper().replace("+CONT", "").replace("-CONT", "").strip()
+    aliases = {
+        "AUTO": "AUTO",
+        "LOW": "LOW",
+        "MED": "MED",
+        "MEDIUM": "MED",
+        "HIGH": "HIGH",
+        "FIXED": "FIXED",
+    }
+    if base not in aliases:
+        raise ValueError(f"unsupported fan speed {value!r}")
+    return aliases[base]
+
+
+def _supported_fan_wire_values(state: dict[str, Any]) -> set[str]:
+    """Mirror NEO Connect's NV_SupportedFanModes mapping."""
+    indoor = ((state.get("AirconSystem") or {}).get("IndoorUnit") or {})
+    try:
+        supported = int(indoor.get("NV_SupportedFanModes"))
+    except (TypeError, ValueError):
+        supported = None
+
+    if supported == 1:
+        return {"FIXED"}
+    if supported == 3:
+        return {"LOW", "MED", "HIGH"}
+    return {"AUTO", "LOW", "MED", "HIGH"}
+
+
 class HomeAssistantBridge:
     def __init__(self) -> None:
         self._states: dict[str, dict[str, Any]] = {}
@@ -324,22 +395,32 @@ class HomeAssistantBridge:
             return {"command": cmd}
 
         if command_name == "temperature":
-            temperature = float(text)
+            temperature = _finite_float(text, "temperature setpoint")
+            minimum, maximum = _normal_temperature_limits(state, mode)
+            _validate_range(temperature, minimum, maximum, f"{mode} setpoint")
+
             cmd: dict[str, Any] = {"type": "set-settings"}
             if mode == "HEAT":
                 cmd["UserAirconSettings.TemperatureSetpoint_Heat_oC"] = temperature
-            elif mode in ("COOL", "AUTO", "DRY"):
-                cmd["UserAirconSettings.TemperatureSetpoint_Cool_oC"] = temperature
             else:
-                raise ValueError(f"cannot set temperature in mode {mode}")
+                # NEO Connect maps COOL, AUTO and DRY to the cooling target.
+                cmd["UserAirconSettings.TemperatureSetpoint_Cool_oC"] = temperature
             return {"command": cmd}
 
         if command_name == "fan_mode":
-            requested = text.upper()
-            current = str(settings.get("FanMode", ""))
-            if "+CONT" in current or "-CONT" in current:
+            requested = _fan_speed_wire_value(text)
+            if requested not in _supported_fan_wire_values(state):
+                raise ValueError(f"fan speed {requested} is not supported by this NEO")
+
+            current = str(settings.get("FanMode") or "")
+            if "CONT" in current.upper():
                 requested += "+CONT"
-            return {"command": {"UserAirconSettings.FanMode": requested, "type": "set-settings"}}
+            return {
+                "command": {
+                    "UserAirconSettings.FanMode": requested,
+                    "type": "set-settings",
+                }
+            }
 
         switch_paths = {
             "quiet": "UserAirconSettings.QuietModeEnabled",
@@ -355,9 +436,19 @@ class HomeAssistantBridge:
             }
 
         if command_name == "continuous_fan":
-            base = str(settings.get("FanMode", "AUTO")).replace("+CONT", "").replace("-CONT", "")
+            current = str(settings.get("FanMode") or "").strip()
+            if not current:
+                raise ValueError("no learned FanMode state; refusing continuous-fan write")
+            base = _fan_speed_wire_value(current)
+            if base not in _supported_fan_wire_values(state):
+                raise ValueError(f"current fan speed {base} is not supported by this NEO")
             value = f"{base}+CONT" if text.upper() == "ON" else base
-            return {"command": {"UserAirconSettings.FanMode": value, "type": "set-settings"}}
+            return {
+                "command": {
+                    "UserAirconSettings.FanMode": value,
+                    "type": "set-settings",
+                }
+            }
 
         if command_name in ("away_heat_setpoint", "away_cool_setpoint"):
             nv_settings = state.get("NV_SystemSettings")
@@ -499,21 +590,50 @@ class HomeAssistantBridge:
             }
 
         if command_name == "temperature":
-            temperature = float(text)
-            cmd: dict[str, Any] = {"type": "set-settings"}
+            temperature = _finite_float(text, "zone temperature setpoint")
             if mode == "HEAT":
-                cmd[f"RemoteZoneInfo[{zone_index}].TemperatureSetpoint_Heat_oC"] = temperature
+                target_key = "TemperatureSetpoint_Heat_oC"
+                base_key = "TemperatureSetpoint_Heat_oC"
             elif mode in ("COOL", "AUTO", "DRY"):
-                cmd[f"RemoteZoneInfo[{zone_index}].TemperatureSetpoint_Cool_oC"] = temperature
+                target_key = "TemperatureSetpoint_Cool_oC"
+                base_key = "TemperatureSetpoint_Cool_oC"
             else:
                 raise ValueError(f"cannot set zone temperature in mode {mode}")
-            return {"command": cmd}
 
-        if command_name == "airflow":
-            value = float(text)
+            base_target = _finite_float(
+                settings.get(base_key), f"{mode} master setpoint"
+            )
+            variance = _finite_float(
+                settings.get("ZoneTemperatureSetpointVariance_oC"),
+                "zone temperature setpoint variance",
+            )
+            if variance < 0:
+                raise ValueError("zone temperature setpoint variance cannot be negative")
+            minimum = base_target - variance
+            maximum = base_target + variance
+            _validate_range(
+                temperature,
+                minimum,
+                maximum,
+                f"{mode} zone setpoint",
+            )
+
             return {
                 "command": {
-                    f"RemoteZoneInfo[{zone_index}].AirflowSetpoint": value,
+                    f"RemoteZoneInfo[{zone_index}].{target_key}": temperature,
+                    "type": "set-settings",
+                }
+            }
+
+        if command_name == "airflow":
+            value = _finite_float(text, "zone airflow setpoint")
+            if not 0 <= value <= 100:
+                raise ValueError("zone airflow setpoint must be between 0 and 100%")
+            if not value.is_integer():
+                raise ValueError("zone airflow setpoint must be an integer percentage")
+            return {
+                "command": {
+                    f"RemoteZoneInfo[{zone_index}].AirflowSetpoint": int(value),
                     "type": "set-settings",
                 }
             }
