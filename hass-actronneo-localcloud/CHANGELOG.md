@@ -1,3 +1,16 @@
+## 1.4.0
+
+- Rolls the post-1.3.2 NEO Connect 2.0.1 (1526) APK-alignment work into one release.
+- Retains the 1.3.3/1.3.4 command fixes: atomic Away heat/cool writes, controller-provided Away limits, APK-style mode/temperature writes, complete EnabledZones array writes, mode-specific temperature limits, zone variance limits, canonical fan values and integer 0–100 airflow writes.
+- Mirrors the APK RemoteZone capability model using the exact NEO fields: `CanOperate`, `NV_Exists`, `CommonZone`, `NV_ITD`, `NV_ITC`, `NV_IHD`, `NV_IAC`, `AirflowControlEnabled`, `AirflowControlLocked` and `AirflowSetpoint`.
+- Zone power writes now fail closed when `CanOperate=false` or `CommonZone=true`, matching the NEO Connect zone-click behavior.
+- Zone temperature writes require both `CanOperate=true` and `NV_ITC=true`; live zone temperature is exposed only when the controller reports `NV_ITD` support.
+- Zone humidity entities are published only when `NV_IHD=true`; adjustable airflow entities require `CanOperate=true`, `NV_IAC=true` and an unlocked airflow control.
+- Mirrors the APK's zone airflow state normalization: missing airflow setpoint defaults to 100 and values are clamped to 0–100.
+- Fixes compressor-running parsing to match the APK's accepted `CompressorOn` string values (`"true"`/`"1"` true; `"false"`/`"0"`, null and other strings false) while also accepting native JSON booleans emitted by real NEO controllers.
+- Keeps the system-power check only for zeroing stale compressor power/speed/capacity telemetry; the Compressor Running entity itself now reflects the parsed `CompressorOn` state directly.
+- The Home Assistant-specific exception remains intentional: choosing a non-off HVAC mode while the unit is off sends `isOn=true` together with the mode so normal HA climate semantics turn the NEO on.
+
 ## 1.3.4
 
 - Completes the remaining APK-proven control/range alignment found during the NEO Connect 2.0.1 (1526) audit.
