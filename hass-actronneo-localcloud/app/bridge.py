@@ -94,6 +94,17 @@ def _safe_neo_topic(topic: str) -> str:
     return "/".join(parts)
 
 
+def _state_bool(value: Any, *, default: bool = False) -> bool:
+    """Read a NEO capability/state boolean without string truthiness."""
+    if isinstance(value, bool):
+        return value
+    if value in (1, "1", "true"):
+        return True
+    if value in (0, "0", "false"):
+        return False
+    return default
+
+
 def _finite_float(value: Any, label: str) -> float:
     """Parse one finite numeric command/state value or fail closed."""
     try:
@@ -572,9 +583,25 @@ class HomeAssistantBridge:
         zones = state.get("RemoteZoneInfo") or []
         if zone_index < 0 or zone_index >= len(zones):
             raise IndexError("zone index out of range")
+        zone = zones[zone_index]
+        if not isinstance(zone, dict) or not _state_bool(zone.get("NV_Exists")):
+            raise ValueError("zone does not exist; refusing command")
+
+        can_operate = _state_bool(zone.get("CanOperate"))
+        common_zone = _state_bool(zone.get("CommonZone"))
+        supports_temperature_controls = _state_bool(zone.get("NV_ITC"))
+        supports_airflow_control = _state_bool(zone.get("NV_IAC"))
+        airflow_locked = _state_bool(zone.get("AirflowControlLocked"))
         mode = str(settings.get("Mode", "AUTO")).upper()
 
         if command_name == "mode":
+            # NEO Connect ignores zone power clicks when CanOperate is false or
+            # when the zone is marked CommonZone.
+            if not can_operate:
+                raise ValueError("zone CanOperate is false; refusing zone power write")
+            if common_zone:
+                raise ValueError("common zones are not individually switchable")
+
             enabled_zones = settings.get("EnabledZones")
             if not isinstance(enabled_zones, list) or zone_index >= len(enabled_zones):
                 raise ValueError(
@@ -590,6 +617,11 @@ class HomeAssistantBridge:
             }
 
         if command_name == "temperature":
+            if not can_operate:
+                raise ValueError("zone CanOperate is false; refusing temperature write")
+            if not supports_temperature_controls:
+                raise ValueError("zone does not support individual temperature controls")
+
             temperature = _finite_float(text, "zone temperature setpoint")
             if mode == "HEAT":
                 target_key = "TemperatureSetpoint_Heat_oC"
@@ -626,6 +658,13 @@ class HomeAssistantBridge:
             }
 
         if command_name == "airflow":
+            if not can_operate:
+                raise ValueError("zone CanOperate is false; refusing airflow write")
+            if not supports_airflow_control:
+                raise ValueError("zone does not support airflow control")
+            if airflow_locked:
+                raise ValueError("zone airflow control is locked")
+
             value = _finite_float(text, "zone airflow setpoint")
             if not 0 <= value <= 100:
                 raise ValueError("zone airflow setpoint must be between 0 and 100%")
