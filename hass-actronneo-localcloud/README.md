@@ -29,6 +29,8 @@ The add-on maps its internal MQTT/TLS port `8883` to host port `28883` by defaul
 
 The normal device page includes the main climate entity, Quiet/Turbo/Away/Continuous Fan/Schedule controls, outdoor temperature, humidity, compressor power/speed, Indoor Fan RPM, Clean Filter, Defrosting and any configured zones.
 
+Zone controls follow the capability flags reported by the NEO itself. In particular, `CanOperate`/`CommonZone` govern individual zone power, `NV_ITD` and `NV_ITC` govern individual temperature display/control, `NV_IHD` governs humidity display, and `NV_IAC` plus the airflow lock state govern adjustable airflow.
+
 The Schedule switch controls the NEO's existing master schedule enable flag; it does not alter the configured schedule events.
 
 Away heating and cooling setpoint entities use the dedicated limits reported by that NEO under `NV_SystemSettings.AwayMode`. These limits can differ from the normal thermostat range, so Home Assistant uses the controller-provided Heat and Cool limits independently.
