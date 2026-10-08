@@ -233,6 +233,14 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     min_temp = min(float(limits.get("setCool_Min", 16.0)), float(limits.get("setHeat_Min", 16.0)))
     max_temp = max(float(limits.get("setCool_Max", 30.0)), float(limits.get("setHeat_Max", 30.0)))
 
+    # Away mode has its own controller-provided limits; they are not the same
+    # as the normal UserSetpoint_oC limits. NEO Connect models these limits
+    # directly from NV_SystemSettings.AwayMode.
+    away_heat_min_temp = _float_or_none(away_settings.get("TemperatureMinLimit_Heat_oC"))
+    away_heat_max_temp = _float_or_none(away_settings.get("TemperatureMaxLimit_Heat_oC"))
+    away_cool_min_temp = _float_or_none(away_settings.get("TemperatureMinLimit_Cool_oC"))
+    away_cool_max_temp = _float_or_none(away_settings.get("TemperatureMaxLimit_Cool_oC"))
+
     fan_modes = ["auto", "low", "med", "medium", "high"]
     if fan_mode and fan_mode not in fan_modes:
         fan_modes.append(fan_mode)
@@ -293,8 +301,12 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
         "quiet": bool(settings.get("QuietModeEnabled", False)),
         "turbo": turbo,
         "away": bool(settings.get("AwayMode", False)),
-        "away_heat_setpoint": away_settings.get("TemperatureSetpoint_Heat_oC"),
-        "away_cool_setpoint": away_settings.get("TemperatureSetpoint_Cool_oC"),
+        "away_heat_setpoint": _float_or_none(away_settings.get("TemperatureSetpoint_Heat_oC")),
+        "away_cool_setpoint": _float_or_none(away_settings.get("TemperatureSetpoint_Cool_oC")),
+        "away_heat_min_temp": away_heat_min_temp,
+        "away_heat_max_temp": away_heat_max_temp,
+        "away_cool_min_temp": away_cool_min_temp,
+        "away_cool_max_temp": away_cool_max_temp,
         "schedule": bool(schedule.get("Enabled", False)),
         "compressor_mode": live.get("CompressorMode"),
         "compressor_power": compressor_power,
