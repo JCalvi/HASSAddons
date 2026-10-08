@@ -128,6 +128,45 @@ def _float_or_none(value: Any) -> float | None:
         return None
 
 
+def _bool_or_none(value: Any) -> bool | None:
+    """Parse native/JSON boolean values without Python string truthiness."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return None
+    if value in (1, "1", "true"):
+        return True
+    if value in (0, "0", "false"):
+        return False
+    return None
+
+
+def _apk_boolean(value: Any) -> bool:
+    """APK-style optional Boolean: missing/unrecognised values become false."""
+    parsed = _bool_or_none(value)
+    return parsed if parsed is not None else False
+
+
+def _compressor_on(value: Any) -> bool:
+    """Match NEO Connect CompressorOn parsing, plus native JSON booleans.
+
+    The APK accepts the string values "true"/"1" as on and treats
+    "false"/"0", null and all other strings as off. Real NEO full-status
+    payloads also use JSON booleans, so preserve those directly.
+    """
+    if isinstance(value, bool):
+        return value
+    return value in ("true", "1")
+
+
+def _apk_airflow_setpoint(value: Any) -> int:
+    """Mirror NEO Connect zone airflow mapping: default 100 and clamp 0..100."""
+    parsed = _int_or_none(value)
+    if parsed is None:
+        return 100
+    return max(0, min(100, parsed))
+
+
 def _format_error_code(value: Any) -> str | None:
     if value is None or value == "":
         return None
@@ -185,31 +224,55 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     for idx, zone in enumerate(zones_raw):
         if not isinstance(zone, dict):
             continue
-        exists = bool(zone.get("NV_Exists", False))
+
+        # These fields mirror NEO Connect's RemoteZone -> ZoneInfo mapping.
+        # Nullable support flags default false in the APK; airflow enabled/locked
+        # remain nullable. AirflowSetpoint defaults to 100 and is clamped 0..100.
+        exists = _apk_boolean(zone.get("NV_Exists"))
+        can_operate = _apk_boolean(zone.get("CanOperate"))
+        common_zone = _apk_boolean(zone.get("CommonZone"))
+        supports_temperature_display = _apk_boolean(zone.get("NV_ITD"))
+        supports_temperature_controls = _apk_boolean(zone.get("NV_ITC"))
+        supports_humidity_display = _apk_boolean(zone.get("NV_IHD"))
+        supports_airflow_control = _apk_boolean(zone.get("NV_IAC"))
+        airflow_enabled = _bool_or_none(zone.get("AirflowControlEnabled"))
+        airflow_locked = _bool_or_none(zone.get("AirflowControlLocked"))
+        airflow_setpoint = _apk_airflow_setpoint(zone.get("AirflowSetpoint"))
+
         title = str(zone.get("NV_Title") or f"Zone {idx + 1}")
-        if not exists and not zone.get("NV_Title"):
-            continue
         enabled = bool(enabled_zones[idx]) if idx < len(enabled_zones) else False
         zone_mode = mode if is_on and enabled else "off"
-        zone_target = (
-            zone.get("TemperatureSetpoint_Heat_oC")
-            if neo_mode.upper() == "HEAT"
-            else zone.get("TemperatureSetpoint_Cool_oC")
-        )
+
+        # NEO Connect creates TemperatureData only when CanOperate is true.
+        if can_operate:
+            current_temperature = _float_or_none(zone.get("LiveTemp_oC"))
+            if neo_mode.upper() == "HEAT":
+                zone_target = _float_or_none(zone.get("TemperatureSetpoint_Heat_oC"))
+            else:
+                zone_target = _float_or_none(zone.get("TemperatureSetpoint_Cool_oC"))
+        else:
+            current_temperature = None
+            zone_target = None
+
         zones.append(
             {
                 "id": idx,
                 "name": title,
+                "exists": exists,
                 "enabled": enabled,
                 "mode": zone_mode,
-                "current_temperature": zone.get("LiveTemp_oC"),
+                "can_operate": can_operate,
+                "common_zone": common_zone,
+                "supports_temperature_display": supports_temperature_display,
+                "supports_temperature_controls": supports_temperature_controls,
+                "current_temperature": current_temperature,
                 "target_temperature": zone_target,
-                "humidity": zone.get("LiveHumidity_pc"),
-                "position": zone.get("ZonePosition"),
-                "itc": bool(zone.get("NV_ITC", False)),
-                "vav": bool(zone.get("NV_VAV", False)),
-                "airflow_setpoint": zone.get("AirflowSetpoint"),
-                "airflow_locked": bool(zone.get("AirflowControlLocked", False)),
+                "humidity": _float_or_none(zone.get("LiveHumidity_pc")),
+                "supports_humidity_display": supports_humidity_display,
+                "supports_airflow_control": supports_airflow_control,
+                "airflow_enabled": airflow_enabled,
+                "airflow_locked": airflow_locked,
+                "airflow_setpoint": airflow_setpoint,
             }
         )
 
@@ -303,7 +366,8 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     model = str(aircon.get("MasterWCModel", ""))
     family = str(outdoor_config.get("Family", ""))
     is_ntw_series = model.upper().startswith("NTW") or "INVERTER" in family.upper()
-    compressor_running = bool(outdoor.get("CompressorOn", False)) and is_on
+    compressor_running = _compressor_on(outdoor.get("CompressorOn"))
+    compressor_actively_running = compressor_running and is_on
     raw_comp_power = _float_or_none(outdoor.get("CompPower"))
     compressor_power = (
         raw_comp_power * 100.0
@@ -317,7 +381,7 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
     # after the compressor has stopped. They are historical values at that
     # point, not current telemetry, so expose zero whenever CompressorOn/system
     # power says the compressor is not actually running.
-    if not compressor_running:
+    if not compressor_actively_running:
         compressor_power = 0.0
         compressor_speed = 0.0
         compressor_capacity = 0.0
