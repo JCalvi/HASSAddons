@@ -31,9 +31,9 @@ The normal device page includes the main climate entity, Quiet/Turbo/Away/Contin
 
 The Schedule switch controls the NEO's existing master schedule enable flag; it does not alter the configured schedule events.
 
-Away heating and cooling setpoint entities use the dedicated limits reported by the NEO under `NV_SystemSettings.AwayMode`. These limits can differ substantially from the normal thermostat range; for example, a controller may expose Away Heat 10–20 °C and Away Cool 26–36 °C while normal setpoints are 16–30 °C.
+Away heating and cooling setpoint entities use the dedicated limits reported by that NEO under `NV_SystemSettings.AwayMode`. These limits can differ from the normal thermostat range, so Home Assistant uses the controller-provided Heat and Cool limits independently.
 
-The main climate entity reports live HVAC action (`off`, `idle`, `heating`, `cooling`, `drying` or `fan`) separately from the selected HVAC mode.
+The main climate entity reports live HVAC action (`off`, `idle`, `heating`, `cooling`, `drying` or `fan`) separately from the selected HVAC mode. Temperature limits also follow the controller mode: HEAT uses the learned heat range, while COOL/AUTO/DRY use the learned cooling range. Fan-speed choices are derived from `NV_SupportedFanModes` and use the NEO wire names (`AUTO`, `LOW`, `MED`, `HIGH` or `FIXED` as supported).
 
 Discovery publishes deterministic default entity IDs using the controller serial and NEO system name, for example `climate.actron_neo_26d03211_north_end_pac`. Home Assistant keeps entity IDs already stored in its entity registry, so existing entities may need a one-time rename/recreation to adopt the canonical IDs; new entities use the canonical format automatically.
 
