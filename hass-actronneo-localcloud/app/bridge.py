@@ -311,27 +311,25 @@ class HomeAssistantBridge:
         if command_name == "mode":
             if text.lower() == "off":
                 return {"command": {"UserAirconSettings.isOn": False, "type": "set-settings"}}
-            return {
-                "command": {
-                    "UserAirconSettings.isOn": True,
-                    "UserAirconSettings.Mode": ha_to_neo_mode(text),
-                    "type": "set-settings",
-                }
+
+            cmd: dict[str, Any] = {
+                "UserAirconSettings.Mode": ha_to_neo_mode(text),
+                "type": "set-settings",
             }
+            # NEO Connect changes mode without redundantly writing power. Home
+            # Assistant, however, uses selecting a non-off HVAC mode to turn an
+            # off climate entity on, so include isOn only for that transition.
+            if not bool(settings.get("isOn", False)):
+                cmd["UserAirconSettings.isOn"] = True
+            return {"command": cmd}
 
         if command_name == "temperature":
             temperature = float(text)
             cmd: dict[str, Any] = {"type": "set-settings"}
-            if mode == "COOL":
-                cmd["UserAirconSettings.TemperatureSetpoint_Cool_oC"] = temperature
-            elif mode == "HEAT":
+            if mode == "HEAT":
                 cmd["UserAirconSettings.TemperatureSetpoint_Heat_oC"] = temperature
-            elif mode == "AUTO":
-                cool = float(settings.get("TemperatureSetpoint_Cool_oC", temperature))
-                heat = float(settings.get("TemperatureSetpoint_Heat_oC", temperature - 2.0))
-                differential = max(0.0, cool - heat)
+            elif mode in ("COOL", "AUTO", "DRY"):
                 cmd["UserAirconSettings.TemperatureSetpoint_Cool_oC"] = temperature
-                cmd["UserAirconSettings.TemperatureSetpoint_Heat_oC"] = max(10.0, temperature - differential)
             else:
                 raise ValueError(f"cannot set temperature in mode {mode}")
             return {"command": cmd}
@@ -395,10 +393,43 @@ class HomeAssistantBridge:
                     "Away heat/cool setpoints must both be finite numbers; refusing write"
                 )
 
+            try:
+                heat_min = float(away_settings["TemperatureMinLimit_Heat_oC"])
+                heat_max = float(away_settings["TemperatureMaxLimit_Heat_oC"])
+                cool_min = float(away_settings["TemperatureMinLimit_Cool_oC"])
+                cool_max = float(away_settings["TemperatureMaxLimit_Cool_oC"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    "complete learned Away temperature limits are required; refusing write"
+                ) from exc
+
+            if not all(
+                math.isfinite(value)
+                for value in (heat_min, heat_max, cool_min, cool_max)
+            ):
+                raise ValueError(
+                    "Away temperature limits must be finite numbers; refusing write"
+                )
+            if heat_min > heat_max or cool_min > cool_max:
+                raise ValueError("invalid learned Away temperature limits; refusing write")
+
             if command_name == "away_heat_setpoint":
+                if not heat_min <= requested <= heat_max:
+                    raise ValueError(
+                        f"Away heating setpoint must be between {heat_min:g} and {heat_max:g} °C"
+                    )
                 heat = requested
             else:
+                if not cool_min <= requested <= cool_max:
+                    raise ValueError(
+                        f"Away cooling setpoint must be between {cool_min:g} and {cool_max:g} °C"
+                    )
                 cool = requested
+
+            if not heat_min <= heat <= heat_max or not cool_min <= cool <= cool_max:
+                raise ValueError(
+                    "current learned Away heat/cool pair is outside controller limits; refusing write"
+                )
 
             return {
                 "command": {
@@ -453,10 +484,16 @@ class HomeAssistantBridge:
         mode = str(settings.get("Mode", "AUTO")).upper()
 
         if command_name == "mode":
-            enabled = text.lower() != "off"
+            enabled_zones = settings.get("EnabledZones")
+            if not isinstance(enabled_zones, list) or zone_index >= len(enabled_zones):
+                raise ValueError(
+                    "complete learned UserAirconSettings.EnabledZones array is required"
+                )
+            updated_zones = deepcopy(enabled_zones)
+            updated_zones[zone_index] = text.lower() != "off"
             return {
                 "command": {
-                    f"UserAirconSettings.EnabledZones[{zone_index}]": enabled,
+                    "UserAirconSettings.EnabledZones": updated_zones,
                     "type": "set-settings",
                 }
             }
@@ -464,16 +501,10 @@ class HomeAssistantBridge:
         if command_name == "temperature":
             temperature = float(text)
             cmd: dict[str, Any] = {"type": "set-settings"}
-            if mode == "COOL":
-                cmd[f"RemoteZoneInfo[{zone_index}].TemperatureSetpoint_Cool_oC"] = temperature
-            elif mode == "HEAT":
+            if mode == "HEAT":
                 cmd[f"RemoteZoneInfo[{zone_index}].TemperatureSetpoint_Heat_oC"] = temperature
-            elif mode == "AUTO":
-                cool = float(settings.get("TemperatureSetpoint_Cool_oC", temperature))
-                heat = float(settings.get("TemperatureSetpoint_Heat_oC", temperature - 2.0))
-                differential = max(0.0, cool - heat)
+            elif mode in ("COOL", "AUTO", "DRY"):
                 cmd[f"RemoteZoneInfo[{zone_index}].TemperatureSetpoint_Cool_oC"] = temperature
-                cmd[f"RemoteZoneInfo[{zone_index}].TemperatureSetpoint_Heat_oC"] = max(10.0, temperature - differential)
             else:
                 raise ValueError(f"cannot set zone temperature in mode {mode}")
             return {"command": cmd}
