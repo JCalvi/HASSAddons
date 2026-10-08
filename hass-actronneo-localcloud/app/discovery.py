@@ -386,31 +386,78 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         )
 
     for zone in state["zones"]:
+        if not bool(zone.get("exists", False)):
+            continue
+
         idx = int(zone["id"])
         zone_base = f"{base}/zone/{idx}"
         zone_name = str(zone["name"])
-        zone_climate = {
-            "name": zone_name,
-            "unique_id": f"actronneo_{serial}_zone_{idx}_climate",
-            "device": device,
-            "availability_topic": availability,
-            "mode_state_topic": state_topic,
-            "mode_state_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='mode') | first }}}}",
-            "mode_command_topic": f"{zone_base}/set/mode",
-            "temperature_state_topic": state_topic,
-            "temperature_state_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='target_temperature') | first }}}}",
-            "temperature_command_topic": f"{zone_base}/set/temperature",
-            "current_temperature_topic": state_topic,
-            "current_temperature_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='current_temperature') | first }}}}",
-            "modes": state["supported_modes"],
-            "min_temp": zone.get("min_temp", state["min_temp"]),
-            "max_temp": zone.get("max_temp", state["max_temp"]),
-            "temp_step": 0.5,
-            "temperature_unit": "C",
-        }
-        _publish(client, "climate", f"actronneo_{serial}_zone_{idx}", zone_climate)
 
-        if zone.get("airflow_setpoint") is not None:
+        can_operate = bool(zone.get("can_operate", False))
+        common_zone = bool(zone.get("common_zone", False))
+        supports_temperature_display = bool(zone.get("supports_temperature_display", False))
+        supports_temperature_controls = bool(zone.get("supports_temperature_controls", False))
+        supports_humidity_display = bool(zone.get("supports_humidity_display", False))
+        supports_airflow_control = bool(zone.get("supports_airflow_control", False))
+        airflow_locked = zone.get("airflow_locked") is True
+
+        # NEO Connect uses CanOperate/CommonZone to decide whether a zone can be
+        # toggled, NV_ITD for live-temperature display and NV_ITC for individual
+        # target controls. Only advertise the corresponding HA commands/states.
+        has_mode_control = can_operate and not common_zone
+        has_temperature_state = zone.get("target_temperature") is not None
+        has_temperature_control = can_operate and supports_temperature_controls
+        has_temperature_display = (
+            can_operate
+            and supports_temperature_display
+            and zone.get("current_temperature") is not None
+        )
+
+        if has_mode_control or has_temperature_control or has_temperature_display:
+            zone_climate = {
+                "name": zone_name,
+                "unique_id": f"actronneo_{serial}_zone_{idx}_climate",
+                "device": device,
+                "availability_topic": availability,
+                "mode_state_topic": state_topic,
+                "mode_state_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='mode') | first }}}}",
+                "modes": state["supported_modes"],
+                "min_temp": zone.get("min_temp", state["min_temp"]),
+                "max_temp": zone.get("max_temp", state["max_temp"]),
+                "temp_step": 0.5,
+                "temperature_unit": "C",
+            }
+
+            if has_mode_control:
+                zone_climate["mode_command_topic"] = f"{zone_base}/set/mode"
+
+            if has_temperature_state:
+                zone_climate["temperature_state_topic"] = state_topic
+                zone_climate["temperature_state_template"] = (
+                    f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | "
+                    "map(attribute='target_temperature') | first }}}}"
+                )
+
+            if has_temperature_control:
+                zone_climate["temperature_command_topic"] = f"{zone_base}/set/temperature"
+
+            if has_temperature_display:
+                zone_climate["current_temperature_topic"] = state_topic
+                zone_climate["current_temperature_template"] = (
+                    f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | "
+                    "map(attribute='current_temperature') | first }}}}"
+                )
+
+            _publish(client, "climate", f"actronneo_{serial}_zone_{idx}", zone_climate)
+
+        # NEO Connect only exposes adjustable airflow when the zone supports
+        # airflow control and the controller does not report it locked.
+        if (
+            can_operate
+            and supports_airflow_control
+            and not airflow_locked
+            and zone.get("airflow_setpoint") is not None
+        ):
             airflow = {
                 "name": f"{zone_name} Airflow",
                 "unique_id": f"actronneo_{serial}_zone_{idx}_airflow",
@@ -424,7 +471,6 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
                 "step": 5,
                 "unit_of_measurement": "%",
                 "mode": "slider",
-                "enabled_by_default": not bool(zone.get("airflow_locked", False)),
             }
             _publish(client, "number", f"actronneo_{serial}_zone_{idx}_airflow", airflow)
 
@@ -440,14 +486,15 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
         }
         _publish(client, "text", f"actronneo_{serial}_zone_{idx}_name", zone_name_control)
 
-        humidity = {
-            "name": f"{zone_name} Humidity",
-            "unique_id": f"actronneo_{serial}_zone_{idx}_humidity",
-            "device": device,
-            "availability_topic": availability,
-            "state_topic": state_topic,
-            "value_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='humidity') | first }}}}",
-            "unit_of_measurement": "%",
-            "device_class": "humidity",
-        }
-        _publish(client, "sensor", f"actronneo_{serial}_zone_{idx}_humidity", humidity)
+        if supports_humidity_display and zone.get("humidity") is not None:
+            humidity = {
+                "name": f"{zone_name} Humidity",
+                "unique_id": f"actronneo_{serial}_zone_{idx}_humidity",
+                "device": device,
+                "availability_topic": availability,
+                "state_topic": state_topic,
+                "value_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='humidity') | first }}}}",
+                "unit_of_measurement": "%",
+                "device_class": "humidity",
+            }
+            _publish(client, "sensor", f"actronneo_{serial}_zone_{idx}_humidity", humidity)
