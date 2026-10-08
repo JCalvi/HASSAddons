@@ -175,6 +175,8 @@ Temperature/fan normalization follows the same controller fields used by NEO Con
 
 - HEAT uses the learned heat setpoint limits; COOL, AUTO and DRY use the learned cooling limits.
 - Zone target limits use the current master target plus/minus `UserAirconSettings.ZoneTemperatureSetpointVariance_oC`.
+- Zone capability/state parsing follows NEO Connect's RemoteZone model: `CanOperate`, `NV_Exists`, `CommonZone`, `NV_ITD` (temperature display), `NV_ITC` (individual temperature control), `NV_IHD` (humidity display), `NV_IAC` (airflow control), `AirflowControlEnabled`, `AirflowControlLocked` and `AirflowSetpoint`.
+- As in NEO Connect, zone temperature information is treated as unavailable when `CanOperate=false`; zone power is not individually writable for `CommonZone=true`.
 - Away Heat and Away Cool use their dedicated `NV_SystemSettings.AwayMode` min/max limits independently.
 - Fan choices are derived from `AirconSystem.IndoorUnit.NV_SupportedFanModes`; the controller wire value for Medium is `MED`, not `MEDIUM`.
 
@@ -191,7 +193,7 @@ System OFF:  about every 30 seconds
 
 Native status changes are still processed immediately. The periodic refresh bounds how stale compressor power, compressor speed and other engineering telemetry can become. The refresh is skipped during the 6-second command settling/anti-bounce window.
 
-The NEO can retain the last non-zero compressor telemetry in `CompPower`, `CompSpeed` and `CompressorCapacity` even after the compressor has stopped. When `UserAirconSettings.isOn` or `OutdoorUnit.CompressorOn` says the compressor is stopped, the add-on reports those live values as zero.
+The NEO can retain the last non-zero compressor telemetry in `CompPower`, `CompSpeed` and `CompressorCapacity` even after the compressor has stopped. `OutdoorUnit.CompressorOn` is parsed using the NEO Connect semantics (`"true"`/`"1"` = on; `"false"`/`"0"`, null and other strings = off), with native JSON booleans also accepted. System power is additionally used only to decide when stale power/speed/capacity telemetry must be forced to zero.
 
 ### NTW / Inverter telemetry scaling
 
