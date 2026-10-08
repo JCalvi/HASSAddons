@@ -241,7 +241,7 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
                 "step": 0.5,
                 "unit_of_measurement": "°C",
                 "device_class": "temperature",
-                "mode": "box",
+                "mode": "slider",
             }
             _publish(client, "number", f"actronneo_{serial}_{key}", payload)
 
@@ -403,8 +403,8 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
             "current_temperature_topic": state_topic,
             "current_temperature_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='current_temperature') | first }}}}",
             "modes": state["supported_modes"],
-            "min_temp": state["min_temp"],
-            "max_temp": state["max_temp"],
+            "min_temp": zone.get("min_temp", state["min_temp"]),
+            "max_temp": zone.get("max_temp", state["max_temp"]),
             "temp_step": 0.5,
             "temperature_unit": "C",
         }
