@@ -1,3 +1,14 @@
+## 1.3.4
+
+- Completes the remaining APK-proven control/range alignment found during the NEO Connect 2.0.1 (1526) audit.
+- Away Heat/Cool controls now use slider-style MQTT number entities with the controller's own separate Away heat/cool limits, preventing blank values from being entered through the normal Home Assistant control.
+- Main climate temperature limits are now mode-specific like NEO Connect: HEAT uses the learned heat range; COOL, AUTO and DRY use the learned cooling range. FAN still has no writable temperature target.
+- Main temperature commands now fail closed for blank, non-numeric, non-finite or out-of-range values instead of passing arbitrary numbers to the controller.
+- Zone climate limits now follow the APK calculation: the active master heat/cool target plus/minus `ZoneTemperatureSetpointVariance_oC`. Zone temperature writes are rejected outside that learned range.
+- Fan choices now follow `AirconSystem.IndoorUnit.NV_SupportedFanModes`: value 1 exposes FIXED, value 3 exposes LOW/MED/HIGH, otherwise AUTO/LOW/MED/HIGH. The wire value for Medium is correctly `MED`; the invalid duplicate `MEDIUM` option is no longer advertised.
+- Fan commands are canonicalized to the APK wire strings and fail closed if a requested speed is not supported by the connected NEO. Continuous-fan writes preserve the learned fan speed and use the APK `+CONT` representation.
+- Zone airflow writes now send an integer percentage, matching the APK use case, and reject blank/non-finite/out-of-range values outside 0–100%.
+
 ## 1.3.3
 
 - Aligns the remaining proven Home Assistant command shapes with NEO Connect 2.0.1 (1526).
