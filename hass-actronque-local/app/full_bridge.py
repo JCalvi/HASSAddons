@@ -89,16 +89,34 @@ class FullActronQueBridge(LocalActronQueBridge):
         with self.state_lock:
             settings = self.state.get("UserAirconSettings", {})
             mode = str(settings.get("Mode", "")).upper() if isinstance(settings, dict) else ""
+            if zone_index is None:
+                current_heat = _as_number(settings.get("TemperatureSetpoint_Heat_oC"))
+                current_cool = _as_number(settings.get("TemperatureSetpoint_Cool_oC"))
+            else:
+                zones = self.state.get("RemoteZoneInfo", [])
+                zone = zones[zone_index] if isinstance(zones, list) and zone_index < len(zones) else {}
+                zone = zone if isinstance(zone, dict) else {}
+                current_heat = _as_number(zone.get("TemperatureSetpoint_Heat_oC"))
+                current_cool = _as_number(zone.get("TemperatureSetpoint_Cool_oC"))
         prefix = "UserAirconSettings" if zone_index is None else f"RemoteZoneInfo[{zone_index}]"
         if mode == "COOL":
             changes = {f"{prefix}.TemperatureSetpoint_Cool_oC": value}
         elif mode == "HEAT":
             changes = {f"{prefix}.TemperatureSetpoint_Heat_oC": value}
         elif mode == "AUTO":
-            changes = {
-                f"{prefix}.TemperatureSetpoint_Heat_oC": value,
-                f"{prefix}.TemperatureSetpoint_Cool_oC": value,
-            }
+            # Collapsing heat/cool to the same value gets silently snapped apart by the
+            # unit's own minimum deadband, so shift the existing band instead of flattening it.
+            if current_heat is not None and current_cool is not None:
+                delta = value - (current_heat + current_cool) / 2.0
+                changes = {
+                    f"{prefix}.TemperatureSetpoint_Heat_oC": round((current_heat + delta) * 2.0) / 2.0,
+                    f"{prefix}.TemperatureSetpoint_Cool_oC": round((current_cool + delta) * 2.0) / 2.0,
+                }
+            else:
+                changes = {
+                    f"{prefix}.TemperatureSetpoint_Heat_oC": value,
+                    f"{prefix}.TemperatureSetpoint_Cool_oC": value,
+                }
         else:
             main.LOG.debug("Ignoring single temperature command while QUE mode is %s", mode or "unknown")
             return
