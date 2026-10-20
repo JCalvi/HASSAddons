@@ -99,18 +99,32 @@ class FullActronQueBridge(LocalActronQueBridge):
                 current_heat = _as_number(zone.get("TemperatureSetpoint_Heat_oC"))
                 current_cool = _as_number(zone.get("TemperatureSetpoint_Cool_oC"))
         prefix = "UserAirconSettings" if zone_index is None else f"RemoteZoneInfo[{zone_index}]"
+
+        def _shift(anchor: Optional[float], other: Optional[float]) -> Optional[float]:
+            # Leaving the inactive setpoint untouched lets the unit "resolve" the
+            # resulting gap on its own, which can snap it apart unpredictably (even
+            # crossing heat above cool). Shift it by the same delta as the active
+            # setpoint so the existing, already-valid gap is preserved instead.
+            if anchor is None or other is None:
+                return None
+            return round((other + (value - anchor)) * 2.0) / 2.0
+
         if mode == "COOL":
             changes = {f"{prefix}.TemperatureSetpoint_Cool_oC": value}
+            shifted_heat = _shift(current_cool, current_heat)
+            if shifted_heat is not None:
+                changes[f"{prefix}.TemperatureSetpoint_Heat_oC"] = shifted_heat
         elif mode == "HEAT":
             changes = {f"{prefix}.TemperatureSetpoint_Heat_oC": value}
+            shifted_cool = _shift(current_heat, current_cool)
+            if shifted_cool is not None:
+                changes[f"{prefix}.TemperatureSetpoint_Cool_oC"] = shifted_cool
         elif mode == "AUTO":
-            # Collapsing heat/cool to the same value gets silently snapped apart by the
-            # unit's own minimum deadband, so shift the existing band instead of flattening it.
             if current_heat is not None and current_cool is not None:
-                delta = value - (current_heat + current_cool) / 2.0
+                midpoint = (current_heat + current_cool) / 2.0
                 changes = {
-                    f"{prefix}.TemperatureSetpoint_Heat_oC": round((current_heat + delta) * 2.0) / 2.0,
-                    f"{prefix}.TemperatureSetpoint_Cool_oC": round((current_cool + delta) * 2.0) / 2.0,
+                    f"{prefix}.TemperatureSetpoint_Heat_oC": _shift(midpoint, current_heat),
+                    f"{prefix}.TemperatureSetpoint_Cool_oC": _shift(midpoint, current_cool),
                 }
             else:
                 changes = {
