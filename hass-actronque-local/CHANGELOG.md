@@ -2,6 +2,8 @@
 
 ## 2026.10.1
 
+- Default verbose WallLink `Data_Change` logging and full raw MQTT state publication to off; keep normal INFO-level operational logging enabled. Existing saved add-on options are not overwritten.
+
 - Fix single-temperature Auto targets snapping back: shift the existing heat/cool band together around the requested midpoint (thanks to @dragonspy00 for identifying the issue in PR #52).
 - Preserve independent Heat-only and Cool-only setpoint writes, and support both whole-system and per-zone Auto targets.
 - Clamp Auto-mode band shifts to the configured 10–32°C control range while preserving the existing deadband; refuse updates when the existing band is unavailable or invalid instead of requesting equal setpoints.
