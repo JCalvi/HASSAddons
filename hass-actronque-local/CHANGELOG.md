@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026.9.4
+## 2026.10.1
 
 - Reduce ongoing CPU and MQTT traffic by suppressing unchanged retained `/state` publications from the QUE WallLink bridge, including per-zone and sensor state.
 - Keep change events, availability messages, MQTT discovery and commands unaffected by state deduplication.
