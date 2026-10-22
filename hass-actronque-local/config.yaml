@@ -27,8 +27,8 @@ options:
   discovery_prefix: "homeassistant"
   reconnect_delay: 5
   socket_timeout: 60
-  log_data_changes: true
-  publish_raw_state: true
+  log_data_changes: false
+  publish_raw_state: false
   log_level: "INFO"
 
 schema:
