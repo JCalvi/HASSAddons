@@ -30,8 +30,8 @@ def load_options() -> Dict[str, Any]:
         "discovery_prefix": "homeassistant",
         "reconnect_delay": 5,
         "socket_timeout": 60,
-        "log_data_changes": True,
-        "publish_raw_state": True,
+        "log_data_changes": False,
+        "publish_raw_state": False,
         "log_level": "INFO",
     }
 
