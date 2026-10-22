@@ -7,9 +7,11 @@ a conservative full state refresh.
 import re
 
 PATH_TOPICS = {
-    "UserAirconSettings.isOn": ("aircon/state", "climate/mode/state", "climate/action/state"),
+    "UserAirconSettings.isOn": ("aircon/state", "climate/mode/state", "climate/action/state",
+                                   "zone/*/mode/state", "zone/*/action/state"),
     "UserAirconSettings.Mode": ("mode/state", "climate/mode/state",
-                                "climate/temperature/target/state", "zone/*/temperature/target/state"),
+                                "climate/temperature/target/state", "zone/*/temperature/target/state",
+                                "zone/*/mode/state"),
     "UserAirconSettings.FanMode": ("fan_mode/state", "climate/fan/state", "constant_fan/state"),
     "UserAirconSettings.QuietMode": ("quiet_mode/state",),
     "UserAirconSettings.AwayMode": ("away_mode/state",),
@@ -22,8 +24,11 @@ PATH_TOPICS = {
     "MasterInfo.LiveHumidity_pc": ("humidity/state",),
     "MasterInfo.ControlAllZones": ("control_all_zones/state",),
     "NV_SystemSettings.SystemName": ("system/name",),
-    "LiveAircon.CompressorMode": ("compressor_mode/state", "climate/action/state"),
+    "LiveAircon.CompressorMode": ("compressor_mode/state", "climate/action/state",
+                                      "zone/*/action/state"),
     "LiveAircon.CompressorCapacity": ("compressor_capacity/state",),
+    "LiveAircon.OutdoorUnit.CompressorOn": ("climate/action/state", "zone/*/action/state"),
+    "LiveAircon.AmRunningFan": ("climate/action/state", "zone/*/action/state"),
     "LiveAircon.OutdoorUnit.CompPower": ("compressor_power/state",),
     "LiveAircon.CoilInlet": ("coil_inlet_temperature/state",),
     "LiveAircon.FanPWM": ("fan_pwm/state",),
@@ -58,7 +63,9 @@ def affected_topics(paths):
             continue
         match = _ENABLED.fullmatch(path)
         if match:
-            result.add(f"zone/{int(match[1]) + 1}/enabled/state")
+            result.update((f"zone/{int(match[1]) + 1}/enabled/state",
+                           f"zone/{int(match[1]) + 1}/mode/state",
+                           f"zone/{int(match[1]) + 1}/action/state"))
             continue
         match = _ZONE.fullmatch(path)
         if match:
@@ -98,9 +105,10 @@ def affected_topics(paths):
 
 def wanted(topic, selected):
     """Match exact topics and the mode-dependent all-zone target wildcard."""
-    return (selected is None or topic in selected or
-            (topic.startswith("zone/") and topic.endswith("/temperature/target/state")
-             and "zone/*/temperature/target/state" in selected))
+    if selected is None or topic in selected:
+        return True
+    match = re.fullmatch(r"zone/\d+/(.+)", topic)
+    return bool(match and f"zone/*/{match[1]}" in selected)
 
 
 def discovery_might_change(paths):

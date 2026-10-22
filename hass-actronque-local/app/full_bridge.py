@@ -359,6 +359,12 @@ class FullActronQueBridge(LocalActronQueBridge):
             if self.mqtt_connected and not data_all and after != before:
                 self.publish_discovery()
 
+    def _publish_value(self, topic: str, value: Any):
+        """Preserve the overridable MQTT value-normalisation hook."""
+        if value is not None:
+            return self.mqtt_publish(topic, value, retain=True)
+        return None
+
     def publish_current_state(self, changed_paths=None):
         """Compute only affected state values, avoiding full-state deep copies."""
         super().publish_current_state(changed_paths)
@@ -526,7 +532,7 @@ class FullActronQueBridge(LocalActronQueBridge):
 
         # Perform MQTT operations outside the state lock, preserving concurrency.
         for topic, value in messages:
-            self.mqtt_publish(topic, value, retain=True)
+            self._publish_value(topic, value)
 
     @staticmethod
     def _climate_action(is_on: Optional[bool], compressor_mode: Any) -> str:

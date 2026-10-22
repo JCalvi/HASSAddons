@@ -6,6 +6,7 @@ import re
 
 import main
 from full_bridge import FullActronQueBridge, _as_bool, _as_number
+from state_updates import affected_topics, wanted
 from secondary_setup import SecondarySetupManager
 
 
@@ -108,6 +109,11 @@ class ActronQueLocalBridge(FullActronQueBridge):
 
     def _publish_value(self, topic: str, value):
         number = _as_number(value)
+        # Preserve the pre-10.3 UI sanitation for invalid sensor percentages.
+        if number is not None and topic.endswith(("/compressor_capacity/state", "/fan_pwm/state")):
+            if not 0.0 <= number <= 100.0:
+                value = 0
+                number = 0.0
         if number is not None:
             integer_topics = ("/fan_pwm/state", "/fan_rpm/state", "/battery/state", "/rssi/state")
             one_decimal_topics = ("/temperature/state", "/temperature/target/state", "/temperature/low/state", "/temperature/high/state", "/indoor_temperature/state", "/outdoor_temperature/state", "/humidity/state", "/compressor_capacity/state", "/compressor_power/state", "/filter_runtime/state", "/position/state")
@@ -166,26 +172,66 @@ class ActronQueLocalBridge(FullActronQueBridge):
         # Older/partial WallLink payloads may not contain CompressorOn.
         return FullActronQueBridge._climate_action(system_on, raw_mode)
 
-    def publish_current_state(self):
-        super().publish_current_state()
-        with self.state_lock: state = copy.deepcopy(self.state)
-        if not state: return
-        settings = state.get("UserAirconSettings", {}); live = state.get("LiveAircon", {}); zones = state.get("RemoteZoneInfo", [])
-        if not isinstance(settings, dict): settings = {}
-        if not isinstance(live, dict): live = {}
-        if not isinstance(zones, list): zones = []
-        enabled = settings.get("EnabledZones", [])
-        if not isinstance(enabled, list): enabled = []
-        system_on = _as_bool(settings.get("isOn")); raw_mode = str(settings.get("Mode", "")).upper(); active_mode = self.QUE_TO_MODE.get(raw_mode, "auto"); action = self._actual_climate_action(system_on, live); p = self.topic_prefix
-        self._publish_value(f"{p}/climate/action/state", action)
-        compressor_capacity = _as_number(live.get("CompressorCapacity"))
-        if compressor_capacity is not None and not 0.0 <= compressor_capacity <= 100.0: self._publish_value(f"{p}/compressor_capacity/state", 0)
-        fan_pwm = _as_number(live.get("FanPWM"))
-        if fan_pwm is not None and not 0.0 <= fan_pwm <= 100.0: self._publish_value(f"{p}/fan_pwm/state", 0)
-        for index, zone in enumerate(zones):
-            if not isinstance(zone, dict) or not _as_bool(zone.get("NV_Exists")): continue
-            number = index + 1; zone_enabled = _as_bool(enabled[index]) if index < len(enabled) else False; zone_mode = active_mode if zone_enabled else "off"; zone_action = action if zone_enabled else "off"
-            self._publish_value(f"{p}/zone/{number}/mode/state", zone_mode); self._publish_value(f"{p}/zone/{number}/action/state", zone_action)
+    def _climate_action(self, system_on, compressor_mode):
+        """Use live compressor/fan information for actual operating action."""
+        live = self.state.get("LiveAircon", {}) if isinstance(self.state, dict) else {}
+        return self._actual_climate_action(system_on, live)
+
+    def publish_current_state(self, changed_paths=None):
+        """Publish UI-only zone climate states after the selective base update."""
+        super().publish_current_state(changed_paths)
+        selected = affected_topics(changed_paths)
+        if selected is not None and not any(
+            wanted("zone/1/mode/state", selected) if topic == "zone/*/mode/state"
+            else wanted("zone/1/action/state", selected) if topic == "zone/*/action/state"
+            else topic.endswith(("/mode/state", "/action/state"))
+            for topic in selected
+        ):
+            return
+
+        messages = []
+        p = self.topic_prefix
+        with self.state_lock:
+            state = self.state
+            if not isinstance(state, dict) or not state:
+                return
+            settings = state.get("UserAirconSettings", {})
+            live = state.get("LiveAircon", {})
+            zones = state.get("RemoteZoneInfo", [])
+            if not isinstance(settings, dict): settings = {}
+            if not isinstance(live, dict): live = {}
+            if not isinstance(zones, list): zones = []
+            enabled = settings.get("EnabledZones", [])
+            if not isinstance(enabled, list): enabled = []
+            system_on = _as_bool(settings.get("isOn"))
+            raw_mode = str(settings.get("Mode", "")).upper()
+            active_mode = self.QUE_TO_MODE.get(raw_mode, "auto")
+            action = self._actual_climate_action(system_on, live)
+            if selected is None or "zone/*/mode/state" in selected or "zone/*/action/state" in selected:
+                indices = range(len(zones))
+            else:
+                indices = sorted({
+                    int(match.group(1)) - 1
+                    for topic in selected
+                    for match in (re.match(r"^zone/(\d+)/(?:mode|action)/state$", topic),)
+                    if match
+                })
+            for index in indices:
+                if not 0 <= index < len(zones):
+                    continue
+                zone = zones[index]
+                if not isinstance(zone, dict) or not _as_bool(zone.get("NV_Exists")):
+                    continue
+                number = index + 1
+                base = f"zone/{number}/"
+                zone_enabled = _as_bool(enabled[index]) if index < len(enabled) else False
+                if wanted(base + "mode/state", selected):
+                    messages.append((f"{p}/{base}mode/state", active_mode if zone_enabled else "off"))
+                if wanted(base + "action/state", selected):
+                    messages.append((f"{p}/{base}action/state", action if zone_enabled else "off"))
+
+        for topic, value in messages:
+            self._publish_value(topic, value)
 
     def run(self):
         try: super().run()

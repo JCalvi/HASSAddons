@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.10.4
+
+- Fix 2026.10.3 selective-state publication errors caused by the production UI bridge still using the old no-argument method signature and a removed numeric publishing hook.
+- Restore the overridable value formatting/validation hook and retain sensor percentage sanitisation.
+- Extend selective dependency mapping to UI zone climate modes/actions and live compressor/fan changes so the actual climate action stays correct.
+- Add end-to-end regression coverage against the actual `ActronQueLocalBridge` used by the running add-on, including initial snapshots, zone controls, action updates and numeric formatting.
+
 ## 2026.10.3
 
 - Process only the MQTT entities affected by incoming WallLink `Data_Change` paths, including linked climate actions, target temperatures, zone enabled states and individual sensors.

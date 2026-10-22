@@ -3,6 +3,7 @@ import copy
 import unittest
 
 from full_bridge import FullActronQueBridge
+from ui_bridge import ActronQueLocalBridge
 from state_updates import affected_topics, discovery_might_change
 
 
@@ -142,3 +143,66 @@ class StateSelectionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UiRuntimeTests(unittest.TestCase):
+    """Use the exact production bridge class, including its overridden methods."""
+
+    def setUp(self):
+        self.bridge = ActronQueLocalBridge()
+        self.bridge.state = sample_state()
+        self.bridge.mqtt_connected = True
+        self.messages = []
+        self.bridge.mqtt_publish = lambda topic, payload, retain=False: self.messages.append(
+            (topic.removeprefix(self.bridge.topic_prefix + "/"), payload)
+        )
+        self.bridge.publish_discovery = lambda: None
+        self.bridge._zone_signature = self.bridge._zone_signature_value()
+
+    def update(self, changes):
+        self.messages.clear()
+        self.bridge.handle_walllink_message({"Data_Change": changes})
+        return dict(tup for tup in self.messages if tup[0] != "event/change")
+
+    def test_full_snapshot_survives_and_reports_live_action(self):
+        state = sample_state()
+        state["LiveAircon"]["OutdoorUnit"]["CompressorOn"] = False
+        state["LiveAircon"]["AmRunningFan"] = False
+        self.bridge.handle_walllink_message({"Data_All": state})
+        topics = dict(self.messages)
+        self.assertEqual(topics["climate/action/state"], "idle")
+        self.assertEqual(topics["zone/1/action/state"], "idle")
+        self.assertIn("zone/2/mode/state", topics)
+
+    def test_zone_enable_changes_only_its_ui_mode_and_action(self):
+        topics = self.update({"UserAirconSettings.EnabledZones[0]": False})
+        self.assertEqual(topics["zone/1/mode/state"], "off")
+        self.assertEqual(topics["zone/1/action/state"], "off")
+        self.assertNotIn("zone/2/mode/state", topics)
+
+    def test_live_compressor_and_fan_actions(self):
+        # Compressor reports idle even if CompressorMode remains COOL.
+        topics = self.update({"LiveAircon.OutdoorUnit.CompressorOn": False})
+        self.assertEqual(topics["climate/action/state"], "idle")
+        self.assertEqual(topics["zone/1/action/state"], "idle")
+        topics = self.update({"LiveAircon.AmRunningFan": True})
+        self.assertEqual(topics["climate/action/state"], "fan")
+        self.assertEqual(topics["zone/2/action/state"], "fan")
+        topics = self.update({"LiveAircon.OutdoorUnit.CompressorOn": True})
+        self.assertEqual(topics["climate/action/state"], "cooling")
+
+    def test_sensor_normalisation_is_preserved(self):
+        topics = self.update({"LiveAircon.CompressorCapacity": 255})
+        self.assertEqual(topics["compressor_capacity/state"], 0)
+        topics = self.update({"LiveAircon.FanPWM": 255})
+        self.assertEqual(topics["fan_pwm/state"], 0)
+        topics = self.update({"RemoteZoneInfo[0].LiveTemp_oC": 25.54})
+        self.assertEqual(topics["zone/1/temperature/state"], 25.5)
+
+    def test_unexposed_leaf_and_reconnect_full_refresh(self):
+        self.assertEqual(self.update({"LiveAircon.UnexposedField": 123}), {})
+        self.messages.clear()
+        self.bridge.publish_current_state()
+        topics = dict(self.messages)
+        self.assertIn("zone/1/mode/state", topics)
+        self.assertIn("climate/action/state", topics)
