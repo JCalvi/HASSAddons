@@ -187,6 +187,9 @@ class ActronQueBridge:
         self._stop = threading.Event()
         self.walllink = WallLinkClient(self)
 
+        # Only retained state topics are deduplicated. Cleared on MQTT reconnect.
+        self._retained_state_cache: Dict[str, str] = {}
+        self._retained_state_lock = threading.RLock()
         self.mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         username = os.getenv("MQTT_USERNAME", "")
         password = os.getenv("MQTT_PASSWORD", "")
@@ -201,7 +204,27 @@ class ActronQueBridge:
     def mqtt_publish(self, topic: str, payload: Any, retain: bool = False):
         if isinstance(payload, (dict, list)):
             payload = json.dumps(payload, separators=(",", ":"))
-        self.mqtt.publish(topic, payload, qos=1, retain=retain)
+
+        # Never suppress events, availability, or MQTT discovery configuration.
+        # State topics are retained, so identical republishing is unnecessary.
+        deduplicate = (
+            retain
+            and topic.endswith("/state")
+            and "/config" not in topic
+            and not topic.endswith("/bridge/status")
+        )
+        if not deduplicate:
+            return self.mqtt.publish(topic, payload, qos=1, retain=retain)
+
+        with self._retained_state_lock:
+            if self._retained_state_cache.get(topic) == payload:
+                return None
+            result = self.mqtt.publish(topic, payload, qos=1, retain=True)
+            # Cache only messages accepted by the MQTT client for delivery.
+            # QoS 1 messages queued by Paho are retried by its network loop.
+            if result.rc == mqtt.MQTT_ERR_SUCCESS:
+                self._retained_state_cache[topic] = payload
+            return result
 
     def device_info(self):
         return {
@@ -216,6 +239,9 @@ class ActronQueBridge:
         if reason_code != 0:
             LOG.error("MQTT connection failed: %s", reason_code)
             return
+        # Force all current state topics to be republished after any reconnect.
+        with self._retained_state_lock:
+            self._retained_state_cache.clear()
         self.mqtt_connected = True
         LOG.info("Connected to MQTT broker")
         self.mqtt_publish(f"{self.topic_prefix}/bridge/status", "online", retain=True)
@@ -226,6 +252,8 @@ class ActronQueBridge:
             self.publish_current_state()
 
     def on_mqtt_disconnect(self, client, userdata, disconnect_flags, reason_code, properties):
+        with self._retained_state_lock:
+            self._retained_state_cache.clear()
         self.mqtt_connected = False
         LOG.warning("Disconnected from MQTT broker: %s", reason_code)
 
