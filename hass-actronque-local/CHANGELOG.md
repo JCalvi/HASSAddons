@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.9.4
+
+- Reduce ongoing CPU and MQTT traffic by suppressing unchanged retained `/state` publications from the QUE WallLink bridge, including per-zone and sensor state.
+- Keep change events, availability messages, MQTT discovery and commands unaffected by state deduplication.
+- Clear the retained-state comparison cache on MQTT disconnect/reconnect and republish the full current state on reconnection.
+- Cache only publications accepted by the MQTT client for QoS 1 delivery; unsuccessful publish attempts remain eligible for retry.
+
+
 ## 2026.9.3
 
 - Fix Home Assistant climate action reporting so a QUE system that is on but not actively heating or cooling reports **Idle** rather than inheriting a stale compressor mode.
