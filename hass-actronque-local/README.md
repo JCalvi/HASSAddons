@@ -130,6 +130,14 @@ Changing this option keeps the same climate entity IDs, but Home Assistant autom
 - `publish_raw_state` — publishes the full current QUE state for diagnostics (off by default).
 - `log_data_changes` — logs incoming WallLink `Data_Change` details (off by default).
 
+## Native WallLink acceleration
+
+The add-on compiles a small native C stream-cipher library for AMD64 and ARM64.
+It uses 32-bit unsigned state registers for exact protocol compatibility.
+The existing Python cipher remains an automatic fallback if the native library
+cannot be loaded. Base64 framing, JSON and control logic remain in Python.
+Native/Python parity and malformed-frame tests run during the Docker image build.
+
 ## MQTT diagnostics
 
 With the default topic prefix, the first/single QUE uses:

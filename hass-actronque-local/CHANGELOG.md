@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.10.2
+
+- Replace the high-CPU Python bitwise WallLink stream-cipher loop with an optimised native C implementation using precise 32-bit unsigned arithmetic; Python retains Base64 framing, padding checks and JSON parsing.
+- Accelerate both received frame decryption and outgoing command encryption, with the original Python cipher automatically used if the native shared library cannot load.
+- Compile the shared library for the selected CPU architecture in the add-on Docker image (amd64 and aarch64), without a compiler in the runtime image.
+- Run a compatibility test suite as part of image builds: native/Python parity on varied binary frames, encrypt/decrypt round trips, fallback and malformed-message handling.
+- No changes to MQTT entities, connection behaviour, sampling frequency or temperature control.
+
 ## 2026.10.1
 
 - Default verbose WallLink `Data_Change` logging and full raw MQTT state publication to off; keep normal INFO-level operational logging enabled. Existing saved add-on options are not overwritten.
