@@ -127,7 +127,8 @@ Changing this option keeps the same climate entity IDs, but Home Assistant autom
 - `setup_retry_delay` — delay between setup retries while waiting for physical steps.
 - `separate_heat_cool_targets` — `false` (default) for one target temperature; `true` for independent heating and cooling targets.
 - `topic_prefix` — internal MQTT topic prefix.
-- `publish_raw_state` — publishes the full current QUE state for diagnostics.
+- `publish_raw_state` — publishes the full current QUE state for diagnostics (off by default).
+- `log_data_changes` — logs incoming WallLink `Data_Change` details (off by default).
 
 ## MQTT diagnostics
 
