@@ -2,6 +2,9 @@
 
 ## 2026.10.1
 
+- Fix single-temperature Auto targets snapping back: shift the existing heat/cool band together around the requested midpoint (thanks to @dragonspy00 for identifying the issue in PR #52).
+- Preserve independent Heat-only and Cool-only setpoint writes, and support both whole-system and per-zone Auto targets.
+- Clamp Auto-mode band shifts to the configured 10–32°C control range while preserving the existing deadband; refuse updates when the existing band is unavailable or invalid instead of requesting equal setpoints.
 - Reduce ongoing CPU and MQTT traffic by suppressing unchanged retained `/state` publications from the QUE WallLink bridge, including per-zone and sensor state.
 - Keep change events, availability messages, MQTT discovery and commands unaffected by state deduplication.
 - Clear the retained-state comparison cache on MQTT disconnect/reconnect and republish the full current state on reconnection.
