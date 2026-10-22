@@ -26,9 +26,9 @@ The add-on obtains MQTT credentials from Supervisor automatically.
 - `discovery_prefix` — Home Assistant MQTT Discovery prefix.
 - `reconnect_delay` — WallLink reconnect delay.
 - `socket_timeout` — WallLink receive timeout.
-- `log_data_changes` — log incoming `Data_Change` messages.
-- `publish_raw_state` — publish complete current QUE state to MQTT.
-- `log_level` — application logging level.
+- `log_data_changes` — log incoming `Data_Change` messages (off by default).
+- `publish_raw_state` — publish complete current QUE state to MQTT (off by default).
+- `log_level` — application logging level (INFO by default).
 
 There is no separate `master_port` option. Existing host-only values such as `192.168.1.218` remain valid and use WallLink port `19296` automatically.
 
