@@ -89,15 +89,50 @@ class FullActronQueBridge(LocalActronQueBridge):
         with self.state_lock:
             settings = self.state.get("UserAirconSettings", {})
             mode = str(settings.get("Mode", "")).upper() if isinstance(settings, dict) else ""
+            if mode == "AUTO":
+                if zone_index is None:
+                    targets = settings if isinstance(settings, dict) else {}
+                else:
+                    zones = self.state.get("RemoteZoneInfo", [])
+                    targets = (
+                        zones[zone_index]
+                        if isinstance(zones, list)
+                        and 0 <= zone_index < len(zones)
+                        and isinstance(zones[zone_index], dict)
+                        else {}
+                    )
+                heat = _as_number(targets.get("TemperatureSetpoint_Heat_oC"))
+                cool = _as_number(targets.get("TemperatureSetpoint_Cool_oC"))
         prefix = "UserAirconSettings" if zone_index is None else f"RemoteZoneInfo[{zone_index}]"
         if mode == "COOL":
             changes = {f"{prefix}.TemperatureSetpoint_Cool_oC": value}
         elif mode == "HEAT":
             changes = {f"{prefix}.TemperatureSetpoint_Heat_oC": value}
         elif mode == "AUTO":
+            # Preserve the QUE's existing heat/cool separation rather than
+            # requesting equal setpoints, which the controller snaps apart.
+            # Do not invent a deadband when the current targets are unknown.
+            if (
+                heat is None or cool is None
+                or not 10.0 <= heat < cool <= 32.0
+            ):
+                main.LOG.warning(
+                    "Ignoring AUTO target %s: invalid or missing heat/cool setpoints (%r, %r)",
+                    value, heat, cool,
+                )
+                return
+            midpoint = (heat + cool) / 2.0
+            requested_delta = round((value - midpoint) * 2.0) / 2.0
+            # Shift both targets together. Clamp the shift (not either target
+            # independently) so the existing deadband stays intact.
+            min_delta = 10.0 - heat
+            max_delta = 32.0 - cool
+            delta = max(min_delta, min(max_delta, requested_delta))
+            new_heat = round((heat + delta) * 2.0) / 2.0
+            new_cool = round((cool + delta) * 2.0) / 2.0
             changes = {
-                f"{prefix}.TemperatureSetpoint_Heat_oC": value,
-                f"{prefix}.TemperatureSetpoint_Cool_oC": value,
+                f"{prefix}.TemperatureSetpoint_Heat_oC": new_heat,
+                f"{prefix}.TemperatureSetpoint_Cool_oC": new_cool,
             }
         else:
             main.LOG.debug("Ignoring single temperature command while QUE mode is %s", mode or "unknown")
