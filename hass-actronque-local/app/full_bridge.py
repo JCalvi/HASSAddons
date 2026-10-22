@@ -309,18 +309,17 @@ class FullActronQueBridge(LocalActronQueBridge):
                     if isinstance(value, dict):
                         sensor_ids.update(str(x) for x in value.keys())
                 sensors = zone.get("Sensors", {})
-                valid_batteries = ()
+                valid_batteries = []
                 if isinstance(sensors, dict):
-                    valid_batteries = tuple(sorted(
-                        str(sid) for sid, info in sensors.items()
-                        if isinstance(info, dict)
-                        and (lambda battery: battery is not None and 0 <= battery <= 100)(
-                            _as_number(info.get("Battery_pc"))
-                        )
-                    ))
+                    for sid, info in sensors.items():
+                        if not isinstance(info, dict):
+                            continue
+                        battery = _as_number(info.get("Battery_pc"))
+                        if battery is not None and 0 <= battery <= 100:
+                            valid_batteries.append(str(sid))
                 result.append((index, _as_bool(zone.get("NV_Exists")),
                                str(zone.get("NV_Title", "")),
-                               tuple(sorted(sensor_ids)), valid_batteries))
+                               tuple(sorted(sensor_ids)), tuple(sorted(valid_batteries))))
             return tuple(result)
 
     def _publish_zone_discovery(self):
@@ -392,8 +391,10 @@ class FullActronQueBridge(LocalActronQueBridge):
             if not isinstance(alerts, dict): alerts = {}
             if not isinstance(stats, dict): stats = {}
 
-            if needs("climate/mode/state", "climate/action/state",
-                     "climate/temperature/target/state", "zone/*/temperature/target/state"):
+            if (needs("climate/mode/state", "climate/action/state",
+                      "climate/temperature/target/state")
+                    or selected is None
+                    or any(topic.endswith("/temperature/target/state") for topic in selected)):
                 is_on = _as_bool(settings.get("isOn"))
                 raw_mode = str(settings.get("Mode", "")).upper()
             else:

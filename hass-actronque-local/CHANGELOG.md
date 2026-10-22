@@ -6,7 +6,7 @@
 - Avoid repeated whole-state deep copies during normal state publication; only snapshot the complete state when raw diagnostics are explicitly enabled.
 - Skip zone discovery comparisons for ordinary telemetry, but detect zone structure, sensor membership and sensor battery-availability changes.
 - Preserve full initialisation, `Data_All` and MQTT reconnect synchronisation; retain the established MQTT deduplication and native C WallLink decoder.
-- Add regression tests covering selective updates, dependent topic mapping, full refreshes, sensor discovery and unknown structural updates.
+- Add regression tests covering selective updates, dependent topic mapping, full refreshes, sensor discovery and unknown structural updates; validate mode-dependent zone targets during partial updates.
 
 ## 2026.10.2
 
