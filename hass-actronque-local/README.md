@@ -130,6 +130,14 @@ Changing this option keeps the same climate entity IDs, but Home Assistant autom
 - `publish_raw_state` — publishes the full current QUE state for diagnostics (off by default).
 - `log_data_changes` — logs incoming WallLink `Data_Change` details (off by default).
 
+## Selective state updates
+
+From 2026.10.3, incoming WallLink changes refresh only MQTT topics affected by
+those specific paths (including dependent climate modes/targets and zone states).
+Complete state and discovery synchronisation still occurs on initial connection,
+full controller snapshots and MQTT reconnect. Native encryption and MQTT retained
+state caching remain unchanged.
+
 ## Native WallLink acceleration
 
 The add-on compiles a small native C stream-cipher library for AMD64 and ARM64.

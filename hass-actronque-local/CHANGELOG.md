@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026.10.3
+
+- Process only the MQTT entities affected by incoming WallLink `Data_Change` paths, including linked climate actions, target temperatures, zone enabled states and individual sensors.
+- Avoid repeated whole-state deep copies during normal state publication; only snapshot the complete state when raw diagnostics are explicitly enabled.
+- Skip zone discovery comparisons for ordinary telemetry, but detect zone structure, sensor membership and sensor battery-availability changes.
+- Preserve full initialisation, `Data_All` and MQTT reconnect synchronisation; retain the established MQTT deduplication and native C WallLink decoder.
+- Add regression tests covering selective updates, dependent topic mapping, full refreshes, sensor discovery and unknown structural updates.
+
 ## 2026.10.2
 
 - Replace the high-CPU Python bitwise WallLink stream-cipher loop with an optimised native C implementation using precise 32-bit unsigned arithmetic; Python retains Base64 framing, padding checks and JSON parsing.

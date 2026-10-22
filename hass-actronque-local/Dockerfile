@@ -9,10 +9,11 @@ RUN gcc -O3 -std=c11 -Wall -Wextra -Werror -fPIC -shared \
     -o /opt/libwalllink_cipher.so /tmp/walllink_cipher.c
 
 # Fail the image build if C and Python disagree about any test frame.
-COPY app/walllink_codec.py tests/test_walllink_codec.py /tmp/native-tests/
+COPY app /tmp/native-tests/
+COPY tests /tmp/native-tests/tests
 RUN cp /opt/libwalllink_cipher.so /tmp/native-tests/libwalllink_cipher.so \
     && cd /tmp/native-tests \
-    && python3 -m unittest -v test_walllink_codec
+    && PYTHONPATH=/opt/python:/tmp/native-tests python3 -m unittest discover -s tests -v
 
 FROM ghcr.io/home-assistant/base:3.23
 

@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional, Tuple
 import paho.mqtt.client as mqtt
 
 from walllink_codec import decrypt_walllink, encrypt_walllink
+from state_updates import affected_topics, wanted
 
 
 OPTIONS_FILE = Path("/data/options.json")
@@ -292,7 +293,7 @@ class ActronQueBridge:
             if OPTIONS.get("log_data_changes", True):
                 LOG.info("Data_Change: %s", json.dumps(changes, separators=(",", ":")))
             self.mqtt_publish(f"{self.topic_prefix}/event/change", changes)
-            self.publish_current_state()
+            self.publish_current_state(changes.keys())
 
     def _update_identity(self, data_all: Dict[str, Any], envelope: Dict[str, Any]) -> None:
         system = data_all.get("NV_SystemSettings", {})
@@ -393,43 +394,45 @@ class ActronQueBridge:
 
         self._discovery_published = True
 
-    def publish_current_state(self) -> None:
+    def publish_current_state(self, changed_paths=None) -> None:
+        """Publish only affected state topics; full refresh on startup/reconnect."""
+        selected = affected_topics(changed_paths)
+        messages = []
+        p = self.topic_prefix
+
+        def emit(suffix, value):
+            if value is not None and wanted(suffix, selected):
+                messages.append((f"{p}/{suffix}", value))
+
         with self.state_lock:
-            state = copy.deepcopy(self.state)
+            state = self.state
+            settings = state.get("UserAirconSettings", {}) if isinstance(state, dict) else {}
+            master_info = state.get("MasterInfo", {}) if isinstance(state, dict) else {}
+            system = state.get("NV_SystemSettings", {}) if isinstance(state, dict) else {}
+            if not isinstance(settings, dict): settings = {}
+            if not isinstance(master_info, dict): master_info = {}
+            if not isinstance(system, dict): system = {}
 
-        settings = state.get("UserAirconSettings", {}) if isinstance(state, dict) else {}
-        master_info = state.get("MasterInfo", {}) if isinstance(state, dict) else {}
-        system = state.get("NV_SystemSettings", {}) if isinstance(state, dict) else {}
+            is_on = settings.get("isOn")
+            if isinstance(is_on, bool):
+                emit("aircon/state", "ON" if is_on else "OFF")
+            emit("mode/state", settings.get("Mode"))
+            emit("fan_mode/state", settings.get("FanMode"))
+            quiet = settings.get("QuietMode")
+            if isinstance(quiet, bool):
+                emit("quiet_mode/state", "ON" if quiet else "OFF")
+            emit("temperature/state", master_info.get("LiveTemp_oC"))
+            emit("system/name", system.get("SystemName"))
+            if self.master_serial != "unknown":
+                emit("system/master_serial", self.master_serial)
 
-        is_on = settings.get("isOn")
-        if isinstance(is_on, bool):
-            self.mqtt_publish(f"{self.topic_prefix}/aircon/state", "ON" if is_on else "OFF", retain=True)
+            # Raw diagnostics intentionally report the complete current state
+            # on every Data_Change when explicitly enabled by the user.
+            if OPTIONS.get("publish_raw_state", False):
+                messages.append((f"{p}/raw/state", copy.deepcopy(state)))
 
-        mode = settings.get("Mode")
-        if mode is not None:
-            self.mqtt_publish(f"{self.topic_prefix}/mode/state", mode, retain=True)
-
-        fan_mode = settings.get("FanMode")
-        if fan_mode is not None:
-            self.mqtt_publish(f"{self.topic_prefix}/fan_mode/state", fan_mode, retain=True)
-
-        quiet = settings.get("QuietMode")
-        if isinstance(quiet, bool):
-            self.mqtt_publish(f"{self.topic_prefix}/quiet_mode/state", "ON" if quiet else "OFF", retain=True)
-
-        live_temp = master_info.get("LiveTemp_oC")
-        if live_temp is not None:
-            self.mqtt_publish(f"{self.topic_prefix}/temperature/state", live_temp, retain=True)
-
-        system_name = system.get("SystemName")
-        if system_name is not None:
-            self.mqtt_publish(f"{self.topic_prefix}/system/name", system_name, retain=True)
-
-        if self.master_serial != "unknown":
-            self.mqtt_publish(f"{self.topic_prefix}/system/master_serial", self.master_serial, retain=True)
-
-        if OPTIONS.get("publish_raw_state", True):
-            self.mqtt_publish(f"{self.topic_prefix}/raw/state", state, retain=True)
+        for topic, value in messages:
+            self.mqtt_publish(topic, value, retain=True)
 
     def run(self) -> None:
         mqtt_host = os.getenv("MQTT_HOST", "core-mosquitto")

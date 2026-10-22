@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 import main
 from local_identity import LocalActronQueBridge
+from state_updates import affected_topics, discovery_might_change, wanted
 
 
 def _slug(value: Any) -> str:
@@ -60,7 +61,7 @@ class FullActronQueBridge(LocalActronQueBridge):
         with self.state_lock:
             for path, value in changes.items():
                 main.set_state_path(self.state, path, value)
-        self.publish_current_state()
+        self.publish_current_state(changes.keys())
 
     def _write_bool(self, path: str, payload: str) -> None:
         value = _as_bool(payload)
@@ -293,17 +294,34 @@ class FullActronQueBridge(LocalActronQueBridge):
         self._publish_zone_discovery()
 
     def _zone_signature_value(self):
-        with self.state_lock: zones = copy.deepcopy(self.state.get("RemoteZoneInfo", []))
-        if not isinstance(zones, list): return ()
-        result = []
-        for index, zone in enumerate(zones):
-            if not isinstance(zone, dict): continue
-            sensor_ids = set()
-            for key in ("Sensors", "RemoteTemperatures_oC"):
-                value = zone.get(key, {})
-                if isinstance(value, dict): sensor_ids.update(str(x) for x in value.keys())
-            result.append((index, bool(zone.get("NV_Exists")), str(zone.get("NV_Title", "")), tuple(sorted(sensor_ids))))
-        return tuple(result)
+        """Inspect only small structural metadata, without cloning zone state."""
+        with self.state_lock:
+            zones = self.state.get("RemoteZoneInfo", [])
+            if not isinstance(zones, list):
+                return ()
+            result = []
+            for index, zone in enumerate(zones):
+                if not isinstance(zone, dict):
+                    continue
+                sensor_ids = set()
+                for key in ("Sensors", "RemoteTemperatures_oC"):
+                    value = zone.get(key, {})
+                    if isinstance(value, dict):
+                        sensor_ids.update(str(x) for x in value.keys())
+                sensors = zone.get("Sensors", {})
+                valid_batteries = ()
+                if isinstance(sensors, dict):
+                    valid_batteries = tuple(sorted(
+                        str(sid) for sid, info in sensors.items()
+                        if isinstance(info, dict)
+                        and (lambda battery: battery is not None and 0 <= battery <= 100)(
+                            _as_number(info.get("Battery_pc"))
+                        )
+                    ))
+                result.append((index, _as_bool(zone.get("NV_Exists")),
+                               str(zone.get("NV_Title", "")),
+                               tuple(sorted(sensor_ids)), valid_batteries))
+            return tuple(result)
 
     def _publish_zone_discovery(self):
         with self.state_lock: zones = copy.deepcopy(self.state.get("RemoteZoneInfo", []))
@@ -329,65 +347,185 @@ class FullActronQueBridge(LocalActronQueBridge):
     # ----- State ---------------------------------------------------------
 
     def handle_walllink_message(self, obj: Dict[str, Any]):
-        before = self._zone_signature; super().handle_walllink_message(obj); after = self._zone_signature_value(); self._zone_signature = after
-        if self.mqtt_connected and after != before: self.publish_discovery()
+        data_all = isinstance(obj.get("Data_All"), dict)
+        changes = obj.get("Data_Change")
+        changed_paths = changes.keys() if isinstance(changes, dict) else ()
+        check_discovery = data_all or discovery_might_change(changed_paths)
+        before = self._zone_signature
+        super().handle_walllink_message(obj)
+        if check_discovery:
+            after = self._zone_signature_value()
+            self._zone_signature = after
+            # Data_All already published discovery in the base handler.
+            if self.mqtt_connected and not data_all and after != before:
+                self.publish_discovery()
 
-    def _publish_value(self, topic: str, value: Any):
-        if value is not None: self.mqtt_publish(topic, value, retain=True)
+    def publish_current_state(self, changed_paths=None):
+        """Compute only affected state values, avoiding full-state deep copies."""
+        super().publish_current_state(changed_paths)
+        selected = affected_topics(changed_paths)
+        if selected is not None and not selected:
+            return
 
-    def publish_current_state(self):
-        super().publish_current_state()
-        with self.state_lock: state = copy.deepcopy(self.state)
-        if not state: return
-        p = self.topic_prefix; settings = state.get("UserAirconSettings", {}); master_info = state.get("MasterInfo", {}); live = state.get("LiveAircon", {}); alerts = state.get("Alerts", {}); stats = state.get("ACStats", {})
-        for name, value in (("settings", settings), ("master", master_info), ("live", live), ("alerts", alerts), ("stats", stats)):
-            if not isinstance(value, dict):
-                if name == "settings": settings = {}
-                elif name == "master": master_info = {}
-                elif name == "live": live = {}
-                elif name == "alerts": alerts = {}
-                else: stats = {}
-        is_on = _as_bool(settings.get("isOn")); raw_mode = str(settings.get("Mode", "")).upper()
-        self._publish_value(f"{p}/climate/mode/state", "off" if is_on is False else self.QUE_TO_MODE.get(raw_mode))
-        raw_fan = str(settings.get("FanMode", "")).upper(); fan_base = raw_fan.replace("+CONT", "")
-        self._publish_value(f"{p}/climate/fan/state", self.QUE_TO_FAN.get(fan_base))
-        if raw_fan: self._publish_value(f"{p}/constant_fan/state", "ON" if "+CONT" in raw_fan else "OFF")
-        heat = settings.get("TemperatureSetpoint_Heat_oC"); cool = settings.get("TemperatureSetpoint_Cool_oC")
-        self._publish_value(f"{p}/climate/temperature/low/state", heat); self._publish_value(f"{p}/climate/temperature/high/state", cool)
-        self._publish_value(f"{p}/climate/temperature/target/state", self._single_target(raw_mode, heat, cool))
-        away = _as_bool(settings.get("AwayMode")); control_all = _as_bool(master_info.get("ControlAllZones"))
-        if away is not None: self._publish_value(f"{p}/away_mode/state", "ON" if away else "OFF")
-        if control_all is not None: self._publish_value(f"{p}/control_all_zones/state", "ON" if control_all else "OFF")
-        self._publish_value(f"{p}/indoor_temperature/state", master_info.get("LiveTemp_oC")); self._publish_value(f"{p}/outdoor_temperature/state", master_info.get("LiveOutdoorTemp_oC")); self._publish_value(f"{p}/humidity/state", master_info.get("LiveHumidity_pc")); self._publish_value(f"{p}/compressor_mode/state", live.get("CompressorMode")); self._publish_value(f"{p}/compressor_capacity/state", live.get("CompressorCapacity"))
-        outdoor_unit = live.get("OutdoorUnit", {})
-        if isinstance(outdoor_unit, dict): self._publish_value(f"{p}/compressor_power/state", outdoor_unit.get("CompPower"))
-        self._publish_value(f"{p}/coil_inlet_temperature/state", live.get("CoilInlet")); self._publish_value(f"{p}/fan_pwm/state", live.get("FanPWM")); self._publish_value(f"{p}/fan_rpm/state", live.get("FanRPM"))
-        clean_filter = _as_bool(alerts.get("CleanFilter"))
-        if clean_filter is not None: self._publish_value(f"{p}/clean_filter/state", "ON" if clean_filter else "OFF")
-        runtime = _as_number(stats.get("NV_FanRunTime_10m"))
-        if runtime is not None: self._publish_value(f"{p}/filter_runtime/state", round(runtime / 6.0, 1))
-        self._publish_value(f"{p}/climate/action/state", self._climate_action(is_on, live.get("CompressorMode")))
-        zones = state.get("RemoteZoneInfo", []); enabled = settings.get("EnabledZones", [])
-        if not isinstance(zones, list): zones = []
-        if not isinstance(enabled, list): enabled = []
-        for index, zone in enumerate(zones):
-            if not isinstance(zone, dict) or not _as_bool(zone.get("NV_Exists")): continue
-            number = index + 1
-            if index < len(enabled):
-                zone_on = _as_bool(enabled[index])
-                if zone_on is not None: self._publish_value(f"{p}/zone/{number}/enabled/state", "ON" if zone_on else "OFF")
-            self._publish_value(f"{p}/zone/{number}/temperature/state", zone.get("LiveTemp_oC"))
-            zheat = zone.get("TemperatureSetpoint_Heat_oC"); zcool = zone.get("TemperatureSetpoint_Cool_oC")
-            self._publish_value(f"{p}/zone/{number}/temperature/low/state", zheat); self._publish_value(f"{p}/zone/{number}/temperature/high/state", zcool)
-            self._publish_value(f"{p}/zone/{number}/temperature/target/state", self._single_target(raw_mode, zheat, zcool))
-            position = _as_number(zone.get("ZonePosition"))
-            if position is not None: self._publish_value(f"{p}/zone/{number}/position/state", round(position * 5.0, 1))
-            temps = zone.get("RemoteTemperatures_oC", {}) if isinstance(zone.get("RemoteTemperatures_oC", {}), dict) else {}; sensors = zone.get("Sensors", {}) if isinstance(zone.get("Sensors", {}), dict) else {}
-            for sensor_id in set(map(str, temps.keys())) | set(map(str, sensors.keys())):
-                if sensor_id in temps: self._publish_value(f"{p}/zone/{number}/sensor/{sensor_id}/temperature/state", temps.get(sensor_id))
-                info = sensors.get(sensor_id, {})
-                if isinstance(info, dict):
-                    self._publish_value(f"{p}/zone/{number}/sensor/{sensor_id}/battery/state", info.get("Battery_pc")); self._publish_value(f"{p}/zone/{number}/sensor/{sensor_id}/rssi/state", info.get("lastRssi"))
+        messages = []
+        p = self.topic_prefix
+
+        def needs(*suffixes):
+            return any(wanted(suffix, selected) for suffix in suffixes)
+
+        def emit(suffix, value):
+            if value is not None and wanted(suffix, selected):
+                messages.append((f"{p}/{suffix}", value))
+
+        with self.state_lock:
+            state = self.state
+            if not isinstance(state, dict) or not state:
+                return
+            settings = state.get("UserAirconSettings", {})
+            master_info = state.get("MasterInfo", {})
+            live = state.get("LiveAircon", {})
+            alerts = state.get("Alerts", {})
+            stats = state.get("ACStats", {})
+            if not isinstance(settings, dict): settings = {}
+            if not isinstance(master_info, dict): master_info = {}
+            if not isinstance(live, dict): live = {}
+            if not isinstance(alerts, dict): alerts = {}
+            if not isinstance(stats, dict): stats = {}
+
+            if needs("climate/mode/state", "climate/action/state",
+                     "climate/temperature/target/state", "zone/*/temperature/target/state"):
+                is_on = _as_bool(settings.get("isOn"))
+                raw_mode = str(settings.get("Mode", "")).upper()
+            else:
+                is_on = None
+                raw_mode = ""
+
+            if needs("climate/mode/state"):
+                emit("climate/mode/state", "off" if is_on is False else self.QUE_TO_MODE.get(raw_mode))
+            if needs("climate/fan/state", "constant_fan/state"):
+                raw_fan = str(settings.get("FanMode", "")).upper()
+                emit("climate/fan/state", self.QUE_TO_FAN.get(raw_fan.replace("+CONT", "")))
+                if raw_fan:
+                    emit("constant_fan/state", "ON" if "+CONT" in raw_fan else "OFF")
+            if needs("climate/temperature/low/state", "climate/temperature/high/state",
+                     "climate/temperature/target/state"):
+                heat = settings.get("TemperatureSetpoint_Heat_oC")
+                cool = settings.get("TemperatureSetpoint_Cool_oC")
+                emit("climate/temperature/low/state", heat)
+                emit("climate/temperature/high/state", cool)
+                if needs("climate/temperature/target/state"):
+                    emit("climate/temperature/target/state", self._single_target(raw_mode, heat, cool))
+
+            if needs("away_mode/state"):
+                away = _as_bool(settings.get("AwayMode"))
+                if away is not None:
+                    emit("away_mode/state", "ON" if away else "OFF")
+            if needs("control_all_zones/state"):
+                control_all = _as_bool(master_info.get("ControlAllZones"))
+                if control_all is not None:
+                    emit("control_all_zones/state", "ON" if control_all else "OFF")
+
+            for suffix, field in (
+                ("indoor_temperature/state", "LiveTemp_oC"),
+                ("outdoor_temperature/state", "LiveOutdoorTemp_oC"),
+                ("humidity/state", "LiveHumidity_pc"),
+            ):
+                if needs(suffix):
+                    emit(suffix, master_info.get(field))
+
+            for suffix, field in (
+                ("compressor_mode/state", "CompressorMode"),
+                ("compressor_capacity/state", "CompressorCapacity"),
+                ("coil_inlet_temperature/state", "CoilInlet"),
+                ("fan_pwm/state", "FanPWM"),
+                ("fan_rpm/state", "FanRPM"),
+            ):
+                if needs(suffix):
+                    emit(suffix, live.get(field))
+
+            if needs("compressor_power/state"):
+                outdoor_unit = live.get("OutdoorUnit", {})
+                if isinstance(outdoor_unit, dict):
+                    emit("compressor_power/state", outdoor_unit.get("CompPower"))
+            if needs("clean_filter/state"):
+                clean_filter = _as_bool(alerts.get("CleanFilter"))
+                if clean_filter is not None:
+                    emit("clean_filter/state", "ON" if clean_filter else "OFF")
+            if needs("filter_runtime/state"):
+                runtime = _as_number(stats.get("NV_FanRunTime_10m"))
+                if runtime is not None:
+                    emit("filter_runtime/state", round(runtime / 6.0, 1))
+            if needs("climate/action/state"):
+                emit("climate/action/state", self._climate_action(is_on, live.get("CompressorMode")))
+
+            zones = state.get("RemoteZoneInfo", [])
+            enabled = settings.get("EnabledZones", [])
+            if not isinstance(zones, list): zones = []
+            if not isinstance(enabled, list): enabled = []
+            if selected is None or "zone/*/temperature/target/state" in selected:
+                zone_indices = range(len(zones))
+            else:
+                zone_indices = sorted({
+                    int(match.group(1)) - 1
+                    for topic in selected
+                    for match in (re.match(r"^zone/(\d+)/", topic),)
+                    if match is not None
+                })
+            for index in zone_indices:
+                if not 0 <= index < len(zones):
+                    continue
+                zone = zones[index]
+                if not isinstance(zone, dict) or not _as_bool(zone.get("NV_Exists")):
+                    continue
+                number = index + 1
+                base = f"zone/{number}/"
+                if needs(base + "enabled/state") and index < len(enabled):
+                    zone_on = _as_bool(enabled[index])
+                    if zone_on is not None:
+                        emit(base + "enabled/state", "ON" if zone_on else "OFF")
+                if needs(base + "temperature/state"):
+                    emit(base + "temperature/state", zone.get("LiveTemp_oC"))
+                if needs(base + "temperature/low/state", base + "temperature/high/state",
+                         base + "temperature/target/state"):
+                    zheat = zone.get("TemperatureSetpoint_Heat_oC")
+                    zcool = zone.get("TemperatureSetpoint_Cool_oC")
+                    emit(base + "temperature/low/state", zheat)
+                    emit(base + "temperature/high/state", zcool)
+                    if needs(base + "temperature/target/state"):
+                        emit(base + "temperature/target/state", self._single_target(raw_mode, zheat, zcool))
+                if needs(base + "position/state"):
+                    position = _as_number(zone.get("ZonePosition"))
+                    if position is not None:
+                        emit(base + "position/state", round(position * 5.0, 1))
+
+                # Do not scan unrelated sensors or unrelated zones for ordinary
+                # temperature, mode, or zone-position changes.
+                if selected is None or any(t.startswith(base + "sensor/") for t in selected):
+                    temps = zone.get("RemoteTemperatures_oC", {})
+                    sensors = zone.get("Sensors", {})
+                    if not isinstance(temps, dict): temps = {}
+                    if not isinstance(sensors, dict): sensors = {}
+                    if selected is None:
+                        ids = set(map(str, temps)) | set(map(str, sensors))
+                    else:
+                        ids = {
+                            topic[len(base + "sensor/"):].rsplit("/", 2)[0]
+                            for topic in selected if topic.startswith(base + "sensor/")
+                        }
+                    for sensor_id in ids:
+                        sbase = base + f"sensor/{sensor_id}/"
+                        if needs(sbase + "temperature/state"):
+                            emit(sbase + "temperature/state", temps.get(sensor_id))
+                        info = sensors.get(sensor_id, {})
+                        if isinstance(info, dict):
+                            if needs(sbase + "battery/state"):
+                                emit(sbase + "battery/state", info.get("Battery_pc"))
+                            if needs(sbase + "rssi/state"):
+                                emit(sbase + "rssi/state", info.get("lastRssi"))
+
+        # Perform MQTT operations outside the state lock, preserving concurrency.
+        for topic, value in messages:
+            self.mqtt_publish(topic, value, retain=True)
 
     @staticmethod
     def _climate_action(is_on: Optional[bool], compressor_mode: Any) -> str:
