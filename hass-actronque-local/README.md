@@ -130,6 +130,15 @@ Changing this option keeps the same climate entity IDs, but Home Assistant autom
 - `publish_raw_state` — publishes the full current QUE state for diagnostics (off by default).
 - `log_data_changes` — logs incoming WallLink `Data_Change` details (off by default).
 
+## MQTT discovery traffic
+
+From 2026.10.5, unchanged retained discovery configurations and empty cleanup
+messages are suppressed within an MQTT connection. Repeated complete QUE
+snapshots no longer trigger a fresh discovery pass unless zone/sensor structure
+or device identity has changed. On MQTT reconnect, a complete discovery
+snapshot is published again so the broker can recover retained configurations.
+Availability updates, changes and command messages remain unsuppressed.
+
 ## Selective state updates
 
 From 2026.10.3, incoming WallLink changes refresh only MQTT topics affected by

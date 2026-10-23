@@ -188,8 +188,9 @@ class ActronQueBridge:
         self._stop = threading.Event()
         self.walllink = WallLinkClient(self)
 
-        # Only retained state topics are deduplicated. Cleared on MQTT reconnect.
-        self._retained_state_cache: Dict[str, str] = {}
+        # Cache retained state AND discovery config messages per MQTT connection.
+        # Preserve events/availability and force a complete resync on reconnect.
+        self._retained_state_cache: Dict[str, Any] = {}
         self._retained_state_lock = threading.RLock()
         self.mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         username = os.getenv("MQTT_USERNAME", "")
@@ -206,23 +207,24 @@ class ActronQueBridge:
         if isinstance(payload, (dict, list)):
             payload = json.dumps(payload, separators=(",", ":"))
 
-        # Never suppress events, availability, or MQTT discovery configuration.
-        # State topics are retained, so identical republishing is unnecessary.
-        deduplicate = (
-            retain
-            and topic.endswith("/state")
-            and "/config" not in topic
-            and not topic.endswith("/bridge/status")
+        # Unchanged retained state and discovery definitions need not be resent.
+        # Tombstones (empty discovery payloads) are cached as well; that avoids
+        # repeated entity removals and expensive MQTT discovery processing in HA.
+        # Events, commands and availability are ALWAYS published unconditionally.
+        discovery_config = (
+            topic.startswith(f"{self.discovery_prefix}/")
+            and topic.endswith("/config")
         )
+        deduplicate = retain and (topic.endswith("/state") or discovery_config)
         if not deduplicate:
             return self.mqtt.publish(topic, payload, qos=1, retain=retain)
 
         with self._retained_state_lock:
-            if self._retained_state_cache.get(topic) == payload:
+            if topic in self._retained_state_cache and self._retained_state_cache[topic] == payload:
                 return None
             result = self.mqtt.publish(topic, payload, qos=1, retain=True)
             # Cache only messages accepted by the MQTT client for delivery.
-            # QoS 1 messages queued by Paho are retried by its network loop.
+            # QoS 1 queued messages are retried by Paho's network loop.
             if result.rc == mqtt.MQTT_ERR_SUCCESS:
                 self._retained_state_cache[topic] = payload
             return result

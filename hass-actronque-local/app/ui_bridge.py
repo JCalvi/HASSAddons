@@ -42,6 +42,10 @@ class ActronQueLocalBridge(FullActronQueBridge):
         self._send_changes({"NV_SystemSettings.MaxSecondaryControllers": int(value)})
 
     def on_mqtt_connect(self, client, userdata, flags, reason_code, properties):
+        if reason_code == 0:
+            # Broker restart/reconnection requires a fresh retained discovery
+            # snapshot even if nothing about the AC's configuration changed.
+            self._last_discovery_signature = None
         super().on_mqtt_connect(client, userdata, flags, reason_code, properties)
         if reason_code != 0: return
         self.mqtt.subscribe(f"{self.topic_prefix}/zone/+/mode/set", qos=1)
@@ -75,8 +79,21 @@ class ActronQueLocalBridge(FullActronQueBridge):
             self._clear_discovery("number", f"zone_{number}_heating_setpoint"); self._clear_discovery("number", f"zone_{number}_cooling_setpoint")
 
     def publish_discovery(self):
+        if not self.mqtt_connected or not self.state:
+            return
+        # Data_All may be sent repeatedly without any actual change to the
+        # entity schema. Skip rebuilding/publishing the complete discovery tree
+        # unless its identity, settings or zone/sensor structure changed.
+        signature = (
+            self.master_serial,
+            self.master_fw,
+            self.system_name,
+            self.separate_heat_cool_targets,
+            self._zone_signature_value(),
+        )
+        if signature == getattr(self, "_last_discovery_signature", None):
+            return
         super().publish_discovery()
-        if not self.mqtt_connected or not self.state: return
         self._clear_separate_setpoint_numbers(); self._publish_zone_climates(); p = self.topic_prefix
         config = {
             "name": f"Actron QUE ({self.system_name})", "mode_command_topic": f"{p}/climate/mode/set", "mode_state_topic": f"{p}/climate/mode/state",
@@ -90,6 +107,7 @@ class ActronQueLocalBridge(FullActronQueBridge):
         self.publish_discovery_entity("sensor", "secondary_setup_status", {"name": "Secondary Controller Setup Status", "state_topic": f"{p}/secondary_setup/status", "entity_category": "diagnostic", "icon": "mdi:link-variant", **self._availability()})
         self.publish_discovery_entity("button", "redo_secondary_controller_setup", {"name": "Redo Secondary Controller Setup", "command_topic": f"{p}/secondary_setup/redo", "payload_press": "PRESS", "entity_category": "config", "icon": "mdi:link-variant-plus", **self._availability()})
         self._publish_setup_status(self.secondary_setup.status)
+        self._last_discovery_signature = signature
 
     def _publish_zone_climates(self) -> None:
         with self.state_lock: zones = copy.deepcopy(self.state.get("RemoteZoneInfo", []))

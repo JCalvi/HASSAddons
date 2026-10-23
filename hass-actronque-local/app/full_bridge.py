@@ -310,6 +310,7 @@ class FullActronQueBridge(LocalActronQueBridge):
                         sensor_ids.update(str(x) for x in value.keys())
                 sensors = zone.get("Sensors", {})
                 valid_batteries = []
+                rssi_sensors = []
                 if isinstance(sensors, dict):
                     for sid, info in sensors.items():
                         if not isinstance(info, dict):
@@ -317,9 +318,12 @@ class FullActronQueBridge(LocalActronQueBridge):
                         battery = _as_number(info.get("Battery_pc"))
                         if battery is not None and 0 <= battery <= 100:
                             valid_batteries.append(str(sid))
+                        if "lastRssi" in info:
+                            rssi_sensors.append(str(sid))
                 result.append((index, _as_bool(zone.get("NV_Exists")),
                                str(zone.get("NV_Title", "")),
-                               tuple(sorted(sensor_ids)), tuple(sorted(valid_batteries))))
+                               tuple(sorted(sensor_ids)), tuple(sorted(valid_batteries)),
+                               tuple(sorted(rssi_sensors))))
             return tuple(result)
 
     def _publish_zone_discovery(self):

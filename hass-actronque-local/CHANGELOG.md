@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026.10.5
+
+- Avoid repeated MQTT discovery floods: deduplicate retained discovery `/config` payloads and empty deletion messages, while leaving state events and availability untouched.
+- Skip constructing the full discovery tree when repeated `Data_All` snapshots leave device identity, zone membership and sensor configuration unchanged.
+- Preserve full discovery on initial connection and MQTT reconnect; publish changed configuration when zone title, sensor membership, RSSI availability or battery validity changes.
+- Add regression tests against the production `ActronQueLocalBridge` for repeated snapshots, structural changes, retained-message suppression, tombstones and broker reconnects.
+
 ## 2026.10.4
 
 - Fix 2026.10.3 selective-state publication errors caused by the production UI bridge still using the old no-argument method signature and a removed numeric publishing hook.
