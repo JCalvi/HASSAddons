@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.10.6
+
+- Reduce Actron QUE humidity MQTT state updates and Home Assistant recorder growth by publishing whole-percent relative humidity only after at least a 1% RH change from the last published value.
+- Preserve full-precision raw WallLink humidity internally; keep all other sensor and climate publishing unchanged.
+- Preserve correct initial/reconnection humidity publication and add regression coverage for humidity jitter, meaningful changes, and cache resets.
+
 ## 2026.10.5
 
 - Avoid repeated MQTT discovery floods: deduplicate retained discovery `/config` payloads and empty deletion messages, while leaving state events and availability untouched.
