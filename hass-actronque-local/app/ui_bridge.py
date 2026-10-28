@@ -134,8 +134,16 @@ class ActronQueLocalBridge(FullActronQueBridge):
                 number = 0.0
         if number is not None:
             integer_topics = ("/fan_pwm/state", "/fan_rpm/state", "/battery/state", "/rssi/state")
-            one_decimal_topics = ("/temperature/state", "/temperature/target/state", "/temperature/low/state", "/temperature/high/state", "/indoor_temperature/state", "/outdoor_temperature/state", "/humidity/state", "/compressor_capacity/state", "/compressor_power/state", "/filter_runtime/state", "/position/state")
-            if topic.endswith(integer_topics): value = int(round(number))
+            one_decimal_topics = ("/temperature/state", "/temperature/target/state", "/temperature/low/state", "/temperature/high/state", "/indoor_temperature/state", "/outdoor_temperature/state", "/compressor_capacity/state", "/compressor_power/state", "/filter_runtime/state", "/position/state")
+            if topic.endswith("/humidity/state"):
+                # Whole-percent RH with a 1% deadband avoids logging sensor jitter.
+                # The full-precision value remains available in the WallLink state.
+                with self._retained_state_lock:
+                    last_published = self._retained_state_cache.get(topic)
+                if last_published is not None and abs(number - float(last_published)) < 1.0:
+                    return
+                value = int(round(number))
+            elif topic.endswith(integer_topics): value = int(round(number))
             elif topic.endswith("/coil_inlet_temperature/state"): value = round(number, 2)
             elif topic.endswith(one_decimal_topics): value = round(number, 1)
         super()._publish_value(topic, value)
