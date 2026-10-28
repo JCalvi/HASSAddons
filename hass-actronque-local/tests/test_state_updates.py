@@ -199,6 +199,24 @@ class UiRuntimeTests(unittest.TestCase):
         topics = self.update({"RemoteZoneInfo[0].LiveTemp_oC": 25.54})
         self.assertEqual(topics["zone/1/temperature/state"], 25.5)
 
+    def test_humidity_updates_have_whole_percent_deadband(self):
+        topic = f"{self.bridge.topic_prefix}/humidity/state"
+        self.bridge._retained_state_cache[topic] = 48
+
+        # Sub-1% raw fluctuations should not reach MQTT/recorder.
+        topics = self.update({"MasterInfo.LiveHumidity_pc": 48.8})
+        self.assertNotIn("humidity/state", topics)
+
+        # A whole percentage-point movement is published as an integer.
+        topics = self.update({"MasterInfo.LiveHumidity_pc": 49.1})
+        self.assertEqual(topics["humidity/state"], 49)
+        self.assertEqual(self.bridge.state["MasterInfo"]["LiveHumidity_pc"], 49.1)
+
+        # A cleared publication cache (as on reconnect) sends the latest reading.
+        self.bridge._retained_state_cache.clear()
+        topics = self.update({"MasterInfo.LiveHumidity_pc": 49.3})
+        self.assertEqual(topics["humidity/state"], 49)
+
     def test_unexposed_leaf_and_reconnect_full_refresh(self):
         self.assertEqual(self.update({"LiveAircon.UnexposedField": 123}), {})
         self.messages.clear()
