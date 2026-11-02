@@ -381,7 +381,7 @@ Expected response when a face is recognised:
   "name": "john",
   "similarity": 98.72,
   "faces_detected": 1,
-  "threshold": 90
+  "threshold": 95
 }
 ```
 
@@ -397,7 +397,7 @@ A match is a **hint**, not proof of identity or a liveness check. Use an appropr
 
 The example only accepts the **current request's** HTTP 200 JSON response with `status: matched`, `matched: true`, a nonempty name and a score meeting the requested threshold. No face, no match, malformed output, errors and timeouts never produce a matched-person action. Other consequential workflows must require independent authentication/approval and leave the protected action unperformed on failure. Never treat a previously successful helper state as the new request's result.
 
-The maintainer measured **under one second from the automation call to the result on his installation**. Camera capture and notification delivery outside that call are separate. This is not a latency guarantee; no representative daily snapshot count or monthly bill has been published.
+I’ve measured **under one second from the automation call to the result on my installation**. Camera capture and notification delivery outside that call are separate. This is not a latency guarantee; I haven’t published a representative daily snapshot count or monthly bill.
 
 To estimate your own bill, count actual recognition requests over representative days. The worker calls DetectFaces once per uploaded snapshot and SearchFacesByImage once if a face is detected, before retries. For example, **10 snapshots/day for 30 days**, all containing faces, gives **300 calls to each API (600 total)**; **100/day** gives **3,000 to each (6,000 total)**. These are illustrative volumes, not measured usage. Apply [current regional pricing](https://aws.amazon.com/rekognition/pricing/), adding vector storage, enrollment, S3 requests/storage, retries, applicable transfer and other enabled services. Budget alerts help monitor spending but are not a hard cap.
 
@@ -435,3 +435,4 @@ aws iam delete-access-key \
 aws iam delete-user --user-name "$IAM_USER"
 aws iam delete-policy --policy-arn "$POLICY_ARN"
 ```
+
