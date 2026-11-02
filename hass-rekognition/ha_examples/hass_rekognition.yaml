@@ -2,7 +2,8 @@ rekognition_bridge:
   # Home Assistant yaml items for Rekognition Bridge
   #
   # Add this file as a package from your configuration.yaml, e.g.:
-  # packages: !include hass_rekognition.yaml
+  # homeassistant:
+  #   packages: !include hass_rekognition.yaml
   #
   # Home Assistant Helpers for Rekognition Bridge
   # Person-detected helpers (all snapshot types are routed here)
@@ -27,10 +28,10 @@ rekognition_bridge:
       unit_of_measurement: "%"
       mode: box
 
-  # Rest_command entries for the Rekognition Bridge add-on
+  # Rest_command entries for the Rekognition Bridge app
   # Replace homeassistant.local with fixed ip or your reserved name (eg.homeassistant.lan) can improve mDNS reliability.
   #
-  # If you configure `api_token` in the add-on, add this to your Home Assistant secrets.yaml:
+  # If you configure `api_token` in the app, add this to your Home Assistant secrets.yaml:
   #
   #   rekognition_bridge_token: "your-long-random-token"
   #
@@ -39,17 +40,19 @@ rekognition_bridge:
     rekognition_match_person:
       url: "http://homeassistant.local:8080/match"
       method: POST
+      # Keep this above the app's worker_timeout (default 60 seconds).
+      timeout: 65
       headers:
         Content-Type: "application/json"
         X-Rekognition-Token: !secret rekognition_bridge_token
-      payload: >
-        {
-          "snapshot_path": "{{ snapshot_path }}",
-          "threshold": {{ threshold | default(95) }},
-          "max_faces": {{ max_faces | default(1) }}
-        }
+      payload: >-
+        {{ {"snapshot_path": snapshot_path,
+            "threshold": threshold | default(95) | int,
+            "max_faces": max_faces | default(1) | int} | to_json }}
       content_type: "application/json"
 
+  # Display only: helpers can retain an earlier value if a new request fails.
+  # Use response_variable from the current REST call for decisions, never these helpers.
   # Template Sensors derived from the Rekognition Bridge helpers
   template:
     - sensor:

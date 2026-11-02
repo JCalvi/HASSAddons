@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on **Keep a Changelog**, and this project follows **Semantic Versioning** where practical.
 
+## [Unreleased]
+
+### Documentation and examples
+- Document private staging buckets, default SSE-S3 encryption, one-day prefix-scoped lifecycle expiration and versioned-object retention limits.
+- Add consent/retention guidance and an individual FaceId deletion procedure, separating collection data, S3 images and other copies.
+- Replace the worker-startup estimate and unmeasured once-daily assumption with the maintainer's measured sub-second call-to-result report and explicit workload/cost limitations.
+- Replace the automation example with shared event-driven notification handling, cooldown, current-response validation and no door-unlock example.
+- Clarify package inclusion and REST timeout/response handling. App runtime and version are unchanged.
+
 ## [2026.9.1] - 2026-09-02
 
 ### Changed

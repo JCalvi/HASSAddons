@@ -1,18 +1,20 @@
 # Rekognition Bridge – AWS Quickstart Guide
 
-This guide walks you through the minimum AWS setup required to run the **Rekognition Bridge** Home Assistant add-on from scratch.
+This guide walks you through the minimum AWS setup required to run the **Rekognition Bridge** Home Assistant app from scratch.
 
 ---
 
 ## Quick Checklist
 
 - [ ] AWS account with Rekognition and S3 access
-- [ ] S3 bucket created in your target region
+- [ ] Private S3 bucket in your target region, with Block Public Access and default encryption
+- [ ] One-day snapshot-prefix lifecycle rule, including noncurrent-version cleanup if versioned
 - [ ] Rekognition face collection created
 - [ ] IAM user created with least-privilege policy
 - [ ] Access key generated and saved
-- [ ] At least one face enrolled in the collection
-- [ ] Add-on installed and configured in Home Assistant
+- [ ] Purpose, AWS processing, consent and deletion procedure explained before enrollment
+- [ ] At least one consenting person's face enrolled in the collection
+- [ ] App installed and configured in Home Assistant
 - [ ] *(Recommended)* API token configured + stored in `secrets.yaml`
 
 ---
@@ -24,6 +26,8 @@ This guide walks you through the minimum AWS setup required to run the **Rekogni
 - The region you plan to use – this guide uses **`ap-southeast-2`** (Sydney). Replace it with your own region throughout.
 
 ---
+
+Run the setup and deletion commands with an administrative/operator AWS CLI profile that can manage these resources. The credentials entered into the app are for runtime access; do not use the app's credentials as an unrestricted account administrator. Do not run these examples against unrelated production buckets.
 
 ## Step 1 – Create the S3 Staging Bucket
 
@@ -44,7 +48,7 @@ aws s3api create-bucket \
 # For us-east-1 only, use this instead:
 # aws s3api create-bucket --bucket "$BUCKET_NAME" --region us-east-1
 
-# Block all public access (recommended)
+# Keep the staging bucket private
 aws s3api put-public-access-block \
   --bucket "$BUCKET_NAME" \
   --public-access-block-configuration \
@@ -53,7 +57,68 @@ aws s3api put-public-access-block \
 echo "Bucket created: $BUCKET_NAME"
 ```
 
-> **Tip:** The bucket name must be globally unique. Using your AWS account number as a suffix ensures uniqueness and matches the default value shown in the add-on configuration.
+> **Tip:** The bucket name must be globally unique. Using your AWS account number as a suffix ensures uniqueness and matches the default value shown in the app configuration.
+
+---
+
+### Default encryption
+
+New S3 buckets already use SSE-S3 by default. For a **new dedicated staging bucket**, explicitly configure and verify that setting:
+
+```bash
+aws s3api put-bucket-encryption \
+  --bucket "$BUCKET_NAME" \
+  --server-side-encryption-configuration \
+  '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+
+aws s3api get-public-access-block --bucket "$BUCKET_NAME"
+aws s3api get-bucket-encryption --bucket "$BUCKET_NAME"
+```
+
+Do not overwrite an existing bucket's KMS/encryption configuration to follow this example. Review its existing policy and required KMS permissions instead.
+
+### Staging bucket retention backstop
+
+Keep `delete_after_match: true` for immediate best-effort cleanup after processing. A crashed/timed-out worker or failed S3 deletion can leave an object behind, so add a lifecycle rule scoped to the **configured snapshot prefix**, normally `snapshots/`.
+
+The following configuration is for a **new dedicated bucket with no existing lifecycle rules**. `put-bucket-lifecycle-configuration` replaces the entire configuration: merge the rules into an existing configuration instead of overwriting unrelated rules. The example also expires noncurrent snapshot versions and removes expired delete markers if versioning is enabled or suspended.
+
+```bash
+cat > /tmp/rekognition-staging-lifecycle.json <<'JSON'
+{
+  "Rules": [
+    {
+      "ID": "ExpireRekognitionSnapshots",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "snapshots/"},
+      "Expiration": {"Days": 1},
+      "NoncurrentVersionExpiration": {"NoncurrentDays": 1}
+    },
+    {
+      "ID": "RemoveExpiredSnapshotDeleteMarkers",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "snapshots/"},
+      "Expiration": {"ExpiredObjectDeleteMarker": true}
+    }
+  ]
+}
+JSON
+
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket "$BUCKET_NAME" \
+  --lifecycle-configuration file:///tmp/rekognition-staging-lifecycle.json
+
+aws s3api get-bucket-lifecycle-configuration --bucket "$BUCKET_NAME"
+aws s3api get-bucket-versioning --bucket "$BUCKET_NAME"
+```
+
+Change **both prefixes** to match `s3_prefix` if you use a different value. These rules permanently delete eligible snapshots/versions; keep enrollment/reference images outside that prefix.
+
+S3 calculates expiration dates using UTC day boundaries and processes deletion asynchronously. One-day expiration is **not guaranteed deletion within 24 hours**. For versioned buckets, current-object deletion can create a delete marker while retaining the old version; the noncurrent-version rule handles that additional retention. Object Lock or other retention controls can prevent permanent deletion.
+
+These rules do not remove local Home Assistant snapshots, the `enroll/` prefix, enrolled Rekognition face vectors, or service-side copies described in the Rekognition FAQ.
+
+References: [S3 expiration behaviour](https://docs.aws.amazon.com/AmazonS3/latest/userguide/lifecycle-expire-general-considerations.html), [lifecycle CLI](https://docs.aws.amazon.com/cli/latest/reference/s3api/put-bucket-lifecycle-configuration.html), [default encryption](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-encryption.html).
 
 ---
 
@@ -124,7 +189,7 @@ Save the following JSON to a file named `/tmp/ha-rekognition-policy.json`:
 }
 ```
 
-Replace `${BUCKET_NAME}`, `${REGION}`, `${ACCOUNT_ID}`, and `${COLLECTION_ID}` with your values. The path `snapshots/*` in the S3 ARN must match the `s3_prefix` add-on config option (default: `snapshots/`). Then create the policy using `envsubst`:
+Replace `${BUCKET_NAME}`, `${REGION}`, `${ACCOUNT_ID}`, and `${COLLECTION_ID}` with your values. The path `snapshots/*` in the S3 ARN must match the `s3_prefix` app config option (default: `snapshots/`). Then create the policy using `envsubst`:
 
 ```bash
 # Export the variables so envsubst can replace them in the policy template
@@ -170,7 +235,11 @@ aws iam create-access-key \
 
 ## Step 4 – Enroll Known Faces
 
-You need at least one face in the collection before the add-on can return a `matched` result.
+You need at least one face in the collection before the app can return a `matched` result.
+
+Explain the purpose, the fact that images are sent to AWS, retention and deletion before enrolling anyone. Obtain informed consent and check the requirements applicable to your use. Do not enrol visitors or housemates without their knowledge. See [AWS biometric notice and consent terms](https://aws.amazon.com/legal/biometric-notice-and-consent-terms/).
+
+Use a reference photo containing only the intended person. Keep an inventory of the returned FaceIds and their ExternalImageId so every reference image for a person can be removed later. Face vectors/metadata persist until deleted; deleting the source photo does not delete the enrollment.
 
 ### Prepare a reference image
 
@@ -208,9 +277,46 @@ aws rekognition list-faces \
 
 ---
 
-## Step 5 – Install and Configure the Add-on
+### Remove the uploaded reference image
 
-1. In Home Assistant, go to **Settings → Add-ons → Add-on Store**.
+Once indexing has succeeded, remove the source image from `enroll/` if you do not need to retain it:
+
+```bash
+aws s3 rm "s3://${BUCKET_NAME}/enroll/${PERSON_NAME}.jpg"
+```
+
+In a versioned bucket this normal delete can leave noncurrent versions; inspect and remove those using an operator's version-aware deletion process. The `snapshots/` lifecycle rules do not apply to `enroll/`. Also manage the local reference file and any backups.
+
+### Remove an enrolled person
+
+Use your operator AWS CLI profile, not a public-facing HTTP endpoint. First list all faces (the CLI paginates automatically unless pagination is disabled):
+
+```bash
+aws rekognition list-faces \
+  --collection-id "$COLLECTION_ID" \
+  --region "$REGION" \
+  --query 'Faces[*].{FaceId:FaceId,Name:ExternalImageId}' \
+  --output table
+```
+
+Identify **every FaceId** belonging to the intended person, including images enrolled under alternate names. Check the selected IDs before deleting. Replace the placeholders below with those actual IDs; do not delete the whole shared collection to remove one person.
+
+```bash
+aws rekognition delete-faces \
+  --collection-id "$COLLECTION_ID" \
+  --region "$REGION" \
+  --face-ids FACE_ID_1 FACE_ID_2
+```
+
+Supply only the IDs needed (one is sufficient for a single entry); use batches of at most 4,096 IDs. Review both `DeletedFaces` and `UnsuccessfulFaceDeletions`, then list faces again and verify all intended entries are gone. `ExternalImageId` is a label, not a unique FaceId, so a person may have several entries.
+
+Remove any retained enrollment photos, local snapshots, notification copies, logs and backups according to your retention/deletion policy. These are separate from the collection and S3 staging cleanup. See [DeleteFaces](https://docs.aws.amazon.com/cli/latest/reference/rekognition/delete-faces.html). Review the [Rekognition FAQ](https://aws.amazon.com/rekognition/faqs/) for service-side input retention, AWS Organizations AI-services opt-out and AWS Support deletion-request options; these commands alone do not remove every possible copy.
+
+---
+
+## Step 5 – Install and Configure the App
+
+1. In Home Assistant, go to **Settings → Apps → App Store**.
 2. Add the custom repository: `https://github.com/JCalvi/HASSAddons`
 3. Find **Rekognition Bridge** and click **Install**.
 4. Open the **Configuration** tab and fill in your values (plus recommended security settings):
@@ -248,7 +354,7 @@ homeassistant:
 rekognition_bridge_token: "<your-long-random-token>"
 ```
 
-7. Restart Home Assistant to load the new helpers, then start the add-on.
+7. Restart Home Assistant to load the new helpers, then start the app.
 
 ---
 
@@ -256,13 +362,13 @@ rekognition_bridge_token: "<your-long-random-token>"
 
 Send a test request from the Home Assistant terminal or from any machine on your network.
 
-If `api_token` is set in the add-on, include the `X-Rekognition-Token` header:
+If `api_token` is set in the app, include the `X-Rekognition-Token` header:
 
 ```bash
 curl -s -X POST http://<ha-ip>:8080/match \
   -H "Content-Type: application/json" \
   -H "X-Rekognition-Token: <your-long-random-token>" \
-  -d '{"snapshot_path": "/media/snapshots/test.jpg", "threshold": 90}' \
+  -d '{"snapshot_path": "/media/snapshots/test.jpg", "threshold": 95}' \
   | python3 -m json.tool
 ```
 
@@ -279,19 +385,33 @@ Expected response when a face is recognised:
 }
 ```
 
-Check the add-on log (**Settings → Add-ons → Rekognition Bridge → Log**) if you receive an `error` status.
+Check the app log (**Settings → Apps → Rekognition Bridge → Log**) if you receive an `error` status.
 
 ---
+
+## Event-driven automation, errors and cost
+
+Use the [notification-only example](ha_examples/automations.yaml) for person-detected and/or doorbell events. It uses a shared cooldown and single-run mode; it does not poll on a timer or upload a video stream. Create/allow the chosen snapshot directory first. Copy the example's automation list into your existing automation configuration without duplicating the top-level `automation:` key.
+
+A match is a **hint**, not proof of identity or a liveness check. Use an appropriately high threshold for your notification use, test lighting/angles and review false matches. Do not use facial recognition alone to unlock a door or disarm an alarm. The example contains no access-control action.
+
+The example only accepts the **current request's** HTTP 200 JSON response with `status: matched`, `matched: true`, a nonempty name and a score meeting the requested threshold. No face, no match, malformed output, errors and timeouts never produce a matched-person action. Other consequential workflows must require independent authentication/approval and leave the protected action unperformed on failure. Never treat a previously successful helper state as the new request's result.
+
+The maintainer measured **under one second from the automation call to the result on his installation**. Camera capture and notification delivery outside that call are separate. This is not a latency guarantee; no representative daily snapshot count or monthly bill has been published.
+
+To estimate your own bill, count actual recognition requests over representative days. The worker calls DetectFaces once per uploaded snapshot and SearchFacesByImage once if a face is detected, before retries. For example, **10 snapshots/day for 30 days**, all containing faces, gives **300 calls to each API (600 total)**; **100/day** gives **3,000 to each (6,000 total)**. These are illustrative volumes, not measured usage. Apply [current regional pricing](https://aws.amazon.com/rekognition/pricing/), adding vector storage, enrollment, S3 requests/storage, retries, applicable transfer and other enabled services. Budget alerts help monitor spending but are not a hard cap.
+
+Measure your installation with an automation trace or curl's `--write-out '\\nHTTP %{http_code}; total %{time_total}s\\n'` option on the test request. Do not publish tokens or face data in timing reports. A timed-out request may already have incurred AWS usage; retrying can add calls.
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `401 Unauthorized` | `api_token` is set in the add-on but request header missing/wrong | Ensure `X-Rekognition-Token` matches the add-on `api_token` value; if using HA, ensure the `!secret rekognition_bridge_token` is defined |
+| `401 Unauthorized` | `api_token` is set in the app but request header missing/wrong | Ensure `X-Rekognition-Token` matches the app `api_token` value; if using HA, ensure the `!secret rekognition_bridge_token` is defined |
 | `status: error` – `AccessDenied` | IAM policy missing a permission or wrong resource ARN | Re-check the policy in Step 3 and confirm the bucket/collection names match |
 | `status: no_face` | Image quality too low, face too small, or not front-facing | Use a higher-resolution image; face should be ≥ 100 px wide |
-| `status: no_match` | Face not in collection, or threshold too high | Enrol the face (Step 4) or lower `default_threshold` |
-| `FileNotFoundError` | Snapshot path not accessible | Ensure the path is under `/media` (the add-on maps `media:ro`) |
+| `status: no_match` | Face not in collection, image unsuitable, or threshold not met | Check enrollment, lighting and camera angle before adjusting the threshold; do not lower it to permit access |
+| `FileNotFoundError` | Snapshot path not accessible | Ensure the path is under `/media` (the app maps `media:ro`) |
 
 ---
 
