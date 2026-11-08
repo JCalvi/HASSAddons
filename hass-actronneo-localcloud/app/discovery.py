@@ -450,6 +450,26 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
 
             _publish(client, "climate", f"actronneo_{serial}_zone_{idx}", zone_climate)
 
+        # A dedicated toggle lets zones be enabled/disabled directly from the
+        # device page while the unit mode is off, where the zone climate
+        # entities only display their off state.
+        if has_mode_control:
+            zone_enable = {
+                "name": f"{zone_name} Enabled",
+                "unique_id": f"actronneo_{serial}_zone_{idx}_enabled",
+                "device": device,
+                "availability_topic": availability,
+                "state_topic": state_topic,
+                "value_template": f"{{{{ 'ON' if value_json.zones | selectattr('id','eq',{idx}) | map(attribute='enabled') | first else 'OFF' }}}}",
+                "command_topic": f"{zone_base}/set/enabled",
+                "payload_on": "ON",
+                "payload_off": "OFF",
+                "state_on": "ON",
+                "state_off": "OFF",
+                "icon": "mdi:power",
+            }
+            _publish(client, "switch", f"actronneo_{serial}_zone_{idx}_enabled", zone_enable)
+
         # NEO Connect only exposes adjustable airflow when the zone supports
         # airflow control and the controller does not report it locked.
         if (
