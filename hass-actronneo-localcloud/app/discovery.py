@@ -498,3 +498,19 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
                 "device_class": "humidity",
             }
             _publish(client, "sensor", f"actronneo_{serial}_zone_{idx}_humidity", humidity)
+
+        # Zones using a wireless NEO sensor report its remaining battery
+        # capacity, giving early warning when sensor batteries need replacing.
+        if zone.get("battery") is not None:
+            battery = {
+                "name": f"{zone_name} Battery",
+                "unique_id": f"actronneo_{serial}_zone_{idx}_battery",
+                "device": device,
+                "availability_topic": availability,
+                "state_topic": state_topic,
+                "value_template": f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | map(attribute='battery') | first }}}}",
+                "unit_of_measurement": "%",
+                "device_class": "battery",
+                "entity_category": "diagnostic",
+            }
+            _publish(client, "sensor", f"actronneo_{serial}_zone_{idx}_battery", battery)
