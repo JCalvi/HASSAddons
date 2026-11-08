@@ -435,7 +435,7 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
                 zone_climate["temperature_state_topic"] = state_topic
                 zone_climate["temperature_state_template"] = (
                     f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | "
-                    "map(attribute='target_temperature') | first }}}}"
+                    "map(attribute='target_temperature') | first }}"
                 )
 
             if has_temperature_control:
@@ -445,7 +445,7 @@ def publish_discovery(client: mqtt.Client, serial: str, state: dict[str, Any]) -
                 zone_climate["current_temperature_topic"] = state_topic
                 zone_climate["current_temperature_template"] = (
                     f"{{{{ value_json.zones | selectattr('id','eq',{idx}) | "
-                    "map(attribute='current_temperature') | first }}}}"
+                    "map(attribute='current_temperature') | first }}"
                 )
 
             _publish(client, "climate", f"actronneo_{serial}_zone_{idx}", zone_climate)
