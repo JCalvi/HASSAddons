@@ -1,5 +1,11 @@
 ## Changelog
 
+# 2026.11.23
+
+- Updated deprecated Home Assistant configuration mount to `homeassistant_config` while explicitly retaining `/config` for existing settings, SSH keys and custom web UI files.
+- Replaced legacy `map` syntax with current mappings and preserved existing read/write access.
+- Removed unsupported 32-bit architectures (`armhf`, `armv7`, `i386`); retained `amd64` and `aarch64`.
+
 # 2026.7.14
 
 - Removed unused `clean_host()` helper.
