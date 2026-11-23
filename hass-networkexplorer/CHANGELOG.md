@@ -1,6 +1,6 @@
 ## Changelog
 
-# 2026.11.23
+# 2026.11.1
 
 - Updated deprecated Home Assistant configuration mount to `homeassistant_config` while explicitly retaining `/config` for existing settings, SSH keys and custom web UI files.
 - Replaced legacy `map` syntax with current mappings and preserved existing read/write access.
