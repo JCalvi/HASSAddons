@@ -161,6 +161,25 @@ def _fan_speed_wire_value(value: str) -> str:
     return aliases[base]
 
 
+def _zone_enabled_command(
+    settings: dict[str, Any], zone_index: int, enable: bool
+) -> dict[str, Any]:
+    """Write one entry of the learned EnabledZones array, preserving the rest."""
+    enabled_zones = settings.get("EnabledZones")
+    if not isinstance(enabled_zones, list) or zone_index >= len(enabled_zones):
+        raise ValueError(
+            "complete learned UserAirconSettings.EnabledZones array is required"
+        )
+    updated_zones = deepcopy(enabled_zones)
+    updated_zones[zone_index] = enable
+    return {
+        "command": {
+            "UserAirconSettings.EnabledZones": updated_zones,
+            "type": "set-settings",
+        }
+    }
+
+
 def _supported_fan_wire_values(state: dict[str, Any]) -> set[str]:
     """Mirror NEO Connect's NV_SupportedFanModes mapping."""
     indoor = ((state.get("AirconSystem") or {}).get("IndoorUnit") or {})
@@ -602,19 +621,17 @@ class HomeAssistantBridge:
             if common_zone:
                 raise ValueError("common zones are not individually switchable")
 
-            enabled_zones = settings.get("EnabledZones")
-            if not isinstance(enabled_zones, list) or zone_index >= len(enabled_zones):
-                raise ValueError(
-                    "complete learned UserAirconSettings.EnabledZones array is required"
-                )
-            updated_zones = deepcopy(enabled_zones)
-            updated_zones[zone_index] = text.lower() != "off"
-            return {
-                "command": {
-                    "UserAirconSettings.EnabledZones": updated_zones,
-                    "type": "set-settings",
-                }
-            }
+            return _zone_enabled_command(settings, zone_index, text.lower() != "off")
+
+        if command_name == "enabled":
+            # Same write as the zone mode command, exposed as a switch so zones
+            # can be enabled/disabled while the system mode is off.
+            if not can_operate:
+                raise ValueError("zone CanOperate is false; refusing zone enable write")
+            if common_zone:
+                raise ValueError("common zones are not individually switchable")
+
+            return _zone_enabled_command(settings, zone_index, text.upper() == "ON")
 
         if command_name == "temperature":
             if not can_operate:

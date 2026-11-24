@@ -220,6 +220,25 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
 
     zones_raw = raw.get("RemoteZoneInfo") or []
     enabled_zones = settings.get("EnabledZones") or []
+
+    # Wireless NEO zone sensors report RemainingBatteryCapacity_pc in
+    # AirconSystem.Peripherals and name their zone(s) in ZoneAssignment. Map
+    # the first battery-reporting peripheral onto each assigned zone index.
+    zone_battery: dict[int, float] = {}
+    for peripheral in aircon.get("Peripherals") or []:
+        if not isinstance(peripheral, dict):
+            continue
+        capacity = _float_or_none(peripheral.get("RemainingBatteryCapacity_pc"))
+        if capacity is None:
+            continue
+        assignment = peripheral.get("ZoneAssignment")
+        if not isinstance(assignment, list):
+            continue
+        for zone_ref in assignment:
+            assigned = _int_or_none(zone_ref)
+            if assigned is not None and assigned not in zone_battery:
+                zone_battery[assigned] = capacity
+
     zones: list[dict[str, Any]] = []
     for idx, zone in enumerate(zones_raw):
         if not isinstance(zone, dict):
@@ -273,6 +292,7 @@ def normalize_state(serial: str, raw: dict[str, Any]) -> dict[str, Any]:
                 "airflow_enabled": airflow_enabled,
                 "airflow_locked": airflow_locked,
                 "airflow_setpoint": airflow_setpoint,
+                "battery": zone_battery.get(idx),
             }
         )
 
